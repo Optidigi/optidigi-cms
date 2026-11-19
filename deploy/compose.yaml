@@ -10,7 +10,6 @@ services:
         condition: service_healthy
     environment:
       PUBLIC_SERVER_URL: https://cms.optidigi.nl
-      CMS_PAYLOADPACK_THEME: ${CMS_PAYLOADPACK_THEME:-1}
       CMS_NATIVE_WORKSPACE: ${CMS_NATIVE_WORKSPACE:-1}
       DATABASE_URL: postgres://optidigi_cms:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/optidigi_cms
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?Set PAYLOAD_SECRET}

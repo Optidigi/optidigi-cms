@@ -64,9 +64,3 @@ Verify that the assistant streams through Cloudflare, signed-out visitors cannot
 ## Opt out of the custom dashboard
 
 Set `CMS_NATIVE_WORKSPACE=0` in the stack's `.env` and run `docker compose up -d --no-deps --no-build --pull never --wait app`. This switches the native dashboard layout and navigation groups back to their Payload defaults. Remove the setting and recreate the app to restore the workspace. Editors with a previously saved dashboard can use **Dashboard → Edit Dashboard → Reset Layout** to apply the release's default. The customization requires no schema migration.
-
-## Turn off the Studio theme
-
-Set `CMS_PAYLOADPACK_THEME=0` in the stack's `.env` and run `docker compose up -d --no-deps --no-build --pull never --wait app`. The app returns to Payload's default styling with the current workspace and assistant. Remove the setting and recreate the app to enable Studio again.
-
-The Studio theme uses `@payloadpack/theme@0.3.7` by Livog AB. The released image retains the package's LICENSE and required notice in `node_modules/@payloadpack/theme/LICENSE`.
