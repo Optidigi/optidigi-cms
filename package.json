@@ -28,6 +28,7 @@
     "@payloadcms/plugin-multi-tenant": "4.0.0-beta.10",
     "@payloadcms/richtext-lexical": "4.0.0-beta.10",
     "@payloadcms/transformer-sharp": "4.0.0-beta.10",
+    "@payloadcms/translations": "4.0.0-beta.10",
     "@payloadcms/ui": "4.0.0-beta.10",
     "@payloadpack/theme": "0.3.7",
     "ai": "7.0.177",

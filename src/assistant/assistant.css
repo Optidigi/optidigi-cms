@@ -335,3 +335,51 @@
     display: none;
   }
 }
+
+.optidigi-assistant__composer-options,
+.optidigi-assistant__prompt {
+  min-width: 0;
+}
+
+.optidigi-assistant__prompt {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.optidigi-assistant__composer-footer {
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.optidigi-assistant__composer-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.optidigi-assistant__composer-options .btn {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.optidigi-assistant__detail {
+  max-width: 100%;
+  min-height: var(--field-min-height-medium, 2rem);
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--field-border-radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  padding-inline: 0.45rem;
+}
+
+.optidigi-assistant__composer .optidigi-assistant__settings {
+  max-width: none;
+  margin-top: 0.5rem;
+  padding: 0.7rem;
+  border: 0;
+  border-top: 1px solid var(--assistant-border);
+  border-radius: 0;
+}

@@ -2,6 +2,8 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { en } from '@payloadcms/translations/languages/en'
+import { nl } from '@payloadcms/translations/languages/nl'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import { themePlugin } from '@payloadpack/theme'
 import path from 'node:path'
@@ -68,11 +70,8 @@ export default buildConfig({
       actions: ['/assistant/Workspace#AssistantAction'],
       views: {
         assistant: { Component: '/assistant/View#AssistantView', path: '/assistant', exact: true },
-        assistantSettings: {
-          Component: '/assistant/View#AssistantSettingsView',
-          path: '/assistant/settings',
-          exact: true,
-        },
+        assistantSettings: { Component: '/assistant/View#AssistantSettingsRedirect', path: '/assistant/settings', exact: true },
+
       },
     },
   },
@@ -90,10 +89,16 @@ export default buildConfig({
     pool: { connectionString: process.env.DATABASE_URL ?? '' },
     push: false,
   }),
-  localization: { locales: ['nl', 'en'], fallback: true, defaultLocale: 'nl' },
+  i18n: { supportedLanguages: { nl, en }, fallbackLanguage: 'nl' },
+  localization: {
+    locales: [{ code: 'nl', label: 'Nederlands' }, { code: 'en', label: 'English' }],
+    fallback: true,
+    defaultLocale: 'nl',
+  },
   plugins: [
     multiTenantPlugin({
       cleanupAfterTenantDelete: false,
+      i18n: { translations: { en: { 'nav-tenantSelector-label': 'Active website' }, nl: { 'nav-tenantSelector-label': 'Actieve website' } } },
       collections: {
         pages: { accessResultOverride: tenantAccess },
         articles: { accessResultOverride: tenantAccess },

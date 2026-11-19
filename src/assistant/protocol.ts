@@ -22,3 +22,6 @@ export type Connection = {
 }
 
 export const contextCollections = ['pages', 'articles', 'projects', 'site-settings'] as const
+
+export const responseDetail = ['brief', 'standard', 'detailed'] as const
+export type ResponseDetail = (typeof responseDetail)[number]

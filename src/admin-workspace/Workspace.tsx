@@ -1,21 +1,27 @@
 import { Button, Link } from '@payloadcms/ui'
 import type { WidgetServerProps } from 'payload'
+import { adminLabels, collectionLabels } from './i18n'
 import { loadWorkspace } from './data'
 import './workspace.css'
-
-const draftTypes = { pages: 'Page', articles: 'Article', projects: 'Project' }
 
 export async function SiteWorkspace({ req, cookies }: WidgetServerProps) {
   if (!req.user) return null
 
+  const label = adminLabels(req.i18n.language)
+  const locale = req.i18n.language === 'nl' ? 'nl' : 'en'
   const admin = req.payload.config.routes.admin
   const site = await loadWorkspace(req, cookies.get('payload-tenant'))
   if (!site) {
     return (
       <section className="optidigi-workspace">
         <div className="optidigi-workspace__hero">
-          <h2>Website workspace</h2>
-          <p>Choose a site in the tenant picker to see its content and drafts.</p>
+          <h2>{label('Website workspace', 'Websitebeheer')}</h2>
+          <p>
+            {label(
+              'Choose a website to see its content and drafts.',
+              'Kies een website om de inhoud en concepten te bekijken.',
+            )}
+          </p>
         </div>
       </section>
     )
@@ -41,7 +47,9 @@ export async function SiteWorkspace({ req, cookies }: WidgetServerProps) {
         </div>
         <div className="optidigi-workspace__actions">
           <Button el="link" to={route('pages', homepageID)} margin={false}>
-            {homepageID === undefined ? 'Browse pages' : 'Edit homepage'}
+            {homepageID === undefined
+              ? label('Browse pages', 'Bekijk pagina’s')
+              : label('Edit homepage', 'Bewerk homepage')}
           </Button>
           <Button
             el="link"
@@ -49,18 +57,21 @@ export async function SiteWorkspace({ req, cookies }: WidgetServerProps) {
             buttonStyle="secondary"
             margin={false}
           >
-            Site settings
+            {label('Website settings', 'Website-instellingen')}
           </Button>
         </div>
       </div>
-      <nav className="optidigi-workspace__links" aria-label="Website tools">
+      <nav
+        className="optidigi-workspace__links"
+        aria-label={label('Website tools', 'Websitefuncties')}
+      >
         {(
           [
-            ['Pages', route('pages')],
-            ['Articles', route('articles')],
-            ['Projects', route('projects')],
-            ['Media', route('media')],
-            ['Ask AI', `${admin}/assistant`],
+            [collectionLabels.pages.plural[locale], route('pages')],
+            [collectionLabels.articles.plural[locale], route('articles')],
+            [collectionLabels.projects.plural[locale], route('projects')],
+            [collectionLabels.media.plural[locale], route('media')],
+            [label('Ask AI', 'Vraag AI'), `${admin}/assistant`],
           ] as const
         ).map(([label, href]) => (
           <Link key={href} href={href}>
@@ -69,16 +80,19 @@ export async function SiteWorkspace({ req, cookies }: WidgetServerProps) {
           </Link>
         ))}
       </nav>
-      <section className="optidigi-workspace__drafts" aria-label="Recent drafts">
-        <h3>Recent drafts</h3>
+      <section
+        className="optidigi-workspace__drafts"
+        aria-label={label('Recent drafts', 'Recente concepten')}
+      >
+        <h3>{label('Recent drafts', 'Recente concepten')}</h3>
         {drafts.length ? (
           <ul>
             {drafts.map((draft) => (
               <li key={`${draft.collection}-${draft.id}`}>
                 <Link href={route(draft.collection, draft.id)}>
                   <span>
-                    <small>{draftTypes[draft.collection]}</small>
-                    {draft.title || 'Untitled draft'}
+                    <small>{collectionLabels[draft.collection].singular[locale]}</small>
+                    {draft.title || label('Untitled draft', 'Concept zonder titel')}
                   </span>
                   <time dateTime={draft.updatedAt}>{date.format(new Date(draft.updatedAt))}</time>
                 </Link>
@@ -86,7 +100,7 @@ export async function SiteWorkspace({ req, cookies }: WidgetServerProps) {
             ))}
           </ul>
         ) : (
-          <p>No drafts for this site yet.</p>
+          <p>{label('No drafts for this site yet.', 'Deze website heeft nog geen concepten.')}</p>
         )}
       </section>
     </section>

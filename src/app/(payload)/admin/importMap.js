@@ -38,7 +38,7 @@ import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7
 import { AppearanceServerProvider as AppearanceServerProvider_518a69ce6606b4282299e343b77e30ca } from '@payloadpack/theme/rsc'
 import { AssistantWorkspace as AssistantWorkspace_e61030ede4fbe7f9e0eb7beb61b757d9 } from '../../../assistant/Workspace'
 import { AssistantView as AssistantView_b67851d6b495b1987829856013f21482 } from '../../../assistant/View'
-import { AssistantSettingsView as AssistantSettingsView_b67851d6b495b1987829856013f21482 } from '../../../assistant/View'
+import { AssistantSettingsRedirect as AssistantSettingsRedirect_b67851d6b495b1987829856013f21482 } from '../../../assistant/View'
 import { MCPAuthorizeView as MCPAuthorizeView_a5859e694d23fd11a46e2dcf78fce1a2 } from '@payloadcms/plugin-mcp/rsc'
 import { SiteWorkspace as SiteWorkspace_96726d9da929ebbe27f18fdf0a5dc6cb } from '../../../admin-workspace/Workspace'
 import { WelcomeWidget as WelcomeWidget_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
@@ -93,7 +93,7 @@ export const importMap = {
   "@payloadpack/theme/rsc#AppearanceServerProvider": AppearanceServerProvider_518a69ce6606b4282299e343b77e30ca,
   "/assistant/Workspace#AssistantWorkspace": AssistantWorkspace_e61030ede4fbe7f9e0eb7beb61b757d9,
   "/assistant/View#AssistantView": AssistantView_b67851d6b495b1987829856013f21482,
-  "/assistant/View#AssistantSettingsView": AssistantSettingsView_b67851d6b495b1987829856013f21482,
+  "/assistant/View#AssistantSettingsRedirect": AssistantSettingsRedirect_b67851d6b495b1987829856013f21482,
   "@payloadcms/plugin-mcp/rsc#MCPAuthorizeView": MCPAuthorizeView_a5859e694d23fd11a46e2dcf78fce1a2,
   "/admin-workspace/Workspace#SiteWorkspace": SiteWorkspace_96726d9da929ebbe27f18fdf0a5dc6cb,
   "@payloadcms/ui/rsc#WelcomeWidget": WelcomeWidget_ab83ff7e88da8d3530831f296ec4756a,

@@ -2,7 +2,7 @@ import { APIError, z, type Endpoint, type PayloadRequest } from 'payload'
 import { confirmDelete } from './approval'
 import { streamAssistant } from './chat'
 import { encryptCredential } from './credentials'
-import { contextCollections, modelProviders, type Connection } from './protocol'
+import { contextCollections, modelProviders, responseDetail, type Connection } from './protocol'
 import { compatibleURL } from './provider'
 import { assistantMemberships } from './scope'
 
@@ -22,6 +22,7 @@ const action = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('chat'),
     tenant,
+    detail: z.optional(z.enum(responseDetail)),
     context: z.optional(z.object({ collection: z.enum(contextCollections), id: tenant })),
     messages: z
       .array(
@@ -113,6 +114,7 @@ async function handleAssistant(req: PayloadRequest) {
     if (input.action === 'status') {
       return json({
         connected: Boolean(connection),
+        ...(connection && { model: connection.model }),
         ...(connection && membership.canManage
           ? {
               settings: {
@@ -195,6 +197,7 @@ async function handleAssistant(req: PayloadRequest) {
     }
     return await streamAssistant({
       document,
+      detail: input.detail ?? 'standard',
       canDelete: membership.canManage,
       connection: { ...connection, ciphertext: connection.ciphertext },
       messages: input.messages,

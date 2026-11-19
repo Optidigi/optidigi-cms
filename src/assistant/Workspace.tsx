@@ -10,6 +10,7 @@ import {
   useAuth,
   useConfig,
   usePathname,
+  useTranslation,
 } from '@payloadcms/ui'
 import {
   createContext,
@@ -21,6 +22,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { adminLabels } from '../admin-workspace/i18n'
 import { Assistant } from './Assistant'
 import { AssistantIcon } from './Icon'
 import { assistantMemberships } from './scope-shared'
@@ -86,44 +88,30 @@ function useTenantAssistant() {
   }
 }
 
-export function AssistantSurface({
-  mode = 'chat',
-  surface = 'drawer',
-}: {
-  mode?: 'chat' | 'settings'
-  surface?: 'page' | 'drawer'
-}) {
-  const { endpoint, hasMemberships, route, tenant } = useTenantAssistant()
-  const settingsURL = `${route}/settings`
+export function AssistantSurface({ surface = 'drawer' }: { surface?: 'page' | 'drawer' }) {
+  const { i18n } = useTranslation()
+  const label = adminLabels(i18n.language)
+  const { endpoint, hasMemberships, tenant } = useTenantAssistant()
   return (
     <>
       {surface === 'page' && (
         <div className="optidigi-assistant-page-header">
           <div>
-            <FormHeader heading={mode === 'settings' ? 'Model settings' : 'Assistant'} />
+            <FormHeader heading={label('AI assistant', 'AI-assistent')} />
             {tenant && <Pill size="small">{tenant.name}</Pill>}
           </div>
-          {mode === 'chat' && tenant?.canManage && (
-            <Button el="link" to={settingsURL} buttonStyle="secondary" margin={false}>
-              Model settings
-            </Button>
-          )}
         </div>
       )}
       {tenant ? (
-        <Assistant
-          key={tenant.id}
-          endpoint={endpoint}
-          mode={mode}
-          surface={surface}
-          tenant={tenant}
-          settingsURL={settingsURL}
-        />
+        <Assistant key={tenant.id} endpoint={endpoint} surface={surface} tenant={tenant} />
       ) : (
         <Banner>
           {hasMemberships
-            ? 'Select a tenant in the admin tenant picker.'
-            : 'Ask a platform admin to add you to a tenant.'}
+            ? label('Choose an active website first.', 'Kies eerst een actieve website.')
+            : label(
+                'Ask a platform admin to give you access to a website.',
+                'Vraag een beheerder om toegang tot een website.',
+              )}
         </Banner>
       )}
     </>
@@ -131,6 +119,8 @@ export function AssistantSurface({
 }
 
 export function AssistantAction() {
+  const { i18n } = useTranslation()
+  const label = adminLabels(i18n.language)
   const { user, route } = useTenantAssistant()
   const pathname = usePathname()
   const { open, setOpen } = useContext(OpenPanel)
@@ -186,7 +176,7 @@ export function AssistantAction() {
     <>
       <div ref={trigger}>
         {pathname?.startsWith(route) ? (
-          <Link href={route}>Ask AI</Link>
+          <Link href={route}>{label('Ask AI', 'Vraag AI')}</Link>
         ) : (
           <Button
             margin={false}
@@ -198,7 +188,7 @@ export function AssistantAction() {
             onClick={() => (showing ? close() : setOpen(true))}
           >
             <AssistantIcon name="spark" />
-            Ask AI
+            {label('Ask AI', 'Vraag AI')}
           </Button>
         )}
       </div>
@@ -207,7 +197,7 @@ export function AssistantAction() {
           <dialog
             id="optidigi-assistant-panel"
             className="optidigi-assistant-panel"
-            aria-label="AI assistant"
+            aria-label={label('AI assistant', 'AI-assistent')}
             ref={panel}
             onCancel={(event) => {
               event.preventDefault()
@@ -217,17 +207,21 @@ export function AssistantAction() {
             <header className="optidigi-assistant-panel__header">
               <span className="optidigi-assistant-panel__title">
                 <AssistantIcon name="spark" />
-                <strong>Assistant</strong>
+                <strong>{label('AI assistant', 'AI-assistent')}</strong>
               </span>
               <div>
-                <Link href={route} aria-label="Expand assistant" title="Expand assistant">
+                <Link
+                  href={route}
+                  aria-label={label('Expand assistant', 'Assistent vergroten')}
+                  title={label('Expand assistant', 'Assistent vergroten')}
+                >
                   <AssistantIcon name="expand" />
                 </Link>
                 <button
                   type="button"
                   onClick={close}
-                  aria-label="Close assistant"
-                  title="Close assistant"
+                  aria-label={label('Close assistant', 'Assistent sluiten')}
+                  title={label('Close assistant', 'Assistent sluiten')}
                 >
                   <AssistantIcon name="close" />
                 </button>

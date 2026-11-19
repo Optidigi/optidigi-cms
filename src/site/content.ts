@@ -9,10 +9,10 @@ export const Tenants: CollectionConfig = {
   admin: { useAsTitle: 'name' },
   access: { create: platformOnly, delete: () => false, read: signedIn, update: platformOnly },
   fields: [
-    { name: 'name', type: 'text', required: true },
+    { name: 'name', label: { en: 'Name', nl: 'Naam' }, type: 'text', required: true },
     { name: 'slug', type: 'text', required: true, unique: true, validate: (value: unknown) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || 'Use lowercase words separated by hyphens.' },
     {
-      name: 'siteOrigin',
+      name: 'siteOrigin', label: { en: 'Website URL', nl: 'Website-URL' },
       type: 'text',
       required: true,
       validate: (value: unknown) => {
@@ -39,8 +39,8 @@ const seo: Field = {
   name: 'seo',
   type: 'group',
   fields: [
-    { name: 'title', type: 'text', localized: true },
-    { name: 'description', type: 'textarea', localized: true },
+    { name: 'title', label: { en: 'Title', nl: 'Titel' }, type: 'text', localized: true },
+    { name: 'description', label: { en: 'Description', nl: 'Beschrijving' }, type: 'textarea', localized: true },
   ],
 }
 
@@ -55,12 +55,12 @@ export const SiteSettings: CollectionConfig = {
   versions: drafts,
   llmInstructions: 'Edit the current tenant’s site identity and defaults. Save edits as drafts unless the editor explicitly asks to publish.',
   fields: [
-    { name: 'name', type: 'text', required: true },
-    { name: 'contactEmail', type: 'email' },
-    { name: 'phone', type: 'text' },
-    { name: 'navigation', type: 'array', localized: true, fields: [
-      { name: 'label', type: 'text', required: true },
-      { name: 'href', type: 'text', required: true, validate: (value: unknown) =>
+    { name: 'name', label: { en: 'Name', nl: 'Naam' }, type: 'text', required: true },
+    { name: 'contactEmail', label: { en: 'Contact email', nl: 'E-mailadres' }, type: 'email' },
+    { name: 'phone', label: { en: 'Phone', nl: 'Telefoonnummer' }, type: 'text' },
+    { name: 'navigation', label: { en: 'Website navigation', nl: 'Websitenavigatie' }, type: 'array', localized: true, fields: [
+      { name: 'label', label: { en: 'Link text', nl: 'Linktekst' }, type: 'text', required: true },
+      { name: 'href', label: { en: 'Link destination', nl: 'Linkbestemming' }, type: 'text', required: true, validate: (value: unknown) =>
         typeof value === 'string' && /^\/(?![\/\\])/.test(value) && !/[\\\s]/.test(value)
         || 'Use a site-relative path starting with a single slash.' },
     ] },
@@ -93,11 +93,11 @@ function editorialCollection(slug: 'pages' | 'articles' | 'projects'): Collectio
       ],
     },
     fields: [
-      { name: 'title', type: 'text', required: true, localized: true },
+      { name: 'title', label: { en: 'Title', nl: 'Titel' }, type: 'text', required: true, localized: true },
       { name: 'slug', type: 'text', required: true, validate: (value: unknown) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || 'Use lowercase words separated by hyphens.' },
-      { name: 'heading', type: 'text', localized: true },
-      { name: 'description', type: 'textarea', localized: true },
-      { name: 'body', type: 'richText', localized: true },
+      { name: 'heading', label: { en: 'Page heading', nl: 'Paginakop' }, type: 'text', localized: true },
+      { name: 'description', label: { en: 'Description', nl: 'Beschrijving' }, type: 'textarea', localized: true },
+      { name: 'body', label: { en: 'Body content', nl: 'Inhoud' }, type: 'richText', localized: true },
       seo,
     ],
   }

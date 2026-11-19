@@ -1,12 +1,17 @@
 import { Gutter, SetStepNav } from '@payloadcms/ui'
 import { DefaultTemplate } from '@payloadcms/ui/rsc'
 import type { AdminViewServerProps } from 'payload'
+import { adminLabels } from '../admin-workspace/i18n'
 import { AssistantSurface } from './Workspace'
 
-function View(
-  { initPageResult, params, searchParams, server, user, viewActions }: AdminViewServerProps,
-  mode: 'chat' | 'settings',
-) {
+export function AssistantView({
+  initPageResult,
+  params,
+  searchParams,
+  server,
+  user,
+  viewActions,
+}: AdminViewServerProps) {
   const { permissions, req, visibleEntities } = initPageResult
   const { admin, routes } = req.payload.config
   if (!req.user || !permissions.canAccessAdmin) {
@@ -30,21 +35,16 @@ function View(
       <Gutter>
         <section className="optidigi-assistant-expanded">
           <SetStepNav
-            nav={
-              mode === 'settings'
-                ? [
-                    { label: 'Assistant', url: `${routes.admin}/assistant` },
-                    { label: 'Model settings' },
-                  ]
-                : [{ label: 'Assistant' }]
-            }
+            nav={[{ label: adminLabels(req.i18n.language)('AI assistant', 'AI-assistent') }]}
           />
-          <AssistantSurface mode={mode} surface="page" />
+          <AssistantSurface surface="page" />
         </section>
       </Gutter>
     </DefaultTemplate>
   )
 }
 
-export const AssistantView = (props: AdminViewServerProps) => View(props, 'chat')
-export const AssistantSettingsView = (props: AdminViewServerProps) => View(props, 'settings')
+export function AssistantSettingsRedirect({ server, initPageResult }: AdminViewServerProps) {
+  server.redirect(initPageResult.req.payload.config.routes.admin + '/assistant')
+  return null
+}
