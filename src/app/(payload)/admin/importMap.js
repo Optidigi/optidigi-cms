@@ -30,9 +30,12 @@ import { FixedToolbarFeatureClient as FixedToolbarFeatureClient_e70f5e05f09f93e0
 import { LLMInstructionsCell as LLMInstructionsCell_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 import { AssistantAction as AssistantAction_e61030ede4fbe7f9e0eb7beb61b757d9 } from '../../../assistant/Workspace'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
+import { AppearanceServerPanel as AppearanceServerPanel_518a69ce6606b4282299e343b77e30ca } from '@payloadpack/theme/rsc'
 import { AssistantNav as AssistantNav_8392694484deee254d41fcdae5e120c3 } from '../../../assistant/Nav'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
+import { NavBar as NavBar_5441c603e82e992293b6f37bceb423a5 } from '@payloadpack/theme/client'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
+import { AppearanceServerProvider as AppearanceServerProvider_518a69ce6606b4282299e343b77e30ca } from '@payloadpack/theme/rsc'
 import { AssistantWorkspace as AssistantWorkspace_e61030ede4fbe7f9e0eb7beb61b757d9 } from '../../../assistant/Workspace'
 import { AssistantView as AssistantView_b67851d6b495b1987829856013f21482 } from '../../../assistant/View'
 import { AssistantSettingsView as AssistantSettingsView_b67851d6b495b1987829856013f21482 } from '../../../assistant/View'
@@ -82,9 +85,12 @@ export const importMap = {
   "@payloadcms/ui/rsc#LLMInstructionsCell": LLMInstructionsCell_ab83ff7e88da8d3530831f296ec4756a,
   "/assistant/Workspace#AssistantAction": AssistantAction_e61030ede4fbe7f9e0eb7beb61b757d9,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
+  "@payloadpack/theme/rsc#AppearanceServerPanel": AppearanceServerPanel_518a69ce6606b4282299e343b77e30ca,
   "/assistant/Nav#AssistantNav": AssistantNav_8392694484deee254d41fcdae5e120c3,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
+  "@payloadpack/theme/client#NavBar": NavBar_5441c603e82e992293b6f37bceb423a5,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
+  "@payloadpack/theme/rsc#AppearanceServerProvider": AppearanceServerProvider_518a69ce6606b4282299e343b77e30ca,
   "/assistant/Workspace#AssistantWorkspace": AssistantWorkspace_e61030ede4fbe7f9e0eb7beb61b757d9,
   "/assistant/View#AssistantView": AssistantView_b67851d6b495b1987829856013f21482,
   "/assistant/View#AssistantSettingsView": AssistantSettingsView_b67851d6b495b1987829856013f21482,

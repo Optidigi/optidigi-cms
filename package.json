@@ -29,6 +29,7 @@
     "@payloadcms/richtext-lexical": "4.0.0-beta.10",
     "@payloadcms/transformer-sharp": "4.0.0-beta.10",
     "@payloadcms/ui": "4.0.0-beta.10",
+    "@payloadpack/theme": "0.3.7",
     "ai": "7.0.177",
     "cross-env": "10.1.0",
     "dotenv": "16.4.7",

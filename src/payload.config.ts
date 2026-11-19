@@ -3,6 +3,7 @@ import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
+import { themePlugin } from '@payloadpack/theme'
 import path from 'node:path'
 import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
@@ -139,6 +140,13 @@ export default buildConfig({
       },
       tools: { checkSitePage },
     }),
+    ...(process.env.CMS_PAYLOADPACK_THEME === '0' ? [] : [
+      themePlugin({
+        character: 'studio',
+        palette: 'warm',
+        panel: ({ user }) => isPlatformAdmin(user ?? null),
+      }),
+    ]),
   ],
   upload: {
     limits: { fileSize: 8 * 1024 * 1024 },
