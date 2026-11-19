@@ -2,9 +2,18 @@
 
 import { useTenantSelection } from '@payloadcms/plugin-multi-tenant/client'
 import { Button, Link, useAuth, useConfig, usePathname } from '@payloadcms/ui'
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Assistant } from './Assistant'
+import { AssistantIcon } from './Icon'
 import { assistantMemberships } from './scope-shared'
 import type { AssistantMessage } from './protocol'
 import { Conversation } from './conversation'
@@ -93,7 +102,11 @@ export function AssistantAction() {
   const { open, setOpen } = useContext(OpenPanel)
   const trigger = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDialogElement>(null)
-  const hydrated = useSyncExternalStore(subscribe, () => true, () => false)
+  const hydrated = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  )
   const showing = open && !pathname?.startsWith(route)
 
   function close() {
@@ -145,10 +158,12 @@ export function AssistantAction() {
             margin={false}
             disabled={!hydrated}
             buttonStyle="secondary"
+            className="optidigi-assistant-trigger"
             aria-expanded={showing}
             aria-controls="optidigi-assistant-panel"
             onClick={() => (showing ? close() : setOpen(true))}
           >
+            <AssistantIcon name="spark" />
             Ask AI
           </Button>
         )}
@@ -166,11 +181,21 @@ export function AssistantAction() {
             }}
           >
             <header className="optidigi-assistant-panel__header">
-              <strong>Assistant</strong>
+              <span className="optidigi-assistant-panel__title">
+                <AssistantIcon name="spark" />
+                <strong>Assistant</strong>
+              </span>
               <div>
-                <Link href={route}>Expand</Link>
-                <button type="button" onClick={close}>
-                  Close
+                <Link href={route} aria-label="Expand assistant" title="Expand assistant">
+                  <AssistantIcon name="expand" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-label="Close assistant"
+                  title="Close assistant"
+                >
+                  <AssistantIcon name="close" />
                 </button>
               </div>
             </header>

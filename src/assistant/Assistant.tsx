@@ -11,6 +11,7 @@ import type {
 } from './protocol'
 import { useAssistantConversation } from './conversation'
 import { contextCollections } from './protocol'
+import { AssistantIcon } from './Icon'
 import './assistant.css'
 
 type Tenant = { id: number; name: string; canManage: boolean }
@@ -202,10 +203,12 @@ export function Assistant({
   }
 
   return (
-    <div className="optidigi-assistant">
+    <div className={`optidigi-assistant optidigi-assistant--${mode}`}>
       <div className="optidigi-assistant__scope">
-        <span>{tenant.name}</span>
-        {mode === 'chat' && tenant.canManage && <Link href={settingsURL}>Model settings</Link>}
+        <span className="optidigi-assistant__tenant">{tenant.name}</span>
+        {mode === 'chat' && status?.connected && tenant.canManage && (
+          <Link href={settingsURL}>Model settings</Link>
+        )}
         {mode === 'settings' && (
           <Link href={settingsURL.slice(0, -'/settings'.length)}>Back to assistant</Link>
         )}
@@ -214,19 +217,28 @@ export function Assistant({
       {notice && <p role="status">{notice}</p>}
       {!status && !error && <p role="status">Loading model settings…</p>}
       {mode === 'chat' && status && !status.connected && (
-        <div className="optidigi-assistant-empty">
+        <div className="optidigi-assistant-empty optidigi-assistant-empty--connection">
+          <span className="optidigi-assistant-empty__icon">
+            <AssistantIcon name="connect" />
+          </span>
           {tenant.canManage ? (
             <>
-              <p>Connect a model to use the assistant.</p>
-              <Link href={settingsURL}>Connect a model</Link>
+              <h2>Connect a model</h2>
+              <p>Use your own provider key to ask questions and work with your CMS content.</p>
+              <Button el="link" to={settingsURL} margin={false}>
+                Connect a model
+              </Button>
             </>
           ) : (
-            <p>Ask a tenant admin to connect a model.</p>
+            <>
+              <h2>Model setup required</h2>
+              <p>Ask a tenant admin to connect a model.</p>
+            </>
           )}
         </div>
       )}
       {mode === 'settings' && tenant.canManage && status && (
-        <form onSubmit={connect} className="optidigi-assistant__form">
+        <form onSubmit={connect} className="optidigi-assistant__form optidigi-assistant__settings">
           <label>
             Provider
             <select
@@ -294,20 +306,24 @@ export function Assistant({
       {mode === 'chat' && status?.connected && (
         <>
           {messages.length === 0 && !reply && (
-            <p className="optidigi-assistant-empty">
-              Ask about your content or tell the assistant what to update.
-            </p>
+            <div className="optidigi-assistant-empty">
+              <span className="optidigi-assistant-empty__icon">
+                <AssistantIcon name="spark" />
+              </span>
+              <h2>What are you working on?</h2>
+              <p>Ask about your content or tell me what to update.</p>
+            </div>
           )}
           {(messages.length > 0 || reply) && (
             <div className="optidigi-assistant__messages" role="log" aria-label="Conversation">
               {messages.map((message, index) => (
-                <p key={index}>
+                <p key={index} data-role={message.role}>
                   <strong>{message.role === 'user' ? 'You' : 'Assistant'}</strong>
                   {message.content}
                 </p>
               ))}
               {reply && (
-                <p>
+                <p data-role="assistant">
                   <strong>Assistant</strong>
                   {reply}
                 </p>
@@ -356,7 +372,7 @@ export function Assistant({
               />
             </section>
           )}
-          <form onSubmit={ask} className="optidigi-assistant__form">
+          <form onSubmit={ask} className="optidigi-assistant__composer">
             {context && (
               <div className="optidigi-assistant__context">
                 <span>
@@ -367,24 +383,33 @@ export function Assistant({
                   onClick={() => setExcludedPath(pathname)}
                   aria-label="Remove current document context"
                 >
-                  ×
+                  <AssistantIcon name="close" />
                 </button>
               </div>
             )}
-            <label htmlFor="assistant-message">Message</label>
+            <label className="optidigi-assistant-sr-only" htmlFor="assistant-message">
+              Message
+            </label>
             <textarea
               id="assistant-message"
               value={draft}
               onChange={(event) => setDraft(event.currentTarget.value)}
               placeholder="Ask or give an instruction…"
               maxLength={6000}
-              rows={4}
+              rows={2}
               required
             />
-            <div>
-              <Button type="submit" disabled={busy || Boolean(approval) || !draft.trim()}>
-                {busy ? 'Working…' : 'Send'}
-              </Button>
+            <div className="optidigi-assistant__composer-footer">
+              {busy && <span role="status">Working…</span>}
+              <button
+                type="submit"
+                className="optidigi-assistant__send"
+                aria-label="Send"
+                title="Send"
+                disabled={busy || Boolean(approval) || !draft.trim()}
+              >
+                <AssistantIcon name="send" />
+              </button>
             </div>
           </form>
         </>

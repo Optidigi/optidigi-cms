@@ -1,57 +1,24 @@
-.optidigi-assistant {
-  max-width: 54rem;
-  margin-bottom: 3rem;
+.optidigi-assistant-panel,
+.optidigi-assistant-expanded {
+  --assistant-accent: light-dark(#006948, #67dab0);
+  --assistant-fill: color-mix(in srgb, var(--assistant-accent) 9%, var(--theme-bg));
+  --assistant-border: var(--theme-elevation-150);
+  --assistant-muted: var(--theme-elevation-650);
 }
 
-.optidigi-assistant__form {
-  display: grid;
-  gap: 0.75rem;
-  max-width: 38rem;
-}
-
-.optidigi-assistant label {
-  display: grid;
-  gap: 0.25rem;
-  font-weight: 600;
-}
-
-.optidigi-assistant :is(input, select, textarea) {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--theme-elevation-250);
-  border-radius: 0.25rem;
-  background: var(--theme-input-bg);
-  color: var(--theme-text);
-  font: inherit;
-}
-
+.optidigi-assistant-trigger .btn__label,
+.optidigi-assistant-panel__title,
+.optidigi-assistant-panel__header > div,
 .optidigi-assistant__actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.optidigi-assistant__messages p,
-.optidigi-assistant__approval {
-  padding: 1rem;
-  border: 1px solid var(--theme-elevation-200);
-  border-radius: 0.25rem;
-  background: var(--theme-elevation-50);
-}
-
-.optidigi-assistant__messages p {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.optidigi-assistant__messages strong {
-  display: block;
-  margin-bottom: 0.25rem;
-}
-
-.optidigi-assistant-expanded {
-  max-width: 56rem;
-  margin: 2rem auto;
+.optidigi-assistant-trigger svg,
+.optidigi-assistant-panel__title svg {
+  color: light-dark(#006948, #67dab0);
+  flex: none;
 }
 
 .optidigi-assistant-panel {
@@ -63,11 +30,13 @@
   max-height: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--theme-elevation-200);
-  border-radius: 0.75rem;
+  border: 1px solid var(--assistant-border);
+  border-radius: 1rem;
   background: var(--theme-bg);
   color: var(--theme-text);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    0 16px 56px rgb(0 0 0 / 18%);
 }
 
 .optidigi-assistant-panel[open] {
@@ -77,70 +46,268 @@
 
 .optidigi-assistant-panel__header,
 .optidigi-assistant__scope,
-.optidigi-assistant__context {
+.optidigi-assistant__composer-footer {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
 .optidigi-assistant-panel__header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--theme-elevation-150);
+  flex: none;
+  min-height: 3.55rem;
+  padding: 0.65rem 1rem 0.65rem 1.2rem;
+  border-bottom: 1px solid var(--assistant-border);
 }
 
-.optidigi-assistant-panel__header > div {
+.optidigi-assistant-panel__title {
+  gap: 0.6rem;
+  font-size: 1rem;
+}
+
+.optidigi-assistant-panel__header :is(a, button),
+.optidigi-assistant__context button,
+.optidigi-assistant__send {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.optidigi-assistant-panel__header :is(a, button):hover,
+.optidigi-assistant__context button:hover {
+  background: var(--theme-elevation-100);
+}
+
+.optidigi-assistant-expanded {
+  max-width: 48rem;
+  margin: 2.5rem auto;
+}
+
+.optidigi-assistant {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .optidigi-assistant-panel .optidigi-assistant {
-  min-height: 0;
-  display: flex;
   flex: 1;
-  flex-direction: column;
-  margin: 0;
-  padding: 1.25rem;
-  gap: 1rem;
+  min-height: 0;
+  padding: 1rem 1.2rem 1.2rem;
   overflow-y: auto;
 }
 
-.optidigi-assistant-panel .optidigi-assistant__messages {
-  overflow: auto;
-}
-
-.optidigi-assistant-panel .optidigi-assistant__form {
-  margin-top: auto;
-}
-
 .optidigi-assistant__scope {
-  border-bottom: 1px solid var(--theme-elevation-150);
-  padding-bottom: 0.75rem;
-  margin-bottom: 0.75rem;
+  flex: none;
+  font-size: 0.8rem;
+}
+
+.optidigi-assistant__tenant {
+  max-width: 70%;
+  padding: 0.15rem 0.55rem;
+  border-radius: 99px;
+  background: var(--theme-elevation-100);
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.optidigi-assistant__scope a {
+  color: var(--assistant-muted);
+  text-underline-offset: 0.2em;
 }
 
 .optidigi-assistant-empty {
-  padding: 1rem;
-  color: var(--theme-elevation-650);
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-height: 12rem;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+}
+
+.optidigi-assistant-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  color: var(--assistant-accent);
+  background: var(--assistant-fill);
+}
+
+.optidigi-assistant-empty h2 {
+  margin: 0.35rem 0 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.025em;
+}
+
+.optidigi-assistant-empty p {
+  max-width: 26ch;
+  margin: 0;
+  color: var(--assistant-muted);
+  line-height: 1.5;
+}
+
+.optidigi-assistant-empty .btn {
+  margin-top: 0.45rem;
+}
+
+.optidigi-assistant__form {
+  display: grid;
+  gap: 1rem;
+  max-width: 38rem;
+}
+
+.optidigi-assistant__settings {
+  padding: 1.3rem;
+  border: 1px solid var(--assistant-border);
+  border-radius: 0.85rem;
+  background: var(--theme-elevation-50);
+}
+
+.optidigi-assistant__settings label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.optidigi-assistant__settings :is(input, select) {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--assistant-border);
+  border-radius: 0.5rem;
+  background: var(--theme-input-bg);
+  color: var(--theme-text);
+  font: inherit;
+}
+
+.optidigi-assistant__messages {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.optidigi-assistant-panel .optidigi-assistant__messages {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.optidigi-assistant__messages p {
+  margin: 0;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.optidigi-assistant__messages p[data-role='user'] {
+  justify-self: end;
+  max-width: 90%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.85rem 0.85rem 0.25rem 0.85rem;
+  background: var(--assistant-fill);
+}
+
+.optidigi-assistant__messages strong {
+  display: block;
+  color: var(--assistant-muted);
+  font-size: 0.76rem;
+  margin-bottom: 0.2rem;
+}
+
+.optidigi-assistant__approval {
+  padding: 0.85rem;
+  border: 1px solid var(--assistant-border);
+  border-radius: 0.65rem;
+  background: var(--theme-elevation-50);
+}
+
+.optidigi-assistant__composer {
+  display: grid;
+  flex: none;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: 0.85rem;
+  background: var(--theme-bg);
+}
+
+.optidigi-assistant__composer:focus-within {
+  border-color: var(--assistant-accent);
+}
+
+.optidigi-assistant__composer textarea {
+  min-height: 3rem;
+  width: 100%;
+  padding: 0.35rem 0.4rem 0;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
 }
 
 .optidigi-assistant__context {
-  background: var(--theme-elevation-100);
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.15rem;
+  max-width: 100%;
+  padding-left: 0.55rem;
   border-radius: 0.4rem;
-  padding: 0.25rem 0.65rem;
+  background: var(--theme-elevation-100);
+  font-size: 0.78rem;
 }
 
-.optidigi-assistant-panel__header button,
 .optidigi-assistant__context button {
-  cursor: pointer;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--theme-elevation-250);
-  border-radius: 0.35rem;
-  padding: 0.3rem 0.5rem;
-  font: inherit;
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.optidigi-assistant__context svg {
+  width: 0.8rem;
+}
+
+.optidigi-assistant__composer-footer {
+  justify-content: flex-end;
+  font-size: 0.78rem;
+  color: var(--assistant-muted);
+}
+
+.optidigi-assistant__send {
+  background: light-dark(#006948, #67dab0);
+  color: light-dark(#fff, #06291c);
+}
+
+.optidigi-assistant__send:disabled {
+  background: var(--theme-elevation-100);
+  color: var(--assistant-muted);
+  cursor: default;
+}
+
+.optidigi-assistant-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.optidigi-assistant .optidigi-assistant__mobile-delete {
+  display: none;
 }
 
 @media (max-width: 48rem) {
@@ -150,13 +317,7 @@
     height: 100%;
     border-radius: 0;
   }
-}
 
-.optidigi-assistant .optidigi-assistant__mobile-delete {
-  display: none;
-}
-
-@media (max-width: 48rem) {
   .optidigi-assistant-panel .optidigi-assistant__mobile-delete {
     display: inline-flex;
   }
