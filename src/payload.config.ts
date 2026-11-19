@@ -4,7 +4,7 @@ import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
-import { APIError, buildConfig, type CollectionConfig } from 'payload'
+import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
 import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
 import { assistantEndpoints } from './assistant/endpoints'
@@ -62,8 +62,14 @@ export default buildConfig({
     importMap: { baseDir: dirname },
     components: {
       afterNavLinks: ['/assistant/Nav#AssistantNav'],
+      actions: ['/assistant/Workspace#AssistantAction'],
       views: {
         assistant: { Component: '/assistant/View#AssistantView', path: '/assistant', exact: true },
+        assistantSettings: {
+          Component: '/assistant/View#AssistantSettingsView',
+          path: '/assistant/settings',
+          exact: true,
+        },
       },
     },
   },
@@ -101,6 +107,23 @@ export default buildConfig({
       },
       userHasAccessToAllTenants: isPlatformAdmin,
     }),
+    definePlugin({
+      slug: 'optidigi-assistant-workspace',
+      order: 20,
+      plugin: ({ config }) => ({
+        ...config,
+        admin: {
+          ...config.admin,
+          components: {
+            ...config.admin?.components,
+            providers: [
+              ...(config.admin?.components?.providers ?? []),
+              '/assistant/Workspace#AssistantWorkspace',
+            ],
+          },
+        },
+      }),
+    })(),
     mcpPlugin({
       access: ({ req }) => Boolean(req.user),
       collections: {

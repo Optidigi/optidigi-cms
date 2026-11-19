@@ -20,3 +20,5 @@ export type Connection = {
   model: string
   baseURL?: string | null
 }
+
+export const contextCollections = ['pages', 'articles', 'projects', 'site-settings'] as const

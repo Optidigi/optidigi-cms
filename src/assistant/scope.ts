@@ -1,16 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { APIError, type PayloadRequest } from 'payload'
 
+import { assistantMemberships } from './scope-shared'
+
 export const assistantScopeHeader = 'x-optidigi-assistant-tenant'
 
-export function assistantMemberships(user: PayloadRequest['user']) {
-  if (!user || user.collection !== 'users') return []
-  return (user.tenants ?? []).flatMap(({ tenant, role }) => {
-    const id = typeof tenant === 'object' ? tenant?.id : tenant
-    return Number.isSafeInteger(id) && id > 0 ? [{ id, canManage: role === 'admin' }] : []
-  })
-}
-
+export { assistantMemberships } from './scope-shared'
 export function signAssistantGrant(
   req: PayloadRequest,
   purpose: 'scope' | 'delete',

@@ -48,3 +48,120 @@
   display: block;
   margin-bottom: 0.25rem;
 }
+
+.optidigi-assistant-expanded {
+  max-width: 56rem;
+  margin: 2rem auto;
+}
+
+.optidigi-assistant-panel {
+  position: fixed;
+  inset: 4rem 1rem 1rem auto;
+  z-index: 50;
+  width: min(28rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 0.75rem;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+}
+
+.optidigi-assistant-panel[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.optidigi-assistant-panel__header,
+.optidigi-assistant__scope,
+.optidigi-assistant__context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.optidigi-assistant-panel__header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--theme-elevation-150);
+}
+
+.optidigi-assistant-panel__header > div {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.optidigi-assistant-panel .optidigi-assistant {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+  padding: 1.25rem;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.optidigi-assistant-panel .optidigi-assistant__messages {
+  overflow: auto;
+}
+
+.optidigi-assistant-panel .optidigi-assistant__form {
+  margin-top: auto;
+}
+
+.optidigi-assistant__scope {
+  border-bottom: 1px solid var(--theme-elevation-150);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.optidigi-assistant-empty {
+  padding: 1rem;
+  color: var(--theme-elevation-650);
+}
+
+.optidigi-assistant__context {
+  background: var(--theme-elevation-100);
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.65rem;
+}
+
+.optidigi-assistant-panel__header button,
+.optidigi-assistant__context button {
+  cursor: pointer;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+}
+
+@media (max-width: 48rem) {
+  .optidigi-assistant-panel {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}
+
+.optidigi-assistant .optidigi-assistant__mobile-delete {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .optidigi-assistant-panel .optidigi-assistant__mobile-delete {
+    display: inline-flex;
+  }
+
+  .optidigi-assistant-panel .optidigi-assistant__review-delete {
+    display: none;
+  }
+}

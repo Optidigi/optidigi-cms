@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@payloadcms/ui'
+import { Button, ConfirmationModal, Link, useConfig, useModal, usePathname } from '@payloadcms/ui'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type {
   Approval,
@@ -9,6 +9,8 @@ import type {
   Connection,
   ModelProvider,
 } from './protocol'
+import { useAssistantConversation } from './conversation'
+import { contextCollections } from './protocol'
 import './assistant.css'
 
 type Tenant = { id: number; name: string; canManage: boolean }
@@ -63,45 +65,36 @@ async function readEvents(response: Response, onEvent: (event: AssistantEvent) =
 
 export function Assistant({
   endpoint,
-  selected,
-  tenants,
+  tenant,
+  mode,
+  settingsURL,
 }: {
   endpoint: string
-  selected: number
-  tenants: Tenant[]
+  tenant: Tenant
+  mode: 'chat' | 'settings'
+  settingsURL: string
 }) {
-  const [id, setId] = useState(selected)
-  const tenant = tenants.find((option) => option.id === id) ?? tenants[0]
-
-  return (
-    <main className="optidigi-assistant">
-      <h1>Assistant</h1>
-      {tenants.length > 1 && (
-        <label>
-          Tenant
-          <select value={tenant?.id} onChange={(event) => setId(Number(event.currentTarget.value))}>
-            {tenants.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {tenant ? (
-        <TenantAssistant key={tenant.id} endpoint={endpoint} tenant={tenant} />
-      ) : (
-        <p>Ask a platform admin to add you to a tenant.</p>
-      )}
-    </main>
-  )
-}
-
-function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenant }) {
+  const pathname = usePathname()
+  const { config } = useConfig()
+  const path = pathname.startsWith(config.routes.admin + '/')
+    ? pathname.slice(config.routes.admin.length).split('/')
+    : []
+  const collection = contextCollections.find((slug) => slug === path[2])
+  const documentID = Number(path[3])
+  const [excludedPath, setExcludedPath] = useState('')
+  const context =
+    path[1] === 'collections' &&
+    collection &&
+    Number.isSafeInteger(documentID) &&
+    documentID > 0 &&
+    excludedPath !== pathname
+      ? { collection, id: documentID }
+      : undefined
+  const { openModal } = useModal()
+  const modalSlug = `optidigi-approve-delete-${tenant.id}`
   const [status, setStatus] = useState<Status>()
-  const [editing, setEditing] = useState(false)
   const [provider, setProvider] = useState<ModelProvider>('openai')
-  const [messages, setMessages] = useState<AssistantMessage[]>([])
+  const { messages, setMessages } = useAssistantConversation()
   const [draft, setDraft] = useState('')
   const [reply, setReply] = useState('')
   const [approval, setApproval] = useState<Approval>()
@@ -164,7 +157,6 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
       )
       setStatus((await response.json()) as Status)
       form.reset()
-      setEditing(false)
       setNotice('Model settings saved.')
     })
   }
@@ -183,7 +175,7 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
       const response = await action(
         endpoint,
         tenant.id,
-        { action: 'chat', messages: history },
+        { action: 'chat', messages: history, context },
         signal,
       )
       await readEvents(response, (event) => {
@@ -201,19 +193,39 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
     })
   }
 
+  async function approveDelete(pending: Approval) {
+    await run(async (signal) => {
+      await action(endpoint, tenant.id, { action: 'approve', token: pending.token }, signal)
+      setApproval(undefined)
+      setNotice(`Deleted ${pending.label}.`)
+    })
+  }
+
   return (
-    <>
+    <div className="optidigi-assistant">
+      <div className="optidigi-assistant__scope">
+        <span>{tenant.name}</span>
+        {mode === 'chat' && tenant.canManage && <Link href={settingsURL}>Model settings</Link>}
+        {mode === 'settings' && (
+          <Link href={settingsURL.slice(0, -'/settings'.length)}>Back to assistant</Link>
+        )}
+      </div>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       {!status && !error && <p role="status">Loading model settings…</p>}
-      {status && !status.connected && (
-        <p>
-          {tenant.canManage
-            ? 'Connect a model to use the assistant.'
-            : 'Ask a tenant admin to connect a model.'}
-        </p>
+      {mode === 'chat' && status && !status.connected && (
+        <div className="optidigi-assistant-empty">
+          {tenant.canManage ? (
+            <>
+              <p>Connect a model to use the assistant.</p>
+              <Link href={settingsURL}>Connect a model</Link>
+            </>
+          ) : (
+            <p>Ask a tenant admin to connect a model.</p>
+          )}
+        </div>
       )}
-      {tenant.canManage && status && (!status.connected || editing) && (
+      {mode === 'settings' && tenant.canManage && status && (
         <form onSubmit={connect} className="optidigi-assistant__form">
           <label>
             Provider
@@ -250,23 +262,9 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
           </label>
           <div className="optidigi-assistant__actions">
             <Button type="submit" disabled={busy}>
-              Save connection
+              {status.connected ? 'Replace connection' : 'Save connection'}
             </Button>
-            {editing && (
-              <Button buttonStyle="secondary" disabled={busy} onClick={() => setEditing(false)}>
-                Cancel
-              </Button>
-            )}
-          </div>
-        </form>
-      )}
-      {status?.connected && !editing && (
-        <>
-          {tenant.canManage && (
-            <div className="optidigi-assistant__actions">
-              <Button buttonStyle="secondary" disabled={busy} onClick={() => setEditing(true)}>
-                Model settings
-              </Button>
+            {status.connected && (
               <Button
                 buttonStyle="secondary"
                 disabled={busy}
@@ -280,14 +278,25 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
                     )
                     setStatus((await response.json()) as Status)
                     setMessages([])
-                    setApproval(undefined)
                     setNotice('Model disconnected.')
                   })
                 }
               >
                 Disconnect
               </Button>
-            </div>
+            )}
+          </div>
+        </form>
+      )}
+      {mode === 'settings' && !tenant.canManage && (
+        <p>Only tenant admins can manage model settings.</p>
+      )}
+      {mode === 'chat' && status?.connected && (
+        <>
+          {messages.length === 0 && !reply && (
+            <p className="optidigi-assistant-empty">
+              Ask about your content or tell the assistant what to update.
+            </p>
           )}
           {(messages.length > 0 || reply) && (
             <div className="optidigi-assistant__messages" role="log" aria-label="Conversation">
@@ -310,41 +319,64 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
               <p>
                 Delete <strong>{approval.label}</strong> ({approval.collection} #{approval.id})?
               </p>
-              <div className="optidigi-assistant__actions">
-                <Button
-                  buttonStyle="destructive"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async (signal) => {
-                      await action(
-                        endpoint,
-                        tenant.id,
-                        { action: 'approve', token: approval.token },
-                        signal,
-                      )
-                      setApproval(undefined)
-                      setNotice(`Deleted ${approval.label}.`)
-                    })
-                  }
-                >
-                  Confirm delete
-                </Button>
-                <Button
-                  buttonStyle="secondary"
-                  disabled={busy}
-                  onClick={() => setApproval(undefined)}
-                >
-                  Cancel
-                </Button>
-              </div>
+              <Button
+                className="optidigi-assistant__review-delete"
+                buttonStyle="secondary"
+                disabled={busy}
+                onClick={() => openModal(modalSlug)}
+              >
+                Review delete
+              </Button>
+              <Button
+                className="optidigi-assistant__mobile-delete"
+                buttonStyle="destructive"
+                disabled={busy}
+                onClick={() => void approveDelete(approval)}
+              >
+                Confirm delete
+              </Button>
+              <Button
+                buttonStyle="secondary"
+                disabled={busy}
+                onClick={() => setApproval(undefined)}
+              >
+                Dismiss
+              </Button>
+              <ConfirmationModal
+                modalSlug={modalSlug}
+                heading="Delete this document?"
+                body={
+                  <>
+                    This will delete <strong>{approval.label}</strong> ({approval.collection} #
+                    {approval.id}).
+                  </>
+                }
+                confirmLabel="Delete document"
+                onConfirm={() => approveDelete(approval)}
+              />
             </section>
           )}
           <form onSubmit={ask} className="optidigi-assistant__form">
+            {context && (
+              <div className="optidigi-assistant__context">
+                <span>
+                  Current document · {context.collection} #{context.id}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setExcludedPath(pathname)}
+                  aria-label="Remove current document context"
+                >
+                  ×
+                </button>
+              </div>
+            )}
             <label htmlFor="assistant-message">Message</label>
             <textarea
               id="assistant-message"
               value={draft}
               onChange={(event) => setDraft(event.currentTarget.value)}
+              placeholder="Ask or give an instruction…"
               maxLength={6000}
               rows={4}
               required
@@ -357,6 +389,6 @@ function TenantAssistant({ endpoint, tenant }: { endpoint: string; tenant: Tenan
           </form>
         </>
       )}
-    </>
+    </div>
   )
 }

@@ -2,7 +2,7 @@ import { APIError, z, type Endpoint, type PayloadRequest } from 'payload'
 import { confirmDelete } from './approval'
 import { streamAssistant } from './chat'
 import { encryptCredential } from './credentials'
-import { modelProviders, type Connection } from './protocol'
+import { contextCollections, modelProviders, type Connection } from './protocol'
 import { compatibleURL } from './provider'
 import { assistantMemberships } from './scope'
 
@@ -22,6 +22,7 @@ const action = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('chat'),
     tenant,
+    context: z.optional(z.object({ collection: z.enum(contextCollections), id: tenant })),
     messages: z
       .array(
         z.object({
@@ -171,7 +172,29 @@ async function handleAssistant(req: PayloadRequest) {
     if (input.messages[0]?.role !== 'user' || input.messages.at(-1)?.role !== 'user') {
       return json({ error: 'The conversation must begin and end with a user message.' }, 400)
     }
+    const context = input.context
+    let document: { collection: string; id: number; title: string } | undefined
+    if (context) {
+      const {
+        docs: [record],
+      } = await req.payload.find({
+        collection: context.collection,
+        where: { id: { equals: context.id }, tenant: { equals: input.tenant } },
+        limit: 1,
+        depth: 0,
+        draft: true,
+        overrideAccess: false,
+        req,
+      })
+      if (!record)
+        return json({ error: 'The current document is unavailable in this tenant.' }, 404)
+      document = {
+        ...context,
+        title: ('title' in record ? record.title : record.name)?.slice(0, 200) ?? '',
+      }
+    }
     return await streamAssistant({
+      document,
       canDelete: membership.canManage,
       connection: { ...connection, ciphertext: connection.ciphertext },
       messages: input.messages,
