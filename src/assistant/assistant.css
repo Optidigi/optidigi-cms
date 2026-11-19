@@ -1,9 +1,9 @@
 .optidigi-assistant-panel,
 .optidigi-assistant-expanded {
   --assistant-accent: light-dark(#006948, #67dab0);
-  --assistant-fill: color-mix(in srgb, var(--assistant-accent) 9%, var(--theme-bg));
-  --assistant-border: var(--theme-elevation-150);
-  --assistant-muted: var(--theme-elevation-650);
+  --assistant-fill: color-mix(in srgb, var(--assistant-accent) 9%, var(--color-bg));
+  --assistant-border: var(--color-border);
+  --assistant-muted: var(--color-text-secondary);
 }
 
 .optidigi-assistant-trigger .btn__label,
@@ -24,7 +24,7 @@
 .optidigi-assistant-panel {
   position: fixed;
   inset: 4rem 1rem 1rem auto;
-  z-index: 50;
+  z-index: calc(var(--z-modal, 30) - 1);
   width: min(28rem, calc(100vw - 2rem));
   max-width: none;
   max-height: none;
@@ -32,8 +32,8 @@
   padding: 0;
   border: 1px solid var(--assistant-border);
   border-radius: 1rem;
-  background: var(--theme-bg);
-  color: var(--theme-text);
+  background: var(--color-bg, Canvas);
+  color: var(--color-text);
   box-shadow:
     0 1px 2px rgb(0 0 0 / 8%),
     0 16px 56px rgb(0 0 0 / 18%);
@@ -83,7 +83,7 @@
 
 .optidigi-assistant-panel__header :is(a, button):hover,
 .optidigi-assistant__context button:hover {
-  background: var(--theme-elevation-100);
+  background: var(--color-bg-tertiary);
 }
 
 .optidigi-assistant-expanded {
@@ -113,7 +113,7 @@
   max-width: 70%;
   padding: 0.15rem 0.55rem;
   border-radius: 99px;
-  background: var(--theme-elevation-100);
+  background: var(--color-bg-tertiary);
   overflow-wrap: anywhere;
   font-weight: 600;
 }
@@ -171,7 +171,7 @@
   padding: 1.3rem;
   border: 1px solid var(--assistant-border);
   border-radius: 0.85rem;
-  background: var(--theme-elevation-50);
+  background: var(--color-bg-secondary);
 }
 
 .optidigi-assistant__settings label {
@@ -186,8 +186,8 @@
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--assistant-border);
   border-radius: 0.5rem;
-  background: var(--theme-input-bg);
-  color: var(--theme-text);
+  background: var(--color-bg-component);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -228,7 +228,7 @@
   padding: 0.85rem;
   border: 1px solid var(--assistant-border);
   border-radius: 0.65rem;
-  background: var(--theme-elevation-50);
+  background: var(--color-bg-secondary);
 }
 
 .optidigi-assistant__composer {
@@ -237,9 +237,9 @@
   gap: 0.35rem;
   margin-top: auto;
   padding: 0.5rem;
-  border: 1px solid var(--theme-elevation-250);
+  border: 1px solid var(--color-border-control);
   border-radius: 0.85rem;
-  background: var(--theme-bg);
+  background: var(--color-bg, Canvas);
 }
 
 .optidigi-assistant__composer:focus-within {
@@ -254,7 +254,7 @@
   outline: 0;
   resize: vertical;
   background: transparent;
-  color: var(--theme-text);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -266,7 +266,7 @@
   max-width: 100%;
   padding-left: 0.55rem;
   border-radius: 0.4rem;
-  background: var(--theme-elevation-100);
+  background: var(--color-bg-tertiary);
   font-size: 0.78rem;
 }
 
@@ -291,7 +291,7 @@
 }
 
 .optidigi-assistant__send:disabled {
-  background: var(--theme-elevation-100);
+  background: var(--color-bg-tertiary);
   color: var(--assistant-muted);
   cursor: default;
 }
