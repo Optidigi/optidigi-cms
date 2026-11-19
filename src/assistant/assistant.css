@@ -26,6 +26,7 @@
   inset: 4rem 1rem 1rem auto;
   z-index: calc(var(--z-modal, 30) - 1);
   width: min(28rem, calc(100vw - 2rem));
+  height: calc(100dvh - 5rem);
   max-width: none;
   max-height: none;
   margin: 0;
