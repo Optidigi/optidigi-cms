@@ -1,10 +1,10 @@
-import { Gutter } from '@payloadcms/ui'
+import { Gutter, SetStepNav } from '@payloadcms/ui'
 import { DefaultTemplate } from '@payloadcms/ui/rsc'
 import type { AdminViewServerProps } from 'payload'
 import { AssistantSurface } from './Workspace'
 
 function View(
-  { initPageResult, params, searchParams, server, user }: AdminViewServerProps,
+  { initPageResult, params, searchParams, server, user, viewActions }: AdminViewServerProps,
   mode: 'chat' | 'settings',
 ) {
   const { permissions, req, visibleEntities } = initPageResult
@@ -24,12 +24,22 @@ function View(
       req={req}
       searchParams={searchParams}
       user={user}
+      viewActions={viewActions}
       visibleEntities={visibleEntities}
     >
       <Gutter>
         <section className="optidigi-assistant-expanded">
-          <h1>{mode === 'settings' ? 'Model settings' : 'Assistant'}</h1>
-          <AssistantSurface mode={mode} />
+          <SetStepNav
+            nav={
+              mode === 'settings'
+                ? [
+                    { label: 'Assistant', url: `${routes.admin}/assistant` },
+                    { label: 'Model settings' },
+                  ]
+                : [{ label: 'Assistant' }]
+            }
+          />
+          <AssistantSurface mode={mode} surface="page" />
         </section>
       </Gutter>
     </DefaultTemplate>

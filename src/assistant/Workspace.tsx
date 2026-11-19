@@ -1,7 +1,16 @@
 'use client'
 
 import { useTenantSelection } from '@payloadcms/plugin-multi-tenant/client'
-import { Button, Link, useAuth, useConfig, usePathname } from '@payloadcms/ui'
+import {
+  Banner,
+  Button,
+  FormHeader,
+  Link,
+  Pill,
+  useAuth,
+  useConfig,
+  usePathname,
+} from '@payloadcms/ui'
 import {
   createContext,
   useContext,
@@ -77,22 +86,47 @@ function useTenantAssistant() {
   }
 }
 
-export function AssistantSurface({ mode = 'chat' }: { mode?: 'chat' | 'settings' }) {
+export function AssistantSurface({
+  mode = 'chat',
+  surface = 'drawer',
+}: {
+  mode?: 'chat' | 'settings'
+  surface?: 'page' | 'drawer'
+}) {
   const { endpoint, hasMemberships, route, tenant } = useTenantAssistant()
-  return tenant ? (
-    <Assistant
-      key={tenant.id}
-      endpoint={endpoint}
-      mode={mode}
-      tenant={tenant}
-      settingsURL={`${route}/settings`}
-    />
-  ) : (
-    <p className="optidigi-assistant-empty">
-      {hasMemberships
-        ? 'Select a tenant in the admin tenant picker.'
-        : 'Ask a platform admin to add you to a tenant.'}
-    </p>
+  const settingsURL = `${route}/settings`
+  return (
+    <>
+      {surface === 'page' && (
+        <div className="optidigi-assistant-page-header">
+          <div>
+            <FormHeader heading={mode === 'settings' ? 'Model settings' : 'Assistant'} />
+            {tenant && <Pill size="small">{tenant.name}</Pill>}
+          </div>
+          {mode === 'chat' && tenant?.canManage && (
+            <Button el="link" to={settingsURL} buttonStyle="secondary" margin={false}>
+              Model settings
+            </Button>
+          )}
+        </div>
+      )}
+      {tenant ? (
+        <Assistant
+          key={tenant.id}
+          endpoint={endpoint}
+          mode={mode}
+          surface={surface}
+          tenant={tenant}
+          settingsURL={settingsURL}
+        />
+      ) : (
+        <Banner>
+          {hasMemberships
+            ? 'Select a tenant in the admin tenant picker.'
+            : 'Ask a platform admin to add you to a tenant.'}
+        </Banner>
+      )}
+    </>
   )
 }
 

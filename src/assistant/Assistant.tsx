@@ -1,7 +1,19 @@
 'use client'
 
-import { Button, ConfirmationModal, Link, useConfig, useModal, usePathname } from '@payloadcms/ui'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import {
+  Banner,
+  Button,
+  ConfirmationModal,
+  FieldLabel,
+  Link,
+  Pill,
+  SelectInput,
+  TextInput,
+  useConfig,
+  useModal,
+  usePathname,
+} from '@payloadcms/ui'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import type {
   Approval,
   AssistantEvent,
@@ -17,11 +29,11 @@ import './assistant.css'
 type Tenant = { id: number; name: string; canManage: boolean }
 type Status = { connected: boolean; settings?: Connection }
 
-const providerLabels: Record<ModelProvider, string> = {
-  anthropic: 'Anthropic',
-  openai: 'OpenAI',
-  'openai-compatible': 'OpenAI-compatible',
-}
+const providerOptions: { label: string; value: ModelProvider }[] = [
+  { label: 'Anthropic', value: 'anthropic' },
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'OpenAI-compatible', value: 'openai-compatible' },
+]
 
 async function action(
   endpoint: string,
@@ -69,11 +81,13 @@ export function Assistant({
   tenant,
   mode,
   settingsURL,
+  surface,
 }: {
   endpoint: string
   tenant: Tenant
   mode: 'chat' | 'settings'
   settingsURL: string
+  surface: 'page' | 'drawer'
 }) {
   const pathname = usePathname()
   const { config } = useConfig()
@@ -95,6 +109,8 @@ export function Assistant({
   const modalSlug = `optidigi-approve-delete-${tenant.id}`
   const [status, setStatus] = useState<Status>()
   const [provider, setProvider] = useState<ModelProvider>('openai')
+  const [model, setModel] = useState('')
+  const [baseURL, setBaseURL] = useState('')
   const { messages, setMessages } = useAssistantConversation()
   const [draft, setDraft] = useState('')
   const [reply, setReply] = useState('')
@@ -111,6 +127,8 @@ export function Assistant({
       .then((value) => {
         setStatus(value)
         setProvider(value.settings?.provider ?? 'openai')
+        setModel(value.settings?.model ?? '')
+        setBaseURL(value.settings?.baseURL ?? '')
       })
       .catch((err: Error) => {
         if (!controller.signal.aborted) setError(err.message)
@@ -150,9 +168,9 @@ export function Assistant({
         {
           action: 'connect',
           provider,
-          model: values.get('model'),
+          model,
           apiKey: values.get('apiKey'),
-          baseURL: values.get('baseURL') ?? undefined,
+          baseURL: provider === 'openai-compatible' ? baseURL : undefined,
         },
         signal,
       )
@@ -204,17 +222,22 @@ export function Assistant({
 
   return (
     <div className={`optidigi-assistant optidigi-assistant--${mode}`}>
-      <div className="optidigi-assistant__scope">
-        <span className="optidigi-assistant__tenant">{tenant.name}</span>
-        {mode === 'chat' && status?.connected && tenant.canManage && (
-          <Link href={settingsURL}>Model settings</Link>
-        )}
-        {mode === 'settings' && (
-          <Link href={settingsURL.slice(0, -'/settings'.length)}>Back to assistant</Link>
-        )}
-      </div>
-      {error && <p role="alert">{error}</p>}
-      {notice && <p role="status">{notice}</p>}
+      {surface === 'drawer' && (
+        <div className="optidigi-assistant__scope">
+          <Pill size="small">{tenant.name}</Pill>
+          {status?.connected && tenant.canManage && <Link href={settingsURL}>Model settings</Link>}
+        </div>
+      )}
+      {error && (
+        <Banner type="danger">
+          <span role="alert">{error}</span>
+        </Banner>
+      )}
+      {notice && (
+        <Banner type="success">
+          <span role="status">{notice}</span>
+        </Banner>
+      )}
       {!status && !error && <p role="status">Loading model settings…</p>}
       {mode === 'chat' && status && !status.connected && (
         <div className="optidigi-assistant-empty optidigi-assistant-empty--connection">
@@ -239,41 +262,59 @@ export function Assistant({
       )}
       {mode === 'settings' && tenant.canManage && status && (
         <form onSubmit={connect} className="optidigi-assistant__form optidigi-assistant__settings">
-          <label>
-            Provider
-            <select
-              value={provider}
-              onChange={(event) => setProvider(event.currentTarget.value as ModelProvider)}
-            >
-              {Object.entries(providerLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Model ID
-            <input name="model" defaultValue={status.settings?.model} required maxLength={150} />
-          </label>
+          <SelectInput
+            label="Provider"
+            name="assistant-provider"
+            path="assistant-provider"
+            options={providerOptions}
+            value={provider}
+            isClearable={false}
+            onChange={(option) => {
+              if (Array.isArray(option)) return
+              const selected = providerOptions.find(({ value }) => value === option?.value)
+              if (selected) setProvider(selected.value)
+            }}
+          />
+          <TextInput
+            label="Model ID"
+            path="model"
+            value={model}
+            required
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setModel(event.currentTarget.value.slice(0, 150))
+            }
+          />
           {provider === 'openai-compatible' && (
-            <label>
-              Provider base URL
-              <input
-                name="baseURL"
-                type="url"
-                defaultValue={status.settings?.baseURL ?? ''}
-                required
-                maxLength={1024}
-              />
-            </label>
+            <TextInput
+              label="Provider base URL"
+              path="baseURL"
+              value={baseURL}
+              placeholder="https://provider.example/v1"
+              required
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                setBaseURL(event.currentTarget.value.slice(0, 1024))
+              }
+            />
           )}
-          <label>
-            API key
-            <input name="apiKey" type="password" autoComplete="off" required maxLength={4096} />
-          </label>
+          <div className="field-type text">
+            <FieldLabel label="API key" htmlFor="assistant-api-key" required />
+            <input
+              id="assistant-api-key"
+              className="form-input"
+              name="apiKey"
+              type="password"
+              autoComplete="new-password"
+              required
+              maxLength={4096}
+            />
+          </div>
           <div className="optidigi-assistant__actions">
-            <Button type="submit" disabled={busy}>
+            <Button
+              type="submit"
+              disabled={
+                busy || !model.trim() || (provider === 'openai-compatible' && !baseURL.trim())
+              }
+            >
               {status.connected ? 'Replace connection' : 'Save connection'}
             </Button>
             {status.connected && (
@@ -301,7 +342,7 @@ export function Assistant({
         </form>
       )}
       {mode === 'settings' && !tenant.canManage && (
-        <p>Only tenant admins can manage model settings.</p>
+        <Banner type="warning">Only tenant admins can manage model settings.</Banner>
       )}
       {mode === 'chat' && status?.connected && (
         <>
