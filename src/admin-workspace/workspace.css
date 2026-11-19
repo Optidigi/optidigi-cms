@@ -1,0 +1,117 @@
+.optidigi-workspace {
+  --workspace-line: var(--color-border);
+  --workspace-muted: var(--color-text-secondary);
+  --workspace-accent: light-dark(#006948, #67dab0);
+  display: grid;
+  gap: 0.9rem;
+}
+
+.optidigi-workspace__hero,
+.optidigi-workspace__drafts {
+  border: 1px solid var(--workspace-line);
+  border-radius: 0.9rem;
+  background: var(--color-bg);
+}
+
+.optidigi-workspace__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  min-height: 9rem;
+  border-inline-start: 3px solid var(--workspace-accent);
+  padding: clamp(1.2rem, 3vw, 2rem);
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--workspace-accent) 11%, var(--color-bg)),
+    var(--color-bg) 70%
+  );
+}
+
+.optidigi-workspace__hero h2 {
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.optidigi-workspace__hero p,
+.optidigi-workspace__hero a:not(.btn) {
+  margin: 0;
+  color: var(--workspace-muted);
+  text-underline-offset: 0.2em;
+}
+
+.optidigi-workspace__actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.optidigi-workspace__links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.55rem;
+}
+
+.optidigi-workspace__links > a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--workspace-line);
+  border-radius: 0.65rem;
+  background: var(--color-bg);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.optidigi-workspace__links > a > span {
+  color: var(--workspace-muted);
+  font-size: 0.85em;
+}
+
+.optidigi-workspace__links > a:hover,
+.optidigi-workspace__drafts li > a:hover {
+  background: var(--color-bg-secondary);
+}
+
+.optidigi-workspace__drafts h3,
+.optidigi-workspace__drafts p {
+  margin: 0;
+  padding: 0.85rem 1rem;
+}
+
+.optidigi-workspace__drafts h3 {
+  font-size: 1rem;
+}
+
+.optidigi-workspace__drafts p,
+.optidigi-workspace__drafts time {
+  color: var(--workspace-muted);
+}
+
+.optidigi-workspace__drafts ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.optidigi-workspace__drafts li > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--workspace-line);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.optidigi-workspace__drafts small {
+  display: block;
+  color: var(--workspace-muted);
+}

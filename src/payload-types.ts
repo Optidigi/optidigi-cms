@@ -227,6 +227,7 @@ export interface Config {
   globalsSelect: {};
   locale: 'nl' | 'en';
   widgets: {
+    'site-workspace': SiteWorkspaceWidget;
     welcome: WelcomeWidget;
     collections: CollectionsWidget;
     'collection-query': CollectionQueryWidget;
@@ -919,6 +920,16 @@ export interface PayloadLlmInstructionsSelect<T extends boolean = true> {
   updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-workspace_widget".
+ */
+export interface SiteWorkspaceWidget {
+  data?: {
+    [k: string]: unknown;
+  };
+  width: 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

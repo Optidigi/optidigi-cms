@@ -6,6 +6,7 @@ import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
 import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
+import { workspaceDashboard, workspaceEnabled, workspaceNavigation } from './admin-workspace/config'
 import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
 import { assistantEndpoints } from './assistant/endpoints'
 import { getAssistantTenantScope } from './assistant/scope'
@@ -58,6 +59,7 @@ const noTools = {
 
 export default buildConfig({
   admin: {
+    ...(workspaceEnabled && { dashboard: workspaceDashboard }),
     user: Users.slug,
     importMap: { baseDir: dirname },
     components: {
@@ -74,7 +76,7 @@ export default buildConfig({
     },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
-  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts],
+  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts].map(workspaceNavigation),
   csrf: origin ? [origin] : [],
   editor: lexicalEditor(),
   endpoints: [...siteEndpoints, ...assistantEndpoints],
