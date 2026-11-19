@@ -26,7 +26,8 @@ export async function seedTestUser(): Promise<void> {
   // Create fresh test user
   await payload.create({
     collection: 'users',
-    data: testUser,
+    context: { bootstrapUser: true },
+    data: { ...testUser, role: 'platform-admin' },
     overrideAccess: true,
   })
 }

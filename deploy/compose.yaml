@@ -1,0 +1,74 @@
+name: optidigi-cms
+
+services:
+  app:
+    image: ${CMS_IMAGE:-ghcr.io/optidigi/optidigi-cms:latest}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PUBLIC_SERVER_URL: https://cms.optidigi.nl
+      DATABASE_URL: postgres://optidigi_cms:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/optidigi_cms
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?Set PAYLOAD_SECRET}
+      ASSISTANT_KEY_FILE: /run/secrets/assistant_key
+      PREVIEW_SIGNING_KEY_FILE: /run/secrets/preview_signing_key
+    secrets:
+      - assistant_key
+      - preview_signing_key
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - database
+      - proxy
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then(r => { if (!r.ok) process.exitCode = 1 }).catch(() => { process.exitCode = 1 })"]
+      interval: 15s
+      timeout: 4s
+      retries: 3
+      start_period: 45s
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: proxy
+      traefik.http.routers.optidigi-cms.rule: Host(`cms.optidigi.nl`)
+      traefik.http.routers.optidigi-cms.entrypoints: websecure
+      traefik.http.routers.optidigi-cms.tls: 'true'
+      traefik.http.routers.optidigi-cms.tls.certresolver: letsencrypt
+      traefik.http.routers.optidigi-cms.middlewares: optidigi-cms-cloudflare-origin
+      traefik.http.services.optidigi-cms.loadbalancer.server.port: '3000'
+      traefik.http.middlewares.optidigi-cms-cloudflare-origin.ipallowlist.sourcerange: >-
+        173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32
+
+  postgres:
+    image: postgres:18.7-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: optidigi_cms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: optidigi_cms
+    volumes:
+      - postgres:/var/lib/postgresql
+    networks:
+      - database
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'optidigi_cms', '-d', 'optidigi_cms']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+secrets:
+  assistant_key:
+    file: ./secrets/assistant_key
+  preview_signing_key:
+    file: ./secrets/preview_signing_key
+
+volumes:
+  postgres:
+  uploads:
+
+networks:
+  database:
+    internal: true
+  proxy:
+    external: true

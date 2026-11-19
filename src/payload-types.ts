@@ -139,6 +139,37 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "LexicalNodes_3BA6E720".
+ */
+export type LexicalNodes_3BA6E720 =
+  | SerializedTextNode
+  | SerializedTabNode
+  | SerializedLineBreakNode
+  | SerializedParagraphNode<LexicalNodes_3BA6E720>
+  | SerializedHorizontalRuleNode
+  | SerializedUploadNode<'media'>
+  | SerializedQuoteNode<LexicalNodes_3BA6E720>
+  | SerializedRelationshipNode<
+      | 'users'
+      | 'tenants'
+      | 'pages'
+      | 'articles'
+      | 'projects'
+      | 'site-settings'
+      | 'assistant-credentials'
+      | 'assistant-delete-receipts'
+      | 'payload-kv'
+      | 'payload-locked-documents'
+      | 'payload-preferences'
+      | 'payload-migrations'
+    >
+  | SerializedAutoLinkNode<LexicalNodes_3BA6E720, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_3BA6E720, LexicalLinkFields>
+  | SerializedListNode<LexicalNodes_3BA6E720>
+  | SerializedListItemNode<LexicalNodes_3BA6E720>
+  | SerializedHeadingNode<LexicalNodes_3BA6E720>;
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
  */
 export type LexicalNodes_3DE324E4 =
@@ -157,9 +188,14 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    tenants: Tenant;
+    pages: Page;
+    articles: Article;
+    projects: Project;
+    'site-settings': SiteSetting;
     media: Media;
-    folders: Folder;
-    tags: Tag;
+    'assistant-credentials': AssistantCredential;
+    'assistant-delete-receipts': AssistantDeleteReceipt;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -169,9 +205,14 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    tenants: TenantsSelect<false> | TenantsSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
+    articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    projects: ProjectsSelect<false> | ProjectsSelect<true>;
+    'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    folders: FoldersSelect<false> | FoldersSelect<true>;
-    tags: TagsSelect<false> | TagsSelect<true>;
+    'assistant-credentials': AssistantCredentialsSelect<false> | AssistantCredentialsSelect<true>;
+    'assistant-delete-receipts': AssistantDeleteReceiptsSelect<false> | AssistantDeleteReceiptsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -179,12 +220,12 @@ export interface Config {
     'payload-llm-instructions': PayloadLlmInstructionsSelect<false> | PayloadLlmInstructionsSelect<true>;
   };
   db: {
-    defaultIDType: string;
+    defaultIDType: number;
   };
-  fallbackLocale: ('false' | 'none' | 'null') | false | null | 'en' | 'en'[];
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('nl' | 'en') | ('nl' | 'en')[];
   globals: {};
   globalsSelect: {};
-  locale: 'en';
+  locale: 'nl' | 'en';
   widgets: {
     welcome: WelcomeWidget;
     collections: CollectionsWidget;
@@ -221,14 +262,22 @@ export interface UserAuthOperations {
  * via the `definition` "users".
  */
 export interface User {
-  id: string;
+  id: number;
+  role: 'customer' | 'platform-admin';
+  tenants?:
+    | {
+        tenant: number | Tenant;
+        role: 'admin' | 'editor';
+        id?: string | null;
+      }[]
+    | null;
   createdBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedAt: string;
   createdAt: string;
@@ -265,20 +314,156 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
+ * via the `definition` "tenants".
  */
-export interface Media {
-  id: string;
-  alt: string;
-  _h_folders?: (string | null) | Folder;
-  _h_tags?: (string | Tag)[] | null;
+export interface Tenant {
+  id: number;
+  name: string;
+  slug: string;
+  siteOrigin: string;
   createdBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  slug: string;
+  heading?: string | null;
+  description?: string | null;
+  body?: LexicalRichText<LexicalNodes_3BA6E720> | null;
+  seo?: {
+    title?: string | null;
+    description?: string | null;
+  };
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles".
+ */
+export interface Article {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  slug: string;
+  heading?: string | null;
+  description?: string | null;
+  body?: LexicalRichText<LexicalNodes_3BA6E720> | null;
+  seo?: {
+    title?: string | null;
+    description?: string | null;
+  };
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects".
+ */
+export interface Project {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  slug: string;
+  heading?: string | null;
+  description?: string | null;
+  body?: LexicalRichText<LexicalNodes_3BA6E720> | null;
+  seo?: {
+    title?: string | null;
+    description?: string | null;
+  };
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings".
+ */
+export interface SiteSetting {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  contactEmail?: string | null;
+  phone?: string | null;
+  navigation?:
+    | {
+        label: string;
+        href: string;
+        id?: string | null;
+      }[]
+    | null;
+  seo?: {
+    title?: string | null;
+    description?: string | null;
+  };
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  alt: string;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
   } | null;
   updatedAt: string;
   createdAt: string;
@@ -307,52 +492,50 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "folders".
+ * via the `definition` "assistant-credentials".
  */
-export interface Folder {
-  id: string;
-  _h_folders?: (string | null) | Folder;
-  name: string;
+export interface AssistantCredential {
+  id: number;
+  tenant: number;
+  provider: 'anthropic' | 'openai' | 'openai-compatible';
+  model: string;
+  baseURL?: string | null;
+  ciphertext: string;
   createdBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedAt: string;
   createdAt: string;
-  _h_slugPath?: string | null;
-  _h_titlePath?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "tags".
+ * via the `definition` "assistant-delete-receipts".
  */
-export interface Tag {
-  id: string;
-  _h_tags?: (string | null) | Tag;
-  name: string;
+export interface AssistantDeleteReceipt {
+  id: number;
+  nonce: string;
   createdBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedAt: string;
   createdAt: string;
-  _h_slugPath?: string | null;
-  _h_titlePath?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: string;
+  id: number;
   key: string;
   data:
     | {
@@ -369,28 +552,48 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: string;
+  id: number;
   document?:
     | ({
         relationTo: 'users';
-        value: string | User;
+        value: number | User;
+      } | null)
+    | ({
+        relationTo: 'tenants';
+        value: number | Tenant;
+      } | null)
+    | ({
+        relationTo: 'pages';
+        value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'articles';
+        value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'projects';
+        value: number | Project;
+      } | null)
+    | ({
+        relationTo: 'site-settings';
+        value: number | SiteSetting;
       } | null)
     | ({
         relationTo: 'media';
-        value: string | Media;
+        value: number | Media;
       } | null)
     | ({
-        relationTo: 'folders';
-        value: string | Folder;
+        relationTo: 'assistant-credentials';
+        value: number | AssistantCredential;
       } | null)
     | ({
-        relationTo: 'tags';
-        value: string | Tag;
+        relationTo: 'assistant-delete-receipts';
+        value: number | AssistantDeleteReceipt;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -400,10 +603,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: string;
+  id: number;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   key?: string | null;
   value?:
@@ -423,7 +626,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: string;
+  id: number;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
@@ -442,11 +645,11 @@ export interface PayloadLlmInstruction {
   systemInstructions?: LexicalRichText<LexicalNodes_3DE324E4> | null;
   createdBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedBy?: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   } | null;
   updatedAt: string;
   createdAt: string;
@@ -456,6 +659,14 @@ export interface PayloadLlmInstruction {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
+  tenants?:
+    | T
+    | {
+        tenant?: T;
+        role?: T;
+        id?: T;
+      };
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;
@@ -483,12 +694,121 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tenants_select".
+ */
+export interface TenantsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  siteOrigin?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  slug?: T;
+  heading?: T;
+  description?: T;
+  body?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles_select".
+ */
+export interface ArticlesSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  slug?: T;
+  heading?: T;
+  description?: T;
+  body?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "projects_select".
+ */
+export interface ProjectsSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  slug?: T;
+  heading?: T;
+  description?: T;
+  body?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-settings_select".
+ */
+export interface SiteSettingsSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  contactEmail?: T;
+  phone?: T;
+  navigation?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        id?: T;
+      };
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  tenant?: T;
   alt?: T;
-  _h_folders?: T;
-  _h_tags?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;
@@ -520,31 +840,29 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "folders_select".
+ * via the `definition` "assistant-credentials_select".
  */
-export interface FoldersSelect<T extends boolean = true> {
-  _h_folders?: T;
-  name?: T;
+export interface AssistantCredentialsSelect<T extends boolean = true> {
+  tenant?: T;
+  provider?: T;
+  model?: T;
+  baseURL?: T;
+  ciphertext?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
-  _h_slugPath?: T;
-  _h_titlePath?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "tags_select".
+ * via the `definition` "assistant-delete-receipts_select".
  */
-export interface TagsSelect<T extends boolean = true> {
-  _h_tags?: T;
-  name?: T;
+export interface AssistantDeleteReceiptsSelect<T extends boolean = true> {
+  nonce?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
-  _h_slugPath?: T;
-  _h_titlePath?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -629,7 +947,7 @@ export interface CollectionsWidget {
 export interface CollectionQueryWidget {
   data?: {
     title?: string | null;
-    relatedCollection: 'users' | 'media' | 'folders' | 'tags';
+    relatedCollection: 'users' | 'tenants' | 'pages' | 'articles' | 'projects' | 'site-settings' | 'media';
     where?:
       | {
           [k: string]: unknown;
@@ -651,7 +969,8 @@ export interface CollectionQueryWidget {
  */
 export interface ActivityWidget {
   data?: {
-    excludedCollections?: ('users' | 'media' | 'folders' | 'tags')[] | null;
+    excludedCollections?:
+      ('users' | 'tenants' | 'pages' | 'articles' | 'projects' | 'site-settings' | 'media')[] | null;
   };
   width: 'small' | 'medium' | 'large' | 'x-large' | 'full';
 }
@@ -722,6 +1041,62 @@ export interface SerializedParagraphNode<TChildren> extends SerializedLexicalEle
   type: 'paragraph';
   textFormat: number;
   textStyle: string;
+}
+
+export interface SerializedHorizontalRuleNode {
+  type: 'horizontalrule';
+  /** @deprecated Ignored when loading. Typed as required only to match Lexical's types: rich text sent through the API, CLI or MCP may not contain it. */
+  version: number;
+}
+
+export type SerializedUploadNode<TSlugs extends keyof Config['collections'], TFields = { [k: string]: unknown }> = {
+  type: 'upload';
+  format: LexicalElementFormat;
+  id: string;
+  /** @deprecated Ignored when loading. Typed as required only to match Lexical's types: rich text sent through the API, CLI or MCP may not contain it. */
+  version: number;
+  fields: TFields;
+} & {
+  [TSlug in TSlugs]: {
+    relationTo: TSlug;
+    value: Config['collections'][TSlug]['id'] | Config['collections'][TSlug];
+  };
+}[TSlugs];
+
+export interface SerializedQuoteNode<TChildren> extends SerializedLexicalElementBase<TChildren> {
+  type: 'quote';
+}
+
+export type SerializedRelationshipNode<TSlugs extends keyof Config['collections']> = {
+  type: 'relationship';
+  format: LexicalElementFormat;
+  /** @deprecated Ignored when loading. Typed as required only to match Lexical's types: rich text sent through the API, CLI or MCP may not contain it. */
+  version: number;
+} & {
+  [TSlug in TSlugs]: {
+    relationTo: TSlug;
+    value: Config['collections'][TSlug]['id'] | Config['collections'][TSlug];
+  };
+}[TSlugs];
+
+export interface LexicalLinkFields {
+  [k: string]: unknown;
+  doc?: {
+    relationTo: string;
+    value: Config['db']['defaultIDType'] | { [k: string]: unknown; id: Config['db']['defaultIDType'] };
+  } | null;
+  linkType: 'custom' | 'internal';
+  newTab: boolean;
+  url?: string;
+}
+export interface SerializedLinkNode<TChildren, TFields = LexicalLinkFields> extends SerializedLexicalElementBase<TChildren> {
+  type: 'link';
+  fields: TFields;
+  id?: string;
+}
+export interface SerializedAutoLinkNode<TChildren, TFields = LexicalLinkFields> extends SerializedLexicalElementBase<TChildren> {
+  type: 'autolink';
+  fields: TFields;
 }
 
 export interface SerializedListNode<TChildren> extends SerializedLexicalElementBase<TChildren> {

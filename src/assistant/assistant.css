@@ -1,0 +1,50 @@
+.optidigi-assistant {
+  max-width: 54rem;
+  margin-bottom: 3rem;
+}
+
+.optidigi-assistant__form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 38rem;
+}
+
+.optidigi-assistant label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.optidigi-assistant :is(input, select, textarea) {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: 0.25rem;
+  background: var(--theme-input-bg);
+  color: var(--theme-text);
+  font: inherit;
+}
+
+.optidigi-assistant__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.optidigi-assistant__messages p,
+.optidigi-assistant__approval {
+  padding: 1rem;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 0.25rem;
+  background: var(--theme-elevation-50);
+}
+
+.optidigi-assistant__messages p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.optidigi-assistant__messages strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}

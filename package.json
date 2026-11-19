@@ -13,11 +13,15 @@
     "lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "test": "pnpm run test:int && pnpm run test:e2e",
+    "test": "npm run test:int && npm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.106",
+    "@ai-sdk/mcp": "2.0.101",
+    "@ai-sdk/openai": "4.0.121",
+    "@ai-sdk/openai-compatible": "3.0.93",
     "@payloadcms/db-postgres": "4.0.0-beta.10",
     "@payloadcms/next": "4.0.0-beta.10",
     "@payloadcms/plugin-mcp": "4.0.0-beta.10",
@@ -25,13 +29,17 @@
     "@payloadcms/richtext-lexical": "4.0.0-beta.10",
     "@payloadcms/transformer-sharp": "4.0.0-beta.10",
     "@payloadcms/ui": "4.0.0-beta.10",
+    "ai": "7.0.177",
     "cross-env": "10.1.0",
     "dotenv": "16.4.7",
     "graphql": "^16.8.1",
+    "ipaddr.js": "2.5.0",
     "next": "16.4.6",
     "payload": "4.0.0-beta.10",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "undici": "8.12.4",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -46,6 +54,7 @@
     "oxfmt": "^0.73.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
+    "vite": "8.3.8",
     "vite-tsconfig-paths": "6.0.5",
     "vitest": "5.0.1"
   },
