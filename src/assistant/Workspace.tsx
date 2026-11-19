@@ -97,8 +97,9 @@ export function AssistantAction() {
   const showing = open && !pathname?.startsWith(route)
 
   function close() {
+    panel.current?.close()
     setOpen(false)
-    trigger.current?.querySelector('button')?.focus()
+    requestAnimationFrame(() => trigger.current?.querySelector('button')?.focus())
   }
 
   useEffect(() => {
@@ -119,8 +120,10 @@ export function AssistantAction() {
         !event.defaultPrevented &&
         panel.current?.contains(document.activeElement)
       ) {
+        event.preventDefault()
+        dialog?.close()
         setOpen(false)
-        trigger.current?.querySelector('button')?.focus()
+        requestAnimationFrame(() => trigger.current?.querySelector('button')?.focus())
       }
     }
     window.addEventListener('keydown', escape)
