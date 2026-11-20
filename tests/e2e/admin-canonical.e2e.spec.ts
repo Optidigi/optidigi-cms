@@ -241,6 +241,7 @@ test('editor publishes localized content and uses the shared assistant in the ca
       await assistant({ action: 'thread-update', thread, title: 'Conceptbrief' }),
     ).toBeOK()
     await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: 'Gespreksgeschiedenis' }).click()
     await expect(page.getByRole('button', { name: 'Conceptbrief', exact: true })).toBeVisible()
     await expect(await assistant({ action: 'thread-delete', thread })).toBeOK()
     expect((await assistant({ action: 'thread-read', thread })).status()).toBe(404)
