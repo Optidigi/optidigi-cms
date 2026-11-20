@@ -1312,11 +1312,23 @@ export function ShadcnAssistantSettings() {
           <TabsContent value="connection" className="pt-3">
             <ConnectionSettings {...state} />
           </TabsContent>
-          <TabsContent keepMounted value="models" className="pt-3">
+          <TabsContent
+            keepMounted
+            inert={panel !== 'models'}
+            aria-hidden={panel !== 'models'}
+            value="models"
+            className="pt-3"
+          >
             <CatalogSettings {...state} panel="models" />
           </TabsContent>
           {tenant.canManage && (
-            <TabsContent keepMounted value="defaults" className="pt-3">
+            <TabsContent
+              keepMounted
+              inert={panel !== 'defaults'}
+              aria-hidden={panel !== 'defaults'}
+              value="defaults"
+              className="pt-3"
+            >
               <CatalogSettings {...state} panel="defaults" />
             </TabsContent>
           )}

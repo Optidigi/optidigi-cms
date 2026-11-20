@@ -329,7 +329,10 @@ test('editor publishes localized content and uses the shared assistant in the ca
     ).toBeVisible()
     await page.setViewportSize({ width: 390, height: 844 })
 
-    await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
+    await page
+      .getByRole('tabpanel', { name: 'Modellen' })
+      .getByRole('button', { name: 'Wijzigingen opslaan' })
+      .click()
     await expect(page.getByText('Wijzigingen opgeslagen.', { exact: true })).toBeVisible()
     const catalog = await (await assistant({ action: 'status' })).json()
     const chosenModelID = catalog.models.find(
