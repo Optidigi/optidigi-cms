@@ -59,12 +59,22 @@ export function ComparisonShell({
   const query = useSearchParams()
   const base = root + '/' + selected.id
   const active = links.find(({ slug }) => pathname === base + '/' + slug)
-  const onDocument = Number(query.get('id'))
+  const onDocument = Number(query.get(active?.slug === 'assistant' ? 'document' : 'id'))
   const document =
-    active?.slug === 'pages' && Number.isSafeInteger(onDocument) && onDocument > 0
+    (active?.slug === 'pages' || active?.slug === 'assistant') &&
+    Number.isSafeInteger(onDocument) &&
+    onDocument > 0
       ? { collection: 'pages' as const, id: onDocument }
       : undefined
   const locale = query.get('locale') === 'en' ? 'en' : 'nl'
+  const assistantRoute =
+    base +
+    '/assistant' +
+    (document
+      ? '?document=' + document.id + '&locale=' + locale
+      : locale === 'en'
+        ? '?locale=en'
+        : '')
 
   const shell = (
     <SidebarProvider>
@@ -108,7 +118,9 @@ export function ComparisonShell({
                   <SidebarMenuButton
                     isActive={active?.slug === slug}
                     tooltip={title}
-                    render={<Link href={base + '/' + slug} />}
+                    render={
+                      <Link href={slug === 'assistant' ? assistantRoute : base + '/' + slug} />
+                    }
                   >
                     <Icon />
                     <span>{title}</span>
@@ -146,7 +158,7 @@ export function ComparisonShell({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          {active?.slug !== 'assistant' && <ShadcnAssistantLauncher route={base + '/assistant'} />}
+          {active?.slug !== 'assistant' && <ShadcnAssistantLauncher route={assistantRoute} />}
         </header>
         {children}
       </SidebarInset>

@@ -97,9 +97,16 @@ test('compares the native admin and shadcn editor using one Payload session', as
     await drawer.getByRole('button', { name: 'Versturen' }).click()
     await expect(drawer.getByText('Draft reply')).toBeVisible()
     await drawer.getByLabel('Open assistentpagina').click()
-    await expect(page).toHaveURL(new RegExp(root + '/assistant$'))
+    await expect(page).toHaveURL(root + '/assistant?document=' + home.id + '&locale=nl')
     await expect(page.getByRole('heading', { name: 'AI-assistent' })).toBeVisible()
     await expect(page.getByText('Draft reply')).toBeVisible()
+    const followup = page.waitForRequest(
+      (request) =>
+        request.url().endsWith('/api/assistant') && request.postDataJSON()?.action === 'chat',
+    )
+    await page.getByRole('textbox', { name: 'Bericht' }).fill('Werk deze pagina verder bij')
+    await page.getByRole('button', { name: 'Versturen' }).click()
+    expect((await followup).postDataJSON().context).toEqual({ collection: 'pages', id: home.id })
   } finally {
     await payload.delete({
       collection: 'pages',
