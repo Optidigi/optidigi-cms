@@ -14,7 +14,6 @@ export type AssistantEvent =
   | { type: 'text'; text: string }
   | { type: 'approval'; approval: Approval }
   | { type: 'error'; message: string }
-  | { type: 'draft-saved'; id: number; locale: 'nl' | 'en'; preview: string | null }
 
 export type Connection = {
   provider: ModelProvider

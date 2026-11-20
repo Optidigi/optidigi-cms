@@ -60,7 +60,3 @@ curl --fail --silent --show-error https://cms.optidigi.nl/api/health
 The app runs `payload migrate` from the release image before starting Next.js. A failed migration prevents the server from starting. Check `docker compose logs app postgres` if readiness fails. Roll back by setting `CMS_IMAGE` to the previous digest and recreating the app only when the migrated schema remains compatible.
 
 Verify that the assistant streams through Cloudflare, signed-out visitors cannot open it, and the Optidigi pilot keeps drafts private while publishing updates without a site redeploy. Keep the assistant route free of Traefik buffering and shared caching. Off-host backup setup is deferred to the VPS refactor.
-
-## Opt out of the custom dashboard
-
-Set `CMS_NATIVE_WORKSPACE=0` in the stack's `.env` and run `docker compose up -d --no-deps --no-build --pull never --wait app`. This switches the native dashboard layout and navigation groups back to their Payload defaults. Remove the setting and recreate the app to restore the workspace. Editors with a previously saved dashboard can use **Dashboard → Edit Dashboard → Reset Layout** to apply the release's default. The customization requires no schema migration.

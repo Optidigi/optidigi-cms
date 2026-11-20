@@ -28,8 +28,3 @@ export const collectionLabels = {
     plural: { en: 'User accounts', nl: 'Gebruikersaccounts' },
   },
 } as const
-
-export const adminLabels = (language: string) => {
-  const nl = language === 'nl'
-  return (en: string, dutch: string) => (nl ? dutch : en)
-}

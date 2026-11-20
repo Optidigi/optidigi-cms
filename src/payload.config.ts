@@ -6,9 +6,8 @@ import { en } from '@payloadcms/translations/languages/en'
 import { nl } from '@payloadcms/translations/languages/nl'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
-import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
+import { APIError, buildConfig, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
-import { workspaceDashboard, workspaceEnabled, workspaceNavigation } from './admin-workspace/config'
 import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
 import { assistantEndpoints } from './assistant/endpoints'
 import { getAssistantTenantScope } from './assistant/scope'
@@ -16,6 +15,7 @@ import { Media } from './collections/Media'
 import { Users } from './collections/Users'
 import { andFilter, isPlatformAdmin, platformOnly, relationID } from './site/access'
 import { bootstrapOperator } from './site/bootstrap'
+import { collectionLabels } from './site/collection-labels'
 import { Articles, Pages, Projects, SiteSettings, Tenants } from './site/content'
 import { siteEndpoints } from './site/endpoints'
 import { checkSitePage } from './site/tools'
@@ -53,6 +53,20 @@ function enforceAssistantWrites(collection: CollectionConfig): CollectionConfig 
   }
 }
 
+function withCollectionLabels(collection: CollectionConfig): CollectionConfig {
+  if (!Object.hasOwn(collectionLabels, collection.slug)) return collection
+  return {
+    ...collection,
+    labels: collectionLabels[collection.slug as keyof typeof collectionLabels],
+    admin: {
+      ...collection.admin,
+      ...((collection.slug === 'tenants' || collection.slug === 'users') && {
+        hidden: ({ user }) => !isPlatformAdmin(user),
+      }),
+    },
+  }
+}
+
 const noTools = {
   count: false, countVersions: false, create: false, delete: false, duplicate: false,
   find: false, findDistinct: false, findVersionByID: false, findVersions: false,
@@ -61,21 +75,11 @@ const noTools = {
 
 export default buildConfig({
   admin: {
-    ...(workspaceEnabled && { dashboard: workspaceDashboard }),
     user: Users.slug,
     importMap: { baseDir: dirname },
-    components: {
-      afterNavLinks: ['/assistant/Nav#AssistantNav'],
-      actions: ['/assistant/Workspace#AssistantAction'],
-      views: {
-        assistant: { Component: '/assistant/View#AssistantView', path: '/assistant', exact: true },
-        assistantSettings: { Component: '/assistant/View#AssistantSettingsRedirect', path: '/assistant/settings', exact: true },
-
-      },
-    },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
-  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts].map(workspaceNavigation),
+  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts].map(withCollectionLabels),
   csrf: origin ? [origin] : [],
   editor: lexicalEditor(),
   endpoints: [...siteEndpoints, ...assistantEndpoints],
@@ -114,23 +118,6 @@ export default buildConfig({
       },
       userHasAccessToAllTenants: isPlatformAdmin,
     }),
-    definePlugin({
-      slug: 'optidigi-assistant-workspace',
-      order: 20,
-      plugin: ({ config }) => ({
-        ...config,
-        admin: {
-          ...config.admin,
-          components: {
-            ...config.admin?.components,
-            providers: [
-              ...(config.admin?.components?.providers ?? []),
-              '/assistant/Workspace#AssistantWorkspace',
-            ],
-          },
-        },
-      }),
-    })(),
     mcpPlugin({
       access: ({ req }) => Boolean(req.user),
       collections: {
