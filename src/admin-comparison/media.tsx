@@ -1,5 +1,7 @@
 'use client'
 
+import { useComparisonTranslations } from '@/admin-comparison/i18n-context'
+
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,6 +20,8 @@ export function MediaForm({
   media?: { id: number; alt: string; updatedAt: string }
   canDelete: boolean
 }) {
+  const t = useComparisonTranslations()
+
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -27,12 +31,12 @@ export function MediaForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{media ? 'Afbeelding bewerken' : 'Afbeelding toevoegen'}</CardTitle>
+        <CardTitle>{media ? t('Afbeelding bewerken') : t('Afbeelding toevoegen')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {message && (
           <Alert variant={success ? 'default' : 'destructive'}>
-            <AlertDescription>{message}</AlertDescription>
+            <AlertDescription>{t(message)}</AlertDescription>
           </Alert>
         )}
         <form
@@ -44,7 +48,7 @@ export function MediaForm({
             const file = form.get('file')
             if (file instanceof File && file.size > 8 * 1024 * 1024) {
               setSuccess(false)
-              setMessage('Kies een afbeelding van maximaal 8 MB.')
+              setMessage(t('Kies een afbeelding van maximaal 8 MB.'))
               return
             }
             setPending(true)
@@ -65,14 +69,14 @@ export function MediaForm({
               if (!result.ok) throw Error('Media operation failed')
               const { doc } = (await result.json()) as { doc?: { id: number } }
               setSuccess(true)
-              setMessage('Afbeelding opgeslagen.')
+              setMessage(t('Afbeelding opgeslagen.'))
               const fileInput = element.elements.namedItem('file')
               if (fileInput instanceof HTMLInputElement) fileInput.value = ''
               if (!media && doc?.id) router.replace(base + '?id=' + doc.id)
               else router.refresh()
             } catch {
               setSuccess(false)
-              setMessage('Opslaan is niet gelukt. Controleer het bestand en je toegangsrechten.')
+              setMessage(t('Opslaan is niet gelukt. Controleer het bestand en je toegangsrechten.'))
             } finally {
               setPending(false)
             }
@@ -80,12 +84,12 @@ export function MediaForm({
         >
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="media-alt">Alternatieve tekst</FieldLabel>
+              <FieldLabel htmlFor="media-alt">{t('Alternatieve tekst')}</FieldLabel>
               <Input id="media-alt" name="alt" defaultValue={media?.alt} required maxLength={500} />
             </Field>
             <Field>
               <FieldLabel htmlFor="media-file">
-                {media ? 'Bestand vervangen' : 'Afbeelding'}
+                {media ? t('Bestand vervangen') : t('Afbeelding')}
               </FieldLabel>
               <Input
                 id="media-file"
@@ -94,11 +98,13 @@ export function MediaForm({
                 required={!media}
                 accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
               />
-              <FieldDescription>JPEG, PNG, WebP, AVIF of GIF. Maximaal 8 MB.</FieldDescription>
+              <FieldDescription>
+                {t('JPEG, PNG, WebP, AVIF of GIF. Maximaal 8 MB.')}
+              </FieldDescription>
             </Field>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={pending}>
-                {pending ? 'Bezig…' : media ? 'Wijzigingen opslaan' : 'Uploaden'}
+                {pending ? t('Bezig…') : media ? t('Wijzigingen opslaan') : t('Uploaden')}
               </Button>
               {media && canDelete && (
                 <Button
@@ -107,7 +113,7 @@ export function MediaForm({
                   disabled={pending}
                   onClick={() => setConfirm(true)}
                 >
-                  Verwijderen
+                  {t('Verwijderen')}
                 </Button>
               )}
             </div>
@@ -115,10 +121,12 @@ export function MediaForm({
         </form>
         {confirm && media && (
           <Alert variant="destructive">
-            <AlertDescription>Wil je deze afbeelding definitief verwijderen?</AlertDescription>
+            <AlertDescription>
+              {t('Wil je deze afbeelding definitief verwijderen?')}
+            </AlertDescription>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" onClick={() => setConfirm(false)}>
-                Annuleren
+                {t('Annuleren')}
               </Button>
               <Button
                 type="button"
@@ -135,14 +143,14 @@ export function MediaForm({
                     else throw Error('Media delete failed')
                   } catch {
                     setSuccess(false)
-                    setMessage('Verwijderen is niet gelukt. Laad de afbeelding opnieuw.')
+                    setMessage(t('Verwijderen is niet gelukt. Laad de afbeelding opnieuw.'))
                   } finally {
                     setPending(false)
                     setConfirm(false)
                   }
                 }}
               >
-                Verwijderen bevestigen
+                {t('Verwijderen bevestigen')}
               </Button>
             </div>
           </Alert>

@@ -1,3 +1,4 @@
+import { comparisonTranslations, getContentLanguage } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { ArrowUpRight, ChevronRight, FilePlus2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -14,8 +15,10 @@ export default async function SitePage({
   params: Promise<{ site: string }>
   searchParams: Promise<{ locale?: string }>
 }) {
+  const t = await comparisonTranslations()
+
   const { selected, req } = await currentSite((await params).site)
-  const locale = (await searchParams).locale === 'en' ? 'en' : 'nl'
+  const locale = await getContentLanguage((await searchParams).locale)
   const base = siteHref(selected.id)
   const options = {
     req,
@@ -58,7 +61,7 @@ export default async function SitePage({
         totalDocs,
         recent: docs.map(({ id, title, updatedAt, _status }) => ({
           id,
-          title: title || 'Naamloos document',
+          title: title || t('Naamloos document'),
           updatedAt,
           href: base + '/' + entry.slug + '?locale=' + locale + '&id=' + id,
           status: _status,
@@ -76,7 +79,7 @@ export default async function SitePage({
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6)
-  const dateFormat = new Intl.DateTimeFormat('nl-NL', {
+  const dateFormat = new Intl.DateTimeFormat(t('nl-NL'), {
     dateStyle: 'medium',
     timeZone: 'Europe/Amsterdam',
   })
@@ -86,7 +89,7 @@ export default async function SitePage({
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="break-words text-2xl font-semibold tracking-tight">{selected.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Websiteoverzicht</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('Websiteoverzicht')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -95,13 +98,15 @@ export default async function SitePage({
             rel="noreferrer"
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
-            Bekijk website <ArrowUpRight />
+            {t('Bekijk website')}
+            <ArrowUpRight />
           </Link>
           <Link
             href={base + '/pages?locale=' + locale + '&new=1'}
             className={buttonVariants({ size: 'sm' })}
           >
-            <FilePlus2 /> Nieuwe pagina
+            <FilePlus2 />
+            {t('Nieuwe pagina')}
           </Link>
         </div>
       </header>
@@ -127,7 +132,7 @@ export default async function SitePage({
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2>Laatst gewijzigd</h2>
+            <h2>{t('Laatst gewijzigd')}</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -148,7 +153,7 @@ export default async function SitePage({
                     </ItemContent>
                     {status && (
                       <Badge variant={status === 'draft' ? 'outline' : 'secondary'}>
-                        {status === 'draft' ? 'Concept' : 'Gepubliceerd'}
+                        {status === 'draft' ? t('Concept') : t('Gepubliceerd')}
                       </Badge>
                     )}
                     <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
@@ -158,7 +163,7 @@ export default async function SitePage({
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Opgeslagen documenten en uploads verschijnen hier.
+              {t('Opgeslagen documenten en uploads verschijnen hier.')}
             </p>
           )}
         </CardContent>

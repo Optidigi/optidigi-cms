@@ -78,7 +78,10 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: dirname },
-    components: { afterNavLinks: ['/admin-native/settings-nav#TweakedAssistantLink'] },
+    components: {
+      actions: ['/admin-native/language#NativeInterfaceLanguage'],
+      afterNavLinks: ['/admin-native/settings-nav#TweakedAssistantLink'],
+    },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
   collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts, AssistantThreads, AssistantMessages, AssistantUploads].map(withCollectionLabels),

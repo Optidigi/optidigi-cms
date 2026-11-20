@@ -1,3 +1,4 @@
+import { comparisonTranslations, getContentLanguage } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { ChevronRight, Globe2, Shield, Sparkles, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -17,23 +18,25 @@ export default async function SettingsPage({
   params: Promise<{ site: string }>
   searchParams: Promise<{ locale?: string }>
 }) {
+  const t = await comparisonTranslations()
+
   const { selected, req } = await currentSite((await params).site)
-  const locale = (await searchParams).locale === 'en' ? 'en' : 'nl'
+  const locale = await getContentLanguage((await searchParams).locale)
   const member = assistantMemberships(req.user).find(({ id }) => id === selected.id)
   const websiteSettings = [
     {
-      title: 'Website-instellingen',
-      description: 'Identiteit, contactgegevens, navigatie en SEO per taal.',
+      title: t('Website-instellingen'),
+      description: t('Identiteit, contactgegevens, navigatie en SEO per taal.'),
       href: siteHref(selected.id, '/site-settings', locale),
       Icon: Globe2,
     },
     ...(member
       ? [
           {
-            title: 'Modelverbinding',
+            title: t('Modelverbinding'),
             description: member.canManage
-              ? 'Verbind of wijzig het AI-model voor deze website.'
-              : 'Bekijk welk AI-model voor deze website is ingesteld.',
+              ? t('Verbind of wijzig het AI-model voor deze website.')
+              : t('Bekijk welk AI-model voor deze website is ingesteld.'),
             href: assistantSettingsHref(selected.id),
             Icon: Sparkles,
           },
@@ -41,14 +44,14 @@ export default async function SettingsPage({
       : []),
   ]
   const account = {
-    title: 'Mijn account',
-    description: 'Beheer je e-mailadres, wachtwoord en weergave.',
+    title: t('Mijn account'),
+    description: t('Beheer je e-mailadres, wachtwoord en weergave.'),
     href: comparisonRoot + '/account?website=' + selected.id,
     Icon: UserRound,
   }
   const platform = {
-    title: 'Platformbeheer',
-    description: 'Beheer websites, gebruikers en lidmaatschappen.',
+    title: t('Platformbeheer'),
+    description: t('Beheer websites, gebruikers en lidmaatschappen.'),
     href: comparisonRoot + '/platform?website=' + selected.id,
     Icon: Shield,
   }
@@ -56,12 +59,12 @@ export default async function SettingsPage({
   return (
     <section className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
       <header className="pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Instellingen</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('Instellingen')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{selected.name}</p>
       </header>
-      <SettingsGroup title="Deze website" items={websiteSettings} />
-      <SettingsGroup title="Persoonlijk" items={[account]} />
-      {isPlatformAdmin(req.user) && <SettingsGroup title="Platform" items={[platform]} />}
+      <SettingsGroup title={t('Deze website')} items={websiteSettings} />
+      <SettingsGroup title={t('Persoonlijk')} items={[account]} />
+      {isPlatformAdmin(req.user) && <SettingsGroup title={t('Platform')} items={[platform]} />}
     </section>
   )
 }

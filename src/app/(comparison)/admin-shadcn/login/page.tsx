@@ -1,3 +1,6 @@
+import { InterfaceLanguageMenu } from '@/admin-comparison/language-menu'
+
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import { Globe2 } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -10,6 +13,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ updated?: string }>
 }) {
+  const t = await comparisonTranslations()
+
   if (await comparisonSession()) redirect('/admin-shadcn')
   const accountUpdated = (await searchParams).updated === '1'
   return (
@@ -21,13 +26,16 @@ export default async function LoginPage({
           </span>
           Optidigi CMS
         </span>
-        <AppearanceMenu />
+        <div className="flex items-center gap-1">
+          <InterfaceLanguageMenu />
+          <AppearanceMenu />
+        </div>
       </header>
       <div className="grid place-items-center px-6 pb-16">
         <div className="w-full max-w-sm space-y-3">
           {accountUpdated && (
             <Alert>
-              <AlertDescription>Inloggegevens opgeslagen. Log opnieuw in.</AlertDescription>
+              <AlertDescription>{t('Inloggegevens opgeslagen. Log opnieuw in.')}</AlertDescription>
             </Alert>
           )}
           <ComparisonLogin />

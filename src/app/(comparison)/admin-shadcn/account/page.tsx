@@ -1,3 +1,6 @@
+import { InterfaceLanguageMenu } from '@/admin-comparison/language-menu'
+
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { LogOut } from 'lucide-react'
 import { AccountForm } from '@/admin-comparison/account'
@@ -14,6 +17,8 @@ export default async function AccountPage({
 }: {
   searchParams: Promise<{ website?: string }>
 }) {
+  const t = await comparisonTranslations()
+
   const req = await comparisonRequest()
   const website = relationID((await searchParams).website)
   const origin = website ? (await comparisonSites(req)).find(({ id }) => id === website) : undefined
@@ -25,24 +30,28 @@ export default async function AccountPage({
             className="text-sm text-muted-foreground hover:underline"
             href={origin ? siteHref(origin.id, '/settings') : adminRoot}
           >
-            {origin ? 'Instellingen · ' + origin.name : 'CMS-overzicht'}
+            {origin ? t('Instellingen · ') + origin.name : t('CMS-overzicht')}
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">Mijn account</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('Mijn account')}</h1>
         </div>
-        <form action={signOutComparison}>
-          <Button variant="outline" type="submit">
-            <LogOut /> Uitloggen
-          </Button>
-        </form>
+        <div className="flex items-center gap-1">
+          <InterfaceLanguageMenu />
+          <form action={signOutComparison}>
+            <Button variant="outline" type="submit">
+              <LogOut />
+              {t('Uitloggen')}
+            </Button>
+          </form>
+        </div>
       </header>
       <AccountForm email={req.user?.email ?? ''} />
       <Card>
         <CardHeader>
-          <CardTitle>Voorkeuren</CardTitle>
-          <CardDescription>Pas de weergave van deze interface aan.</CardDescription>
+          <CardTitle>{t('Voorkeuren')}</CardTitle>
+          <CardDescription>{t('Pas de weergave van deze interface aan.')}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-3">
-          <span className="text-sm font-medium">Kleurmodus</span>
+          <span className="text-sm font-medium">{t('Kleurmodus')}</span>
           <AppearanceMenu />
         </CardContent>
       </Card>

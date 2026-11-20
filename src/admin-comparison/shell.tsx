@@ -1,5 +1,7 @@
 'use client'
 
+import { useComparisonTranslations, useEditingGuard } from '@/admin-comparison/i18n-context'
+
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -48,6 +50,7 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { ShadcnAssistantLauncher, ShadcnAssistantProvider } from './assistant'
+import { ContentLanguageMenu, InterfaceLanguageMenu } from './language-menu'
 import { AppearanceMenu } from './theme'
 import { assistantSettingsHref, comparisonRoot, contentLinks, siteHref } from './navigation'
 import type { AssistantContext, AssistantTenant } from '@/assistant/use-assistant'
@@ -61,6 +64,7 @@ export function ComparisonShell({
   assistant,
   platform,
   sidebarOpen,
+  defaultLocale,
   children,
 }: {
   sites: Website[]
@@ -68,8 +72,11 @@ export function ComparisonShell({
   assistant?: AssistantTenant
   platform?: boolean
   sidebarOpen?: boolean
+  defaultLocale: 'nl' | 'en'
   children: ReactNode
 }) {
+  const t = useComparisonTranslations()
+
   const pathname = usePathname()
   const query = useSearchParams()
   const base = siteHref(selected.id)
@@ -87,7 +94,9 @@ export function ComparisonShell({
     collection && Number.isSafeInteger(onDocument) && onDocument > 0
       ? { collection, id: onDocument }
       : undefined
-  const locale = query.get('locale') === 'en' ? 'en' : 'nl'
+  const requestedLocale = query.get('locale')
+  const locale =
+    requestedLocale === 'en' || requestedLocale === 'nl' ? requestedLocale : defaultLocale
   const assistantRoute = document
     ? base +
       '/assistant?document=' +
@@ -100,20 +109,20 @@ export function ComparisonShell({
   const settings = siteHref(selected.id, '/settings', locale)
   const connection = assistantSettingsHref(selected.id)
   const currentSection = [
-    { slug: '', title: 'Overzicht' },
+    { slug: '', title: t('Overzicht') },
     ...contentLinks,
-    { slug: 'assistant', title: 'AI-assistent' },
-    { slug: 'settings', title: pathname === connection ? 'Modelverbinding' : 'Instellingen' },
-    { slug: 'site-settings', title: 'Website-instellingen' },
+    { slug: 'assistant', title: t('AI-assistent') },
+    { slug: 'settings', title: pathname === connection ? t('Modelverbinding') : t('Instellingen') },
+    { slug: 'site-settings', title: t('Website-instellingen') },
   ].find(({ slug }) => slug === section)
   const inSubsettings = section === 'site-settings' || pathname === connection
   const workspaceLinks = [
-    { href: base, title: 'Overzicht', Icon: LayoutDashboard, active: !section },
+    { href: base, title: t('Overzicht'), Icon: LayoutDashboard, active: !section },
     ...(assistant
       ? [
           {
             href: assistantRoute,
-            title: 'AI-assistent',
+            title: t('AI-assistent'),
             Icon: Sparkles,
             active: section === 'assistant',
           },
@@ -121,10 +130,15 @@ export function ComparisonShell({
       : []),
   ]
   const settingsLinks = [
-    { href: settings, title: 'Instellingen', Icon: Settings2, active: pathname === settingsRoot },
+    {
+      href: settings,
+      title: t('Instellingen'),
+      Icon: Settings2,
+      active: pathname === settingsRoot,
+    },
     {
       href: siteHref(selected.id, '/site-settings', locale),
-      title: 'Website-instellingen',
+      title: t('Website-instellingen'),
       Icon: Globe2,
       active: section === 'site-settings',
     },
@@ -132,7 +146,7 @@ export function ComparisonShell({
       ? [
           {
             href: connection,
-            title: 'Modelverbinding',
+            title: t('Modelverbinding'),
             Icon: Plug,
             active: pathname === connection,
           },
@@ -148,33 +162,33 @@ export function ComparisonShell({
         </SidebarHeader>
         <SidebarContent>
           <nav aria-label="CMS" className="flex flex-col">
-            <NavigationGroup title="Werkruimte" links={workspaceLinks} />
+            <NavigationGroup title={t('Werkruimte')} links={workspaceLinks} />
             <NavigationGroup
-              title="Inhoud"
+              title={t('Inhoud')}
               links={contentLinks.map(({ slug, ...link }) => ({
                 ...link,
                 href: siteHref(selected.id, '/' + slug, locale),
                 active: section === slug,
               }))}
             />
-            <NavigationGroup title="Beheer" links={settingsLinks} />
+            <NavigationGroup title={t('Beheer')} links={settingsLinks} />
           </nav>
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
             <NavigationItem
               href={comparisonRoot + '/account?website=' + selected.id}
-              title="Mijn account"
+              title={t('Mijn account')}
               Icon={UserRound}
             />
             {platform && (
               <NavigationItem
                 href={comparisonRoot + '/platform?website=' + selected.id}
-                title="Platformbeheer"
+                title={t('Platformbeheer')}
                 Icon={Shield}
               />
             )}
-            <NavigationItem href="/admin" title="Open Payload" Icon={ExternalLink} />
+            <NavigationItem href="/admin" title={t('Open Payload')} Icon={ExternalLink} />
           </SidebarMenu>
         </SidebarFooter>
         <SidebarRail />
@@ -182,7 +196,7 @@ export function ComparisonShell({
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between gap-2 rounded-t-[inherit] border-b bg-background px-3 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
-            <SidebarTrigger className="-ml-1" aria-label="Navigatie tonen of verbergen" />
+            <SidebarTrigger className="-ml-1" aria-label={t('Navigatie tonen of verbergen')} />
             <Separator
               orientation="vertical"
               className="me-1 data-vertical:h-4 data-vertical:self-auto"
@@ -203,7 +217,7 @@ export function ComparisonShell({
                   <>
                     <BreadcrumbItem className="hidden sm:inline-flex">
                       <BreadcrumbLink render={<Link href={settings} />}>
-                        Instellingen
+                        {t('Instellingen')}
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden sm:list-item" />
@@ -218,6 +232,8 @@ export function ComparisonShell({
             </Breadcrumb>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <InterfaceLanguageMenu />
+            {(collection || !section) && <ContentLanguageMenu locale={locale} />}
             <AppearanceMenu />
             {assistant && section !== 'assistant' && (
               <ShadcnAssistantLauncher route={assistantRoute} />
@@ -243,9 +259,10 @@ export function ComparisonShell({
 }
 
 function NavigationGroup({ title, links }: { title: string; links: NavLink[] }) {
+  const t = useComparisonTranslations()
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+      <SidebarGroupLabel>{t(title)}</SidebarGroupLabel>
       <SidebarMenu>
         {links.map((link) => (
           <NavigationItem key={link.href} {...link} />
@@ -256,22 +273,33 @@ function NavigationGroup({ title, links }: { title: string; links: NavLink[] }) 
 }
 
 function NavigationItem({ href, title, Icon, active }: NavLink) {
+  const t = useComparisonTranslations()
+  const { canNavigate } = useEditingGuard()
   const { setOpenMobile } = useSidebar()
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         isActive={active}
-        tooltip={title}
+        tooltip={t(title)}
         render={
           <Link
             href={href}
             aria-current={active ? 'page' : undefined}
-            onNavigate={() => setOpenMobile(false)}
+            onNavigate={(event) => {
+              if (
+                !active &&
+                !canNavigate(t('Je hebt niet-opgeslagen wijzigingen. Deze pagina toch verlaten?'))
+              ) {
+                event.preventDefault()
+                return
+              }
+              setOpenMobile(false)
+            }}
           />
         }
       >
         <Icon />
-        <span>{title}</span>
+        <span>{t(title)}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
@@ -286,14 +314,17 @@ function WebsiteSwitcher({
   selected: Website
   locale: 'nl' | 'en'
 }) {
+  const t = useComparisonTranslations()
+
   const router = useRouter()
+  const { canNavigate } = useEditingGuard()
   const { setOpenMobile } = useSidebar()
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
-            aria-label={'Website kiezen: ' + selected.name}
+            aria-label={t('Website kiezen: ') + selected.name}
             render={<SidebarMenuButton size="lg" tooltip={selected.name} />}
           >
             <span className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
@@ -310,7 +341,12 @@ function WebsiteSwitcher({
               value={String(selected.id)}
               onValueChange={(value) => {
                 const site = sites.find(({ id }) => String(id) === value)
-                if (!site) return
+                if (
+                  !site ||
+                  site.id === selected.id ||
+                  !canNavigate(t('Je hebt niet-opgeslagen wijzigingen. Deze pagina toch verlaten?'))
+                )
+                  return
                 setOpenMobile(false)
                 router.push(siteHref(site.id, '', locale))
               }}

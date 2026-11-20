@@ -1,3 +1,6 @@
+import { InterfaceLanguageMenu } from '@/admin-comparison/language-menu'
+
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { adminRoot, comparisonRequest, comparisonSites } from '@/admin-comparison/data'
@@ -33,6 +36,8 @@ export default async function PlatformPage({
     q?: string
   }>
 }) {
+  const t = await comparisonTranslations()
+
   const req = await comparisonRequest()
   if (!isPlatformAdmin(req.user)) notFound()
   const query = await searchParams
@@ -92,31 +97,34 @@ export default async function PlatformPage({
             href={origin ? siteHref(origin.id, '/settings') : adminRoot}
             className="text-sm text-muted-foreground hover:underline"
           >
-            {origin ? 'Instellingen · ' + origin.name : 'CMS-overzicht'}
+            {origin ? t('Instellingen · ') + origin.name : t('CMS-overzicht')}
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">Platformbeheer</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('Platformbeheer')}</h1>
         </div>
-        <AppearanceMenu />
+        <div className="flex items-center gap-1">
+          <InterfaceLanguageMenu />
+          <AppearanceMenu />
+        </div>
       </header>
       {query.result && (
         <Alert variant={query.result === 'saved' ? 'default' : 'destructive'}>
           <AlertDescription>
             {query.result === 'saved'
-              ? 'Wijzigingen opgeslagen.'
-              : 'Opslaan is niet gelukt. Controleer de invoer.'}
+              ? t('Wijzigingen opgeslagen.')
+              : t('Opslaan is niet gelukt. Controleer de invoer.')}
           </AlertDescription>
         </Alert>
       )}
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-2">
         <Card id="websites">
           <CardHeader>
-            <CardTitle>Websites</CardTitle>
+            <CardTitle>{t('Websites')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Naam</TableHead>
+                  <TableHead>{t('Naam')}</TableHead>
                   <TableHead>Website</TableHead>
                 </TableRow>
               </TableHeader>
@@ -142,18 +150,18 @@ export default async function PlatformPage({
               <input type="hidden" name="id" value={editSite?.id ?? ''} />
               <FieldGroup key={editSite?.id ?? 'new'}>
                 <h2 className="text-sm font-semibold">
-                  {editSite ? 'Website bewerken' : 'Website toevoegen'}
+                  {editSite ? t('Website bewerken') : t('Website toevoegen')}
                 </h2>
                 <Field>
-                  <FieldLabel htmlFor="site-name">Naam</FieldLabel>
+                  <FieldLabel htmlFor="site-name">{t('Naam')}</FieldLabel>
                   <Input id="site-name" name="name" defaultValue={editSite?.name} required />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="site-slug">URL-naam</FieldLabel>
+                  <FieldLabel htmlFor="site-slug">{t('URL-naam')}</FieldLabel>
                   <Input id="site-slug" name="slug" defaultValue={editSite?.slug} required />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="site-origin">Website-URL</FieldLabel>
+                  <FieldLabel htmlFor="site-origin">{t('Website-URL')}</FieldLabel>
                   <Input
                     id="site-origin"
                     name="siteOrigin"
@@ -164,14 +172,14 @@ export default async function PlatformPage({
                   />
                 </Field>
                 <div className="flex gap-2">
-                  <Button type="submit">Website opslaan</Button>
+                  <Button type="submit">{t('Website opslaan')}</Button>
                   {editSite && (
                     <Button
                       variant="outline"
                       nativeButton={false}
                       render={<Link href={platformHref({}, '#websites')} />}
                     >
-                      Annuleren
+                      {t('Annuleren')}
                     </Button>
                   )}
                 </div>
@@ -181,7 +189,7 @@ export default async function PlatformPage({
         </Card>
         <Card id="gebruikers">
           <CardHeader>
-            <CardTitle>Gebruikers</CardTitle>
+            <CardTitle>{t('Gebruikers')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <form action={root} className="flex gap-2">
@@ -189,19 +197,19 @@ export default async function PlatformPage({
               <Input
                 type="search"
                 name="q"
-                aria-label="Zoek gebruiker"
-                placeholder="Zoek op e-mailadres"
+                aria-label={t('Zoek gebruiker')}
+                placeholder={t('Zoek op e-mailadres')}
                 defaultValue={search}
               />
               <Button type="submit" variant="outline">
-                Zoeken
+                {t('Zoeken')}
               </Button>
             </form>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>E-mailadres</TableHead>
-                  <TableHead>Rol</TableHead>
+                  <TableHead>{t('E-mailadres')}</TableHead>
+                  <TableHead>{t('Rol')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -221,7 +229,7 @@ export default async function PlatformPage({
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {user.role === 'platform-admin' ? 'Platformbeheerder' : 'Klant'}
+                        {user.role === 'platform-admin' ? t('Platformbeheerder') : t('Klant')}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -243,7 +251,7 @@ export default async function PlatformPage({
                     />
                   }
                 >
-                  Vorige
+                  {t('Vorige')}
                 </Button>
               )}
               {users.hasNextPage && (
@@ -260,7 +268,7 @@ export default async function PlatformPage({
                     />
                   }
                 >
-                  Volgende
+                  {t('Volgende')}
                 </Button>
               )}
             </div>
@@ -270,10 +278,10 @@ export default async function PlatformPage({
               <input type="hidden" name="id" value={editUser?.id ?? ''} />
               <FieldGroup key={editUser?.id ?? 'new'}>
                 <h2 className="text-sm font-semibold">
-                  {editUser ? 'Gebruiker bewerken' : 'Gebruiker toevoegen'}
+                  {editUser ? t('Gebruiker bewerken') : t('Gebruiker toevoegen')}
                 </h2>
                 <Field>
-                  <FieldLabel htmlFor="user-email">E-mailadres</FieldLabel>
+                  <FieldLabel htmlFor="user-email">{t('E-mailadres')}</FieldLabel>
                   <Input
                     id="user-email"
                     name="email"
@@ -284,7 +292,7 @@ export default async function PlatformPage({
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="user-password">Wachtwoord</FieldLabel>
+                  <FieldLabel htmlFor="user-password">{t('Wachtwoord')}</FieldLabel>
                   <Input
                     id="user-password"
                     name="password"
@@ -292,24 +300,28 @@ export default async function PlatformPage({
                     type="password"
                     minLength={12}
                     autoComplete="new-password"
-                    placeholder={editUser ? 'Leeg laten om te behouden' : 'Ten minste 12 tekens'}
+                    placeholder={
+                      editUser ? t('Leeg laten om te behouden') : t('Ten minste 12 tekens')
+                    }
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="user-role">Platformrol</FieldLabel>
+                  <FieldLabel htmlFor="user-role">{t('Platformrol')}</FieldLabel>
                   <NativeSelect
                     id="user-role"
                     name="role"
                     defaultValue={editUser?.role ?? 'customer'}
                   >
-                    <NativeSelectOption value="customer">Klant</NativeSelectOption>
+                    <NativeSelectOption value="customer">{t('Klant')}</NativeSelectOption>
                     <NativeSelectOption value="platform-admin">
-                      Platformbeheerder
+                      {t('Platformbeheerder')}
                     </NativeSelectOption>
                   </NativeSelect>
                 </Field>
                 <fieldset className="space-y-3">
-                  <legend className="mb-2 text-sm font-medium">Website-lidmaatschappen</legend>
+                  <legend className="mb-2 text-sm font-medium">
+                    {t('Website-lidmaatschappen')}
+                  </legend>
                   {sites.map((site) => (
                     <Field key={site.id} orientation="horizontal">
                       <FieldLabel htmlFor={'membership-' + site.id}>{site.name}</FieldLabel>
@@ -318,22 +330,24 @@ export default async function PlatformPage({
                         id={'membership-' + site.id}
                         defaultValue={membership.get(site.id) ?? ''}
                       >
-                        <NativeSelectOption value="">Geen toegang</NativeSelectOption>
-                        <NativeSelectOption value="editor">Redacteur</NativeSelectOption>
-                        <NativeSelectOption value="admin">Websitebeheerder</NativeSelectOption>
+                        <NativeSelectOption value="">{t('Geen toegang')}</NativeSelectOption>
+                        <NativeSelectOption value="editor">{t('Redacteur')}</NativeSelectOption>
+                        <NativeSelectOption value="admin">
+                          {t('Websitebeheerder')}
+                        </NativeSelectOption>
                       </NativeSelect>
                     </Field>
                   ))}
                 </fieldset>
                 <div className="flex gap-2">
-                  <Button type="submit">Gebruiker opslaan</Button>
+                  <Button type="submit">{t('Gebruiker opslaan')}</Button>
                   {editUser && (
                     <Button
                       variant="outline"
                       nativeButton={false}
                       render={<Link href={platformHref({}, '#gebruikers')} />}
                     >
-                      Annuleren
+                      {t('Annuleren')}
                     </Button>
                   )}
                 </div>

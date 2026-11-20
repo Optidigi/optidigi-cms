@@ -1,3 +1,4 @@
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,22 +13,24 @@ import { isPlatformAdmin } from '@/site/access'
 import { adminRoot, comparisonRequest, comparisonSites } from '@/admin-comparison/data'
 
 export default async function ShadcnAdminPage() {
+  const t = await comparisonTranslations()
+
   const req = await comparisonRequest()
   const sites = await comparisonSites(req)
   if (sites.length) redirect(adminRoot + '/' + sites[0].id)
   return (
     <Empty className="mx-auto mt-24 max-w-lg">
       <EmptyHeader>
-        <EmptyTitle>Geen websites beschikbaar</EmptyTitle>
-        <EmptyDescription>Vraag je beheerder om toegang tot een website.</EmptyDescription>
+        <EmptyTitle>{t('Geen websites beschikbaar')}</EmptyTitle>
+        <EmptyDescription>{t('Vraag je beheerder om toegang tot een website.')}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <Button nativeButton={false} render={<Link href="/admin" />}>
-          Open Payload
+          {t('Open Payload')}
         </Button>
         {isPlatformAdmin(req.user) && (
           <Button nativeButton={false} render={<Link href={adminRoot + '/platform'} />}>
-            Platformbeheer
+            {t('Platformbeheer')}
           </Button>
         )}
         <Button
@@ -35,7 +38,7 @@ export default async function ShadcnAdminPage() {
           nativeButton={false}
           render={<Link href={adminRoot + '/account'} />}
         >
-          Mijn account
+          {t('Mijn account')}
         </Button>
       </EmptyContent>
     </Empty>

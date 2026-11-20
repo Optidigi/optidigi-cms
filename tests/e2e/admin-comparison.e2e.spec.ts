@@ -8,7 +8,7 @@ test('compares the native admin and shadcn editor using one Payload session', as
   context,
   page,
 }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(150_000)
   const payload = await getPayload({ config, key: randomUUID() })
   const slug = 'compare-' + randomUUID()
   const email = slug + '@example.test'
@@ -42,6 +42,14 @@ test('compares the native admin and shadcn editor using one Payload session', as
         heading: 'Live',
         _status: 'published',
       },
+    })
+    await payload.update({
+      collection: 'pages',
+      id: home.id,
+      locale: 'en',
+      overrideAccess: true,
+      publishAllLocales: false,
+      data: { title: 'English homepage', heading: 'English heading', _status: 'published' },
     })
     await context.route('https://example.com/**', (route) => route.fulfill({ body: '' }))
     const login = await context.request.post('/api/users/login', {
@@ -78,6 +86,47 @@ test('compares the native admin and shadcn editor using one Payload session', as
     expect((await page.goto('/admin-shadcn/' + other.id + '/pages'))?.status()).toBe(404)
     expect((await page.goto('/admin-shadcn/platform'))?.status()).toBe(404)
     expect((await page.goto(root + '/pages?id=' + home.id))?.status()).toBe(200)
+    // Interface language changes chrome while the Dutch content stays selected.
+    await page.getByRole('button', { name: 'Interfacetaal', exact: true }).press('Enter')
+    await page.getByRole('menuitemradio', { name: 'English', exact: true }).press('Enter')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    await expect(page.getByRole('button', { name: 'Content language', exact: true })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Page heading' })).toHaveValue('Live')
+    const native = await context.newPage()
+    await native.goto('/admin', { waitUntil: 'domcontentloaded' })
+    await expect(native.locator('html')).toHaveAttribute('lang', 'en')
+    await native.close()
+
+    // Changing content language preserves the active document and checks unsaved edits.
+    await page.getByRole('textbox', { name: 'Page heading' }).fill('Unsaved draft')
+    page.once('dialog', (dialog) => dialog.dismiss())
+    await page.getByRole('button', { name: 'Content language', exact: true }).press('Enter')
+    await page.getByRole('menuitem', { name: 'English', exact: true }).press('Enter')
+    await expect(page.getByRole('textbox', { name: 'Page heading' })).toHaveValue('Unsaved draft')
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Content language', exact: true }).press('Enter')
+    await page.getByRole('menuitem', { name: 'English', exact: true }).press('Enter')
+    await expect(page).toHaveURL(root + '/pages?id=' + home.id + '&locale=en')
+    await expect(page.getByRole('textbox', { name: 'Page heading' })).toHaveValue('English heading')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(
+      page.getByRole('button', { name: 'Interface language', exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Content language', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await page.goto(root + '/settings/assistant', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: 'Model connection', exact: true })).toBeVisible()
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    await page.goto(root + '/pages?id=' + home.id, { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('textbox', { name: 'Page heading' })).toHaveValue('English heading')
+    await page.getByRole('button', { name: 'Content language', exact: true }).press('Enter')
+    await page.getByRole('menuitem', { name: 'Nederlands', exact: true }).press('Enter')
+    await expect(page.getByRole('textbox', { name: 'Page heading' })).toHaveValue('Live')
+    await page.getByRole('button', { name: 'Interface language', exact: true }).press('Enter')
+    await page.getByRole('menuitemradio', { name: 'Nederlands', exact: true }).press('Enter')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
     await page.getByRole('textbox', { name: 'Paginakop' }).fill('Draft from shadcn')
     await page.getByLabel('Inhoud', { exact: true }).fill('Rich text from shadcn')
     await page.getByRole('button', { name: 'Concept opslaan' }).click()

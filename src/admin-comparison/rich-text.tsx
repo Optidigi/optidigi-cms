@@ -1,5 +1,7 @@
 'use client'
 
+import { useComparisonTranslations } from '@/admin-comparison/i18n-context'
+
 import { List, ListOrdered } from 'lucide-react'
 import {
   $createParagraphNode,
@@ -33,6 +35,8 @@ export function RichTextEditor({
   value?: Page['body']
   onChange: (value: string) => void
 }) {
+  const t = useComparisonTranslations()
+
   return (
     <LexicalComposer
       initialConfig={{
@@ -67,7 +71,7 @@ export function RichTextEditor({
         <RichTextPlugin
           contentEditable={
             <ContentEditable
-              aria-label="Inhoud"
+              aria-label={t('Inhoud')}
               className="min-h-36 p-3 text-sm focus-visible:outline-ring/50"
             />
           }
@@ -85,6 +89,8 @@ export function RichTextEditor({
 }
 
 function FormatBar() {
+  const t = useComparisonTranslations()
+
   const [editor] = useLexicalComposerContext()
   function changeBlock(heading: boolean) {
     editor.update(() => {
@@ -96,14 +102,14 @@ function FormatBar() {
     })
   }
   return (
-    <div className="flex flex-wrap gap-1 border-b p-1" role="group" aria-label="Tekstopmaak">
+    <div className="flex flex-wrap gap-1 border-b p-1" role="group" aria-label={t('Tekstopmaak')}>
       {(['bold', 'italic', 'underline', 'strikethrough'] as const).map((format, index) => (
         <Button
           key={format}
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label={['Vet', 'Cursief', 'Onderstrepen', 'Doorhalen'][index]}
+          aria-label={[t('Vet'), t('Cursief'), t('Onderstrepen'), t('Doorhalen')][index]}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, format)}
         >
@@ -119,7 +125,7 @@ function FormatBar() {
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => changeBlock(false)}
       >
-        Alinea
+        {t('Alinea')}
       </Button>
       <Button
         type="button"
@@ -128,13 +134,13 @@ function FormatBar() {
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => changeBlock(true)}
       >
-        Kop
+        {t('Kop')}
       </Button>
       <Button
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Opsomming"
+        aria-label={t('Opsomming')}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}
       >
@@ -144,7 +150,7 @@ function FormatBar() {
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Genummerde lijst"
+        aria-label={t('Genummerde lijst')}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}
       >

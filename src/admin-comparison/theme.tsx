@@ -1,5 +1,7 @@
 'use client'
 
+import { useComparisonTranslations } from '@/admin-comparison/i18n-context'
+
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { ThemeProvider, useTheme } from 'next-themes'
 import type { ReactNode } from 'react'
@@ -27,23 +29,30 @@ export function ComparisonTheme({ children }: { children: ReactNode }) {
 }
 
 export function AppearanceMenu() {
+  const t = useComparisonTranslations()
+
   const { theme, setTheme } = useTheme()
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Weergave" />}>
+      <DropdownMenuTrigger
+        render={<Button size="icon-sm" variant="ghost" aria-label={t('Weergave')} />}
+      >
         <Sun className="dark:hidden" />
         <Moon className="hidden dark:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={setTheme}>
           <DropdownMenuRadioItem value="light">
-            <Sun /> Licht
+            <Sun />
+            {t('Licht')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark">
-            <Moon /> Donker
+            <Moon />
+            {t('Donker')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system">
-            <Monitor /> Systeem
+            <Monitor />
+            {t('Systeem')}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>

@@ -1,3 +1,4 @@
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
@@ -27,6 +28,8 @@ export default async function MediaPage({
   params: Promise<{ site: string }>
   searchParams: Promise<{ id?: string; new?: string; page?: string; q?: string }>
 }) {
+  const t = await comparisonTranslations()
+
   const { req, selected } = await currentSite((await params).site)
   const query = await searchParams
   const id = relationID(query.id)
@@ -79,13 +82,14 @@ export default async function MediaPage({
             </Link>
           )}
           <h1 className="text-2xl font-semibold tracking-tight">
-            {media?.filename || (editing ? 'Nieuwe afbeelding' : 'Media')}
+            {media?.filename || (editing ? t('Nieuwe afbeelding') : 'Media')}
           </h1>
           <p className="text-sm text-muted-foreground">{selected.name}</p>
         </div>
         {!editing && (
           <Button nativeButton={false} render={<Link href={base + '?new=1'} />}>
-            <Plus /> Afbeelding toevoegen
+            <Plus />
+            {t('Afbeelding toevoegen')}
           </Button>
         )}
       </header>
@@ -100,7 +104,7 @@ export default async function MediaPage({
           {url && media && (
             <Card>
               <CardHeader>
-                <CardTitle>Bestand</CardTitle>
+                <CardTitle>{t('Bestand')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Image
@@ -116,7 +120,7 @@ export default async function MediaPage({
                   nativeButton={false}
                   render={<Link href={url} target="_blank" rel="noreferrer" />}
                 >
-                  Open origineel
+                  {t('Open origineel')}
                 </Button>
               </CardContent>
             </Card>
@@ -128,13 +132,13 @@ export default async function MediaPage({
             <Input
               type="search"
               name="q"
-              aria-label="Zoek afbeelding"
-              placeholder="Zoek op bestandsnaam of alternatieve tekst"
+              aria-label={t('Zoek afbeelding')}
+              placeholder={t('Zoek op bestandsnaam of alternatieve tekst')}
               defaultValue={search}
               maxLength={150}
             />
             <Button type="submit" variant="outline">
-              Zoeken
+              {t('Zoeken')}
             </Button>
           </form>
           {results?.docs.length ? (
@@ -174,7 +178,7 @@ export default async function MediaPage({
                     <Images />
                   </EmptyMedia>
                   <EmptyTitle>
-                    {search ? 'Geen afbeeldingen gevonden' : 'Nog geen afbeeldingen'}
+                    {search ? t('Geen afbeeldingen gevonden') : t('Nog geen afbeeldingen')}
                   </EmptyTitle>
                 </EmptyHeader>
               </Empty>
@@ -191,7 +195,7 @@ export default async function MediaPage({
                   />
                 }
               >
-                Vorige
+                {t('Vorige')}
               </Button>
             )}
             {results?.hasNextPage && (
@@ -204,7 +208,7 @@ export default async function MediaPage({
                   />
                 }
               >
-                Volgende
+                {t('Volgende')}
               </Button>
             )}
           </div>

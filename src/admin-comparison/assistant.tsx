@@ -1,5 +1,7 @@
 'use client'
 
+import { useComparisonTranslations } from '@/admin-comparison/i18n-context'
+
 import { getToolName, isToolUIPart, type FileUIPart } from 'ai'
 import {
   Archive,
@@ -186,25 +188,28 @@ export function ShadcnAssistantProvider({
 }
 
 export function ShadcnAssistantLauncher({ route }: { route: string }) {
+  const t = useComparisonTranslations()
+
   const [open, setOpen] = useState(false)
   const state = useContext(AssistantState)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger render={<Button variant="outline" size="sm" />}>
-        <Sparkles data-icon="inline-start" /> Vraag AI
+        <Sparkles data-icon="inline-start" />
+        {t('Vraag AI')}
       </SheetTrigger>
       <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
         <SheetHeader className="flex-row items-center justify-between border-b pe-14">
           <div>
-            <SheetTitle>AI-assistent</SheetTitle>
+            <SheetTitle>{t('AI-assistent')}</SheetTitle>
             <SheetDescription className="sr-only">
-              Assistent voor de actieve website
+              {t('Assistent voor de actieve website')}
             </SheetDescription>
           </div>
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label="Open assistentpagina"
+            aria-label={t('Open assistentpagina')}
             nativeButton={false}
             render={
               <Link
@@ -223,6 +228,8 @@ export function ShadcnAssistantLauncher({ route }: { route: string }) {
 }
 
 export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
+  const t = useComparisonTranslations()
+
   const state = useContext(AssistantState)
   if (!state)
     return (
@@ -231,8 +238,10 @@ export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
           <EmptyMedia variant="icon">
             <Sparkles />
           </EmptyMedia>
-          <EmptyTitle>Assistent niet beschikbaar</EmptyTitle>
-          <EmptyDescription>Je account heeft geen lidmaatschap voor deze website.</EmptyDescription>
+          <EmptyTitle>{t('Assistent niet beschikbaar')}</EmptyTitle>
+          <EmptyDescription>
+            {t('Je account heeft geen lidmaatschap voor deze website.')}
+          </EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
@@ -240,7 +249,7 @@ export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
     <div className="flex min-h-0 min-w-0 flex-1">
       {full && (
         <aside
-          aria-label="Gesprekken"
+          aria-label={t('Gesprekken')}
           className="hidden h-full w-64 shrink-0 border-e bg-sidebar/40 lg:flex"
         >
           <ThreadHistory chat={state.chat} />
@@ -252,6 +261,8 @@ export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
 }
 
 function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect?: () => void }) {
+  const t = useComparisonTranslations()
+
   const titleID = useId()
   const [rename, setRename] = useState<Thread>()
   const [remove, setRemove] = useState<Thread>()
@@ -264,11 +275,12 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
           onClick={chat.newThread}
           disabled={chat.busy}
         >
-          <Plus /> Nieuw gesprek
+          <Plus />
+          {t('Nieuw gesprek')}
         </Button>
         <Input
-          aria-label="Gesprekken zoeken"
-          placeholder="Zoek gesprekken"
+          aria-label={t('Gesprekken zoeken')}
+          placeholder={t('Zoek gesprekken')}
           maxLength={120}
           value={chat.historyQuery}
           onChange={(event) => chat.setHistoryQuery(event.target.value)}
@@ -288,31 +300,31 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
             aria-pressed={chat.archived}
             onClick={() => chat.setArchived(true)}
           >
-            Archief
+            {t('Archief')}
           </Button>
         </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-1 p-2">
           {chat.historyStatus === 'loading' && (
-            <div className="grid gap-2 p-1" role="status" aria-label="Gesprekken laden">
+            <div className="grid gap-2 p-1" role="status" aria-label={t('Gesprekken laden')}>
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-3/4" />
             </div>
           )}
           {chat.historyStatus === 'error' && (
             <div className="space-y-2 p-2 text-sm">
-              <p>Gesprekken laden is mislukt.</p>
+              <p>{t('Gesprekken laden is mislukt.')}</p>
               <Button size="sm" variant="outline" onClick={chat.reloadHistory}>
-                Opnieuw laden
+                {t('Opnieuw laden')}
               </Button>
             </div>
           )}
           {chat.historyStatus === 'ready' && !chat.history.length && (
             <p className="p-2 text-sm text-muted-foreground">
               {chat.historyQuery
-                ? 'Geen gesprekken gevonden.'
-                : 'Hier staan je opgeslagen gesprekken.'}
+                ? t('Geen gesprekken gevonden.')
+                : t('Hier staan je opgeslagen gesprekken.')}
             </p>
           )}
           {chat.historyStatus === 'ready' &&
@@ -337,7 +349,7 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        aria-label={'Opties voor ' + thread.title}
+                        aria-label={t('Opties voor ') + thread.title}
                       />
                     }
                     disabled={chat.busy}
@@ -346,15 +358,17 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => setRename(thread)}>
-                      <Pencil /> Naam wijzigen
+                      <Pencil />
+                      {t('Naam wijzigen')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => chat.updateThread(thread.id, { archived: !thread.archived })}
                     >
-                      <Archive /> {thread.archived ? 'Uit archief halen' : 'Archiveren'}
+                      <Archive /> {thread.archived ? t('Uit archief halen') : t('Archiveren')}
                     </DropdownMenuItem>
                     <DropdownMenuItem variant="destructive" onClick={() => setRemove(thread)}>
-                      <Trash2 /> Verwijderen
+                      <Trash2 />
+                      {t('Verwijderen')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -368,7 +382,7 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
               disabled={chat.loadingMore}
               onClick={chat.loadMore}
             >
-              {chat.loadingMore ? 'Laden…' : 'Meer gesprekken'}
+              {chat.loadingMore ? t('Laden…') : t('Meer gesprekken')}
             </Button>
           )}
         </div>
@@ -381,8 +395,8 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Naam wijzigen</DialogTitle>
-            <DialogDescription>Geef dit gesprek een herkenbare naam.</DialogDescription>
+            <DialogTitle>{t('Naam wijzigen')}</DialogTitle>
+            <DialogDescription>{t('Geef dit gesprek een herkenbare naam.')}</DialogDescription>
           </DialogHeader>
           {rename && (
             <form
@@ -395,7 +409,7 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
               }}
             >
               <Field>
-                <FieldLabel htmlFor={titleID}>Naam van gesprek</FieldLabel>
+                <FieldLabel htmlFor={titleID}>{t('Naam van gesprek')}</FieldLabel>
                 <Input
                   id={titleID}
                   name="title"
@@ -405,7 +419,7 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
                 />
               </Field>
               <DialogFooter>
-                <Button type="submit">Opslaan</Button>
+                <Button type="submit">{t('Opslaan')}</Button>
               </DialogFooter>
             </form>
           )}
@@ -419,21 +433,22 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Gesprek verwijderen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('Gesprek verwijderen?')}</AlertDialogTitle>
             <AlertDialogDescription>
-              De berichten en privébijlagen in dit gesprek worden verwijderd. Eerder opgeslagen
-              wijzigingen in het CMS blijven beschikbaar.
+              {t(
+                'De berichten en privébijlagen in dit gesprek worden verwijderd. Eerder opgeslagen wijzigingen in het CMS blijven beschikbaar.',
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogCancel>{t('Annuleren')}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
                 if (remove) chat.updateThread(remove.id, 'delete')
               }}
             >
-              Gesprek verwijderen
+              {t('Gesprek verwijderen')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -451,6 +466,8 @@ function Chat({
   setIncludeContext,
   full,
 }: State & { full: boolean }) {
+  const t = useComparisonTranslations()
+
   const connected = chat.model?.connected === true
   const [historyOpen, setHistoryOpen] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
@@ -458,7 +475,8 @@ function Chat({
   const allowedTypes = chat.model?.capabilities?.attachmentTypes ?? []
   const efforts = chat.model?.capabilities?.efforts ?? []
   const composerAvailable = connected && !chat.thread?.archived
-  const statusText = chat.notice || (chat.modelStatus === 'loading' ? 'Modelverbinding laden…' : '')
+  const statusText =
+    t(chat.notice) || (chat.modelStatus === 'loading' ? t('Modelverbinding laden…') : '')
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -470,7 +488,7 @@ function Chat({
                 size="sm"
                 variant="ghost"
                 className={full ? 'lg:hidden' : undefined}
-                aria-label="Gespreksgeschiedenis"
+                aria-label={t('Gespreksgeschiedenis')}
               />
             }
           >
@@ -478,15 +496,17 @@ function Chat({
           </DialogTrigger>
           <DialogContent className="max-w-sm" showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle>Gespreksgeschiedenis</DialogTitle>
-              <DialogDescription>Kies een opgeslagen gesprek of begin opnieuw.</DialogDescription>
+              <DialogTitle>{t('Gespreksgeschiedenis')}</DialogTitle>
+              <DialogDescription>
+                {t('Kies een opgeslagen gesprek of begin opnieuw.')}
+              </DialogDescription>
             </DialogHeader>
             <div className="flex h-[min(30rem,65dvh)] min-h-0 overflow-hidden rounded-lg border">
               <ThreadHistory chat={chat} onSelect={() => setHistoryOpen(false)} />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setHistoryOpen(false)}>
-                Sluiten
+                {t('Sluiten')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -503,7 +523,7 @@ function Chat({
             disabled={chat.busy}
             onClick={() => setIncludeContext(!includeContext)}
           >
-            <FileText /> {includeContext ? 'Documentcontext actief' : 'Documentcontext uit'}
+            <FileText /> {includeContext ? t('Documentcontext actief') : t('Documentcontext uit')}
           </Button>
         )}
         <span className="ms-auto text-xs text-muted-foreground">
@@ -516,13 +536,14 @@ function Chat({
           onClick={chat.newThread}
           disabled={chat.busy}
         >
-          <Plus /> Nieuw gesprek
+          <Plus />
+          {t('Nieuw gesprek')}
         </Button>
       </div>
       <div className="min-h-0 flex-1">
         <MessageScrollerProvider autoScroll>
           <MessageScroller>
-            <MessageScrollerViewport role="log" aria-label="Gesprek" aria-live="polite">
+            <MessageScrollerViewport role="log" aria-label={t('Gesprek')} aria-live="polite">
               <MessageScrollerContent className="mx-auto max-w-3xl gap-5 px-4 py-4">
                 {chat.operation === 'thread' && !chat.messages.length && (
                   <Skeleton className="h-20 w-full" />
@@ -533,9 +554,9 @@ function Chat({
                       <EmptyMedia variant="icon">
                         <Sparkles />
                       </EmptyMedia>
-                      <EmptyTitle>Waar kan ik mee helpen?</EmptyTitle>
+                      <EmptyTitle>{t('Waar kan ik mee helpen?')}</EmptyTitle>
                       <EmptyDescription>
-                        Vraag iets over je website of maak samen een concept.
+                        {t('Vraag iets over je website of maak samen een concept.')}
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
@@ -555,7 +576,7 @@ function Chat({
                       <TraceIcon>
                         <Spinner />
                       </TraceIcon>
-                      <TraceTitle>Antwoord voorbereiden</TraceTitle>
+                      <TraceTitle>{t('Antwoord voorbereiden')}</TraceTitle>
                     </TraceLine>
                   </Trace>
                 )}
@@ -569,8 +590,13 @@ function Chat({
                       <Trash2 />
                     </ItemMedia>
                     <ItemContent>
-                      <ItemTitle>{chat.approval.label} verwijderen?</ItemTitle>
-                      <ItemDescription>Dit verwijdert het document uit Payload.</ItemDescription>
+                      <ItemTitle>
+                        {chat.approval.label}
+                        {t('verwijderen?')}
+                      </ItemTitle>
+                      <ItemDescription>
+                        {t('Dit verwijdert het document uit Payload.')}
+                      </ItemDescription>
                     </ItemContent>
                     <ItemActions className="flex-wrap">
                       <Button
@@ -579,7 +605,7 @@ function Chat({
                         disabled={chat.busy}
                         onClick={chat.reject}
                       >
-                        Annuleren
+                        {t('Annuleren')}
                       </Button>
                       {tenant.canManage && (
                         <Button
@@ -588,7 +614,7 @@ function Chat({
                           disabled={chat.busy}
                           onClick={chat.approve}
                         >
-                          Verwijderen
+                          {t('Verwijderen')}
                         </Button>
                       )}
                     </ItemActions>
@@ -609,7 +635,7 @@ function Chat({
         {chat.error && (
           <Alert variant="destructive" role="alert">
             <AlertDescription>
-              <span>{chat.error}</span>
+              <span>{t(chat.error)}</span>
               {chat.thread && (
                 <Button
                   size="sm"
@@ -618,7 +644,7 @@ function Chat({
                   onClick={chat.reloadThread}
                   disabled={chat.busy}
                 >
-                  Gesprek opnieuw laden
+                  {t('Gesprek opnieuw laden')}
                 </Button>
               )}
             </AlertDescription>
@@ -626,15 +652,15 @@ function Chat({
         )}
         {chat.modelStatus === 'error' && (
           <p className="text-sm text-destructive">
-            De modelverbinding kon niet worden geladen. Laad de pagina opnieuw.
+            {t('De modelverbinding kon niet worden geladen. Laad de pagina opnieuw.')}
           </p>
         )}
         {chat.model?.connected === false && (
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>
               {tenant.canManage
-                ? 'Verbind een model om te beginnen.'
-                : 'Vraag je websitebeheerder om een model te verbinden.'}
+                ? t('Verbind een model om te beginnen.')
+                : t('Vraag je websitebeheerder om een model te verbinden.')}
             </span>
             {tenant.canManage && (
               <Button
@@ -643,14 +669,15 @@ function Chat({
                 nativeButton={false}
                 render={<Link href={assistantSettingsHref(tenant.id)} />}
               >
-                <Settings2 /> Model verbinden
+                <Settings2 />
+                {t('Model verbinden')}
               </Button>
             )}
           </div>
         )}
         {chat.thread?.archived && (
           <p className="text-sm text-muted-foreground">
-            Haal dit gesprek uit het archief om verder te chatten.
+            {t('Haal dit gesprek uit het archief om verder te chatten.')}
           </p>
         )}
         <form
@@ -673,12 +700,12 @@ function Chat({
               </InputGroupAddon>
             )}
             <InputGroupTextarea
-              aria-label="Bericht"
+              aria-label={t('Bericht')}
               value={chat.input}
               rows={2}
               maxLength={6000}
               disabled={!composerAvailable}
-              placeholder="Hoe kan ik helpen?"
+              placeholder={t('Hoe kan ik helpen?')}
               onChange={(event) => chat.setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -694,7 +721,7 @@ function Chat({
                 multiple
                 accept={allowedTypes.join(',')}
                 hidden
-                aria-label="Bestanden"
+                aria-label={t('Bestanden')}
                 onChange={(event) => {
                   chat.upload(event.target.files)
                   event.target.value = ''
@@ -702,7 +729,7 @@ function Chat({
               />
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  render={<InputGroupButton size="icon-sm" aria-label="Bijlage toevoegen" />}
+                  render={<InputGroupButton size="icon-sm" aria-label={t('Bijlage toevoegen')} />}
                   disabled={
                     !composerAvailable ||
                     !allowedTypes.length ||
@@ -714,10 +741,12 @@ function Chat({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={() => upload.current?.click()}>
-                    <Paperclip /> Privébestand uploaden
+                    <Paperclip />
+                    {t('Privébestand uploaden')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setAssetsOpen(true)}>
-                    <FileText /> Uit mediabibliotheek
+                    <FileText />
+                    {t('Uit mediabibliotheek')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -733,9 +762,10 @@ function Chat({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                       <DropdownMenuGroup>
-                        <DropdownMenuLabel>Verbonden model</DropdownMenuLabel>
+                        <DropdownMenuLabel>{t('Verbonden model')}</DropdownMenuLabel>
                         <DropdownMenuItem render={<Link href={assistantSettingsHref(tenant.id)} />}>
-                          <Settings2 /> Modelverbinding beheren
+                          <Settings2 />
+                          {t('Modelverbinding beheren')}
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
@@ -747,18 +777,18 @@ function Chat({
                 ))}
               {connected && efforts.length > 0 && (
                 <OptionMenu
-                  label="Redeneerinspanning"
+                  label={t('Redeneerinspanning')}
                   value={chat.effort}
-                  options={['default', ...efforts].map((key) => [key, effortLabels[key] ?? key])}
+                  options={['default', ...efforts].map((key) => [key, t(effortLabels[key] ?? key)])}
                   onChange={chat.setEffort}
                   disabled={chat.busy}
                 />
               )}
               {connected && (
                 <OptionMenu
-                  label="Antwoordlengte"
+                  label={t('Antwoordlengte')}
                   value={chat.detail}
-                  options={Object.entries(responseLabels)}
+                  options={Object.entries(responseLabels).map(([key, label]) => [key, t(label)])}
                   onChange={(value) => chat.setDetail(value as ResponseDetail)}
                   disabled={chat.busy}
                 />
@@ -768,7 +798,7 @@ function Chat({
                 variant="default"
                 className="ms-auto rounded-full"
                 type={chat.streaming ? 'button' : 'submit'}
-                aria-label={chat.streaming ? 'Stop' : 'Versturen'}
+                aria-label={chat.streaming ? 'Stop' : t('Versturen')}
                 disabled={
                   !chat.streaming &&
                   (!composerAvailable ||
@@ -845,6 +875,8 @@ function AttachmentCard({
   onRemove?: () => void
   disabled?: boolean
 }) {
+  const t = useComparisonTranslations()
+
   const href =
     file.url.startsWith('/api/assistant-uploads/file/') || file.url.startsWith('/api/media/file/')
       ? file.url
@@ -858,10 +890,10 @@ function AttachmentCard({
         <AttachmentTitle>
           {href ? (
             <a href={href} target="_blank" rel="noreferrer" className="hover:underline">
-              {file.filename || 'Bijlage'}
+              {file.filename || t('Bijlage')}
             </a>
           ) : (
-            file.filename || 'Bijlage'
+            file.filename || t('Bijlage')
           )}
         </AttachmentTitle>
       </AttachmentContent>
@@ -869,7 +901,7 @@ function AttachmentCard({
         <AttachmentActions>
           <AttachmentAction
             type="button"
-            aria-label={'Verwijder ' + (file.filename || 'bijlage')}
+            aria-label={t('Verwijder ') + (file.filename || t('bijlage'))}
             disabled={disabled}
             onClick={onRemove}
           >
@@ -882,6 +914,8 @@ function AttachmentCard({
 }
 
 function ChatTurn({ message, tenant }: { message: ChatMessage; tenant: number }) {
+  const t = useComparisonTranslations()
+
   const [copied, setCopied] = useState(false)
   const user = message.role === 'user'
   const text = message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('\n')
@@ -908,7 +942,7 @@ function ChatTurn({ message, tenant }: { message: ChatMessage; tenant: number })
                   status={failed ? 'error' : complete ? undefined : 'running'}
                 >
                   <TraceIcon>{complete ? failed ? <X /> : <Check /> : <Spinner />}</TraceIcon>
-                  <TraceTitle>{toolLabels[getToolName(part)] ?? 'CMS-actie'}</TraceTitle>
+                  <TraceTitle>{t(toolLabels[getToolName(part)] ?? 'CMS-actie')}</TraceTitle>
                 </TraceLine>
               )
             })}
@@ -935,7 +969,7 @@ function ChatTurn({ message, tenant }: { message: ChatMessage; tenant: number })
           <Button
             size="icon-sm"
             variant="ghost"
-            aria-label={copied ? 'Antwoord gekopieerd' : 'Antwoord kopiëren'}
+            aria-label={copied ? t('Antwoord gekopieerd') : t('Antwoord kopiëren')}
             onClick={() =>
               void navigator.clipboard
                 .writeText(text)
@@ -958,9 +992,11 @@ function DraftLink({
   tenant: number
   result: { id: number; locale: 'nl' | 'en'; preview?: string | null }
 }) {
+  const t = useComparisonTranslations()
+
   return (
     <Alert>
-      <AlertTitle>Homepageconcept opgeslagen</AlertTitle>
+      <AlertTitle>{t('Homepageconcept opgeslagen')}</AlertTitle>
       <AlertDescription className="flex flex-wrap gap-2">
         <Button
           size="sm"
@@ -974,7 +1010,7 @@ function DraftLink({
             />
           }
         >
-          Open concept
+          {t('Open concept')}
         </Button>
         {result.preview && (
           <Button
@@ -983,7 +1019,7 @@ function DraftLink({
             nativeButton={false}
             render={<a href={result.preview} target="_blank" rel="noreferrer" />}
           >
-            Open voorbeeld
+            {t('Open voorbeeld')}
           </Button>
         )}
       </AlertDescription>
@@ -1011,6 +1047,8 @@ function MediaPicker({
   allowedTypes: string[]
   onSelect: (file: FileUIPart) => void
 }) {
+  const t = useComparisonTranslations()
+
   const [query, setQuery] = useState('')
   const [result, setResult] = useState<{ docs?: Asset[]; error?: boolean }>({})
   useEffect(() => {
@@ -1062,12 +1100,12 @@ function MediaPicker({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Uit mediabibliotheek</DialogTitle>
-          <DialogDescription>Kies een bestand van deze website.</DialogDescription>
+          <DialogTitle>{t('Uit mediabibliotheek')}</DialogTitle>
+          <DialogDescription>{t('Kies een bestand van deze website.')}</DialogDescription>
         </DialogHeader>
         <Input
-          aria-label="Media zoeken"
-          placeholder="Zoek op bestandsnaam"
+          aria-label={t('Media zoeken')}
+          placeholder={t('Zoek op bestandsnaam')}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value)
@@ -1075,7 +1113,9 @@ function MediaPicker({
           }}
         />
         <ScrollArea className="h-64">
-          {result.error && <p className="text-sm text-destructive">Media laden is mislukt.</p>}
+          {result.error && (
+            <p className="text-sm text-destructive">{t('Media laden is mislukt.')}</p>
+          )}
           {!result.docs && !result.error && <Skeleton className="h-14 w-full" />}
           {result.docs
             ?.filter(({ mimeType }) => mimeType && allowedTypes.includes(mimeType))
@@ -1093,7 +1133,9 @@ function MediaPicker({
             ))}
           {result.docs &&
             !result.docs.some(({ mimeType }) => mimeType && allowedTypes.includes(mimeType)) && (
-              <p className="text-sm text-muted-foreground">Geen ondersteunde bestanden gevonden.</p>
+              <p className="text-sm text-muted-foreground">
+                {t('Geen ondersteunde bestanden gevonden.')}
+              </p>
             )}
         </ScrollArea>
       </DialogContent>
@@ -1102,12 +1144,14 @@ function MediaPicker({
 }
 
 export function ShadcnAssistantSettings() {
+  const t = useComparisonTranslations()
+
   const state = useContext(AssistantState)
   if (!state)
     return (
       <Alert>
         <AlertDescription>
-          Je hebt geen toegang tot de assistent voor deze website.
+          {t('Je hebt geen toegang tot de assistent voor deze website.')}
         </AlertDescription>
       </Alert>
     )
@@ -1115,6 +1159,8 @@ export function ShadcnAssistantSettings() {
 }
 
 function ConnectionSettings({ chat, tenant }: State) {
+  const t = useComparisonTranslations()
+
   const [replacing, setReplacing] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const connection = chat.model?.settings
@@ -1122,21 +1168,23 @@ function ConnectionSettings({ chat, tenant }: State) {
     <div className="grid max-w-2xl gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Modelverbinding</CardTitle>
-          <CardDescription>Deze verbinding geldt voor {tenant.name}.</CardDescription>
+          <CardTitle>{t('Modelverbinding')}</CardTitle>
+          <CardDescription>
+            {t('Deze verbinding geldt voor')} {tenant.name}.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={chat.model?.connected ? 'default' : 'secondary'}>
               {chat.model?.connected
-                ? 'Verbonden'
+                ? t('Verbonden')
                 : chat.model
-                  ? 'Geen model verbonden'
-                  : 'Verbinding laden…'}
+                  ? t('Geen model verbonden')
+                  : t('Verbinding laden…')}
             </Badge>
             {connection && (
               <span className="text-sm text-muted-foreground">
-                {providerLabels[connection.provider]}
+                {t(providerLabels[connection.provider])}
               </span>
             )}
             {chat.model?.model && <span className="text-sm font-medium">{chat.model.model}</span>}
@@ -1147,19 +1195,19 @@ function ConnectionSettings({ chat, tenant }: State) {
               role={chat.error || chat.modelStatus === 'error' ? 'alert' : 'status'}
             >
               <AlertDescription>
-                {chat.error || chat.notice || 'De modelverbinding kon niet worden geladen.'}
+                {t(chat.error || chat.notice || 'De modelverbinding kon niet worden geladen.')}
               </AlertDescription>
             </Alert>
           )}
           {!tenant.canManage && (
             <p className="text-sm text-muted-foreground">
-              Websitebeheerders kunnen de modelverbinding wijzigen.
+              {t('Websitebeheerders kunnen de modelverbinding wijzigen.')}
             </p>
           )}
           {tenant.canManage && chat.model?.connected && (
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => setReplacing(!replacing)}>
-                Verbinding wijzigen
+                {t('Verbinding wijzigen')}
               </Button>
               <Button
                 size="sm"
@@ -1167,7 +1215,7 @@ function ConnectionSettings({ chat, tenant }: State) {
                 onClick={() => setDisconnecting(true)}
                 disabled={chat.busy}
               >
-                Loskoppelen
+                {t('Loskoppelen')}
               </Button>
             </div>
           )}
@@ -1183,15 +1231,15 @@ function ConnectionSettings({ chat, tenant }: State) {
       <AlertDialog open={disconnecting} onOpenChange={setDisconnecting}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Model loskoppelen?</AlertDialogTitle>
+            <AlertDialogTitle>{t('Model loskoppelen?')}</AlertDialogTitle>
             <AlertDialogDescription>
-              De opgeslagen sleutel wordt verwijderd. Gesprekken blijven beschikbaar.
+              {t('De opgeslagen sleutel wordt verwijderd. Gesprekken blijven beschikbaar.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogCancel>{t('Annuleren')}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={() => chat.disconnect()}>
-              Loskoppelen
+              {t('Loskoppelen')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1201,14 +1249,18 @@ function ConnectionSettings({ chat, tenant }: State) {
 }
 
 function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved: () => void }) {
+  const t = useComparisonTranslations()
+
   const formId = useId()
   const values = chat.model?.settings
   const [provider, setProvider] = useState<ModelProvider>(values?.provider ?? 'openai')
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{chat.model?.connected ? 'Verbinding vervangen' : 'Model verbinden'}</CardTitle>
-        <CardDescription>Gebruik de API-sleutel van deze website.</CardDescription>
+        <CardTitle>
+          {chat.model?.connected ? t('Verbinding vervangen') : t('Model verbinden')}
+        </CardTitle>
+        <CardDescription>{t('Gebruik de API-sleutel van deze website.')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -1238,7 +1290,7 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
               </NativeSelect>
             </Field>
             <Field>
-              <FieldLabel htmlFor={formId + '-model'}>Model-ID</FieldLabel>
+              <FieldLabel htmlFor={formId + '-model'}>{t('Model-ID')}</FieldLabel>
               <Input
                 id={formId + '-model'}
                 name="model"
@@ -1249,7 +1301,7 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
             </Field>
             {provider === 'openai-compatible' && (
               <Field>
-                <FieldLabel htmlFor={formId + '-url'}>Provider-URL</FieldLabel>
+                <FieldLabel htmlFor={formId + '-url'}>{t('Provider-URL')}</FieldLabel>
                 <Input
                   id={formId + '-url'}
                   name="baseURL"
@@ -1260,7 +1312,7 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
               </Field>
             )}
             <Field>
-              <FieldLabel htmlFor={formId + '-key'}>API-sleutel</FieldLabel>
+              <FieldLabel htmlFor={formId + '-key'}>{t('API-sleutel')}</FieldLabel>
               <Input
                 id={formId + '-key'}
                 name="apiKey"
@@ -1268,10 +1320,10 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
                 required
                 autoComplete="new-password"
               />
-              <FieldDescription>Sleutels worden versleuteld opgeslagen.</FieldDescription>
+              <FieldDescription>{t('Sleutels worden versleuteld opgeslagen.')}</FieldDescription>
             </Field>
             <Button className="w-fit" type="submit" disabled={chat.busy}>
-              Verbinding opslaan
+              {t('Verbinding opslaan')}
             </Button>
           </FieldGroup>
         </form>

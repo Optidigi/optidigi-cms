@@ -48,10 +48,19 @@ test('stock Payload keeps native editors and role-scoped navigation', async ({
     await page.route('https://example.com/**', (route) => route.fulfill({ body: '' }))
     const documentRoute = '/admin/collections/pages/' + home.id + '?locale=en'
     expect((await page.goto(documentRoute, { waitUntil: 'domcontentloaded' }))?.status()).toBe(200)
+    const appearance = await page.locator('html').getAttribute('lang')
+    const nativeLanguage = page.getByRole('button', {
+      name: /^(Interface language|Interfacetaal):/,
+    })
+    await expect(nativeLanguage).toBeVisible()
+    await nativeLanguage.click()
+    await expect(page.locator('html')).toHaveAttribute('lang', appearance === 'en' ? 'nl' : 'en')
+    await expect(page).toHaveURL(documentRoute)
+    await nativeLanguage.click()
+    await expect(page.locator('html')).toHaveAttribute('lang', appearance!)
+
     for (const collection of ['pages', 'articles', 'projects', 'media', 'site-settings']) {
-      await expect(
-        page.locator('nav a[href="/admin/collections/' + collection + '"]'),
-      ).toBeVisible()
+      await expect(page.locator('#nav-' + collection)).toBeVisible()
     }
     await expect(page.locator('nav a[href="/admin/collections/tenants"]')).toHaveCount(0)
     await expect(page.locator('nav a[href="/admin/collections/users"]')).toHaveCount(0)

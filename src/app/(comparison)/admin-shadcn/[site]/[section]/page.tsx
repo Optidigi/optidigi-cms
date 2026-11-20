@@ -1,3 +1,4 @@
+import { comparisonTranslations, getContentLanguage } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { FileText, Plus } from 'lucide-react'
@@ -22,7 +23,7 @@ import {
   type EditorialSection,
 } from '@/admin-comparison/data'
 import { Editor } from '@/admin-comparison/editor'
-import { previewURL, siteLocale } from '@/site/preview'
+import { previewURL } from '@/site/preview'
 import { isPlatformAdmin, relationID } from '@/site/access'
 
 export default async function SectionPage({
@@ -32,11 +33,13 @@ export default async function SectionPage({
   params: Promise<{ site: string; section: string }>
   searchParams: Promise<{ locale?: string; id?: string; page?: string; new?: string; q?: string }>
 }) {
+  const t = await comparisonTranslations()
+
   const { site, section: value } = await params
   if (!Object.hasOwn(editorialSections, value)) notFound()
   const section = value as EditorialSection
   const query = await searchParams
-  const locale = siteLocale(query.locale) ?? 'nl'
+  const locale = await getContentLanguage(query.locale)
   const { req, selected } = await currentSite(site)
   const root = adminRoot + '/' + selected.id + '/' + section
   const localized = root + '?locale=' + locale
@@ -101,9 +104,8 @@ export default async function SectionPage({
   const title = document
     ? 'title' in document
       ? document.title || 'Document'
-      : editorialSections[section]
-    : editorialSections[section]
-  const suffix = document && !isSettings ? '&id=' + document.id : query.new ? '&new=1' : ''
+      : t(editorialSections[section])
+    : t(editorialSections[section])
 
   return (
     <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-5 px-4 py-6 sm:px-6">
@@ -111,30 +113,12 @@ export default async function SectionPage({
         <div>
           {editing && !isSettings && (
             <Link href={localized} className="text-sm text-muted-foreground hover:underline">
-              {editorialSections[section]}
+              {t(editorialSections[section])}
             </Link>
           )}
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground">{selected.name}</p>
         </div>
-        <nav aria-label="Inhoudstaal" className="flex items-center gap-2">
-          {(['nl', 'en'] as const).map((code) => (
-            <Button
-              key={code}
-              variant={code === locale ? 'secondary' : 'ghost'}
-              size="sm"
-              nativeButton={false}
-              render={
-                <Link
-                  href={root + '?locale=' + code + suffix}
-                  aria-current={code === locale ? 'page' : undefined}
-                />
-              }
-            >
-              {code === 'nl' ? 'Nederlands' : 'English'}
-            </Button>
-          ))}
-        </nav>
       </header>
       {editing ? (
         <Editor
@@ -151,17 +135,18 @@ export default async function SectionPage({
               <Input
                 type="search"
                 name="q"
-                aria-label="Zoek op titel"
-                placeholder="Zoek op titel"
+                aria-label={t('Zoek op titel')}
+                placeholder={t('Zoek op titel')}
                 defaultValue={search}
                 maxLength={150}
               />
               <Button variant="outline" type="submit">
-                Zoeken
+                {t('Zoeken')}
               </Button>
             </form>
             <Button nativeButton={false} render={<Link href={localized + '&new=1'} />}>
-              <Plus /> Nieuw document
+              <Plus />
+              {t('Nieuw document')}
             </Button>
           </div>
           {list?.docs.length ? (
@@ -170,9 +155,9 @@ export default async function SectionPage({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Titel</TableHead>
+                      <TableHead>{t('Titel')}</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Gewijzigd</TableHead>
+                      <TableHead>{t('Gewijzigd')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -183,16 +168,17 @@ export default async function SectionPage({
                             href={localized + '&id=' + doc.id}
                             className="font-medium hover:underline"
                           >
-                            {doc.title || (doc.slug === 'home' ? 'Homepage' : 'Naamloos document')}
+                            {doc.title ||
+                              (doc.slug === 'home' ? 'Homepage' : t('Naamloos document'))}
                           </Link>
                         </TableCell>
                         <TableCell>
                           <Badge variant={doc._status === 'published' ? 'secondary' : 'outline'}>
-                            {doc._status === 'published' ? 'Gepubliceerd' : 'Concept'}
+                            {doc._status === 'published' ? t('Gepubliceerd') : t('Concept')}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(doc.updatedAt).toLocaleDateString('nl-NL', {
+                          {new Date(doc.updatedAt).toLocaleDateString(t('nl-NL'), {
                             timeZone: 'Europe/Amsterdam',
                           })}
                         </TableCell>
@@ -219,7 +205,7 @@ export default async function SectionPage({
                           />
                         }
                       >
-                        Vorige
+                        {t('Vorige')}
                       </Button>
                     )}
                     {list.hasNextPage && (
@@ -239,7 +225,7 @@ export default async function SectionPage({
                           />
                         }
                       >
-                        Volgende
+                        {t('Volgende')}
                       </Button>
                     )}
                   </div>
@@ -253,8 +239,10 @@ export default async function SectionPage({
                   <EmptyMedia variant="icon">
                     <FileText />
                   </EmptyMedia>
-                  <EmptyTitle>{search ? 'Geen resultaten' : 'Nog geen documenten'}</EmptyTitle>
-                  {search && <EmptyDescription>Probeer een andere titel.</EmptyDescription>}
+                  <EmptyTitle>
+                    {search ? t('Geen resultaten') : t('Nog geen documenten')}
+                  </EmptyTitle>
+                  {search && <EmptyDescription>{t('Probeer een andere titel.')}</EmptyDescription>}
                 </EmptyHeader>
               </Empty>
             </Card>

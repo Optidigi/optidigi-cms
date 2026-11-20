@@ -1,9 +1,11 @@
 'use client'
 
+import { useComparisonTranslations, useEditingGuard } from '@/admin-comparison/i18n-context'
+
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CircleAlert, ExternalLink, History, Plus, Trash2 } from 'lucide-react'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -61,6 +63,10 @@ export function Editor({
   versions: { id: string; updatedAt: string }[]
   canDelete: boolean
 }) {
+  const t = useComparisonTranslations()
+
+  const { markDirty } = useEditingGuard()
+  useEffect(() => () => markDirty(false), [markDirty])
   const router = useRouter()
   const [pending, run] = useTransition()
   const [completion, setCompletion] = useState<SaveResult>()
@@ -85,6 +91,13 @@ export function Editor({
     run(async () => {
       const { result, id } = await saveComparison(form)
       setCompletion(result)
+      if (
+        result === 'deleted' ||
+        result === 'saved' ||
+        result === 'published' ||
+        result === 'restored'
+      )
+        markDirty(false)
       if (result === 'deleted') router.replace(base + '?locale=' + locale)
       else if (id && !document.id)
         router.replace(base + '?locale=' + locale + (isSettings ? '' : '&id=' + id))
@@ -103,25 +116,26 @@ export function Editor({
         <CardHeader className="flex-row items-center justify-between gap-3">
           <CardTitle role="heading" aria-level={2}>
             {isSettings
-              ? 'Website-instellingen bewerken'
+              ? t('Website-instellingen bewerken')
               : homepage
-                ? 'Homepage bewerken'
+                ? t('Homepage bewerken')
                 : document.id
-                  ? 'Document bewerken'
-                  : 'Document aanmaken'}
+                  ? t('Document bewerken')
+                  : t('Document aanmaken')}
           </CardTitle>
           <Badge variant="secondary">
-            {document._status === 'published' ? 'Gepubliceerd' : 'Concept'}
+            {document._status === 'published' ? t('Gepubliceerd') : t('Concept')}
           </Badge>
         </CardHeader>
         <CardContent className="space-y-4">
           {completion && (
             <Alert variant={failed ? 'destructive' : 'default'} role="status">
               {failed && <CircleAlert />}
-              <AlertDescription>{notices[completion]}</AlertDescription>
+              <AlertDescription>{t(notices[completion])}</AlertDescription>
             </Alert>
           )}
           <form
+            onChange={() => markDirty(true)}
             onSubmit={(event) => {
               event.preventDefault()
               const button = (event.nativeEvent as SubmitEvent).submitter
@@ -131,9 +145,9 @@ export function Editor({
             <FieldGroup key={document.updatedAt}>
               {!isSettings ? (
                 <>
-                  <TextField id="title" label="Titel" required value={document.title} />
+                  <TextField id="title" label={t('Titel')} required value={document.title} />
                   <Field>
-                    <FieldLabel htmlFor="slug">URL-naam</FieldLabel>
+                    <FieldLabel htmlFor="slug">{t('URL-naam')}</FieldLabel>
                     <Input
                       id="slug"
                       name="slug"
@@ -146,66 +160,73 @@ export function Editor({
                   </Field>
                   <TextField
                     id="heading"
-                    label="Paginakop"
+                    label={t('Paginakop')}
                     value={document.heading}
                     maxLength={200}
                   />
                   <TextField
                     id="description"
-                    label="Intro"
+                    label={t('Intro')}
                     value={document.description}
                     multiline
                     maxLength={1000}
                   />
                   <Field>
-                    <FieldLabel>Inhoud</FieldLabel>
+                    <FieldLabel>{t('Inhoud')}</FieldLabel>
                     {!document.body || editableBody(document.body) ? (
-                      <RichTextEditor value={document.body} onChange={setBody} />
+                      <RichTextEditor
+                        value={document.body}
+                        onChange={(value) => {
+                          setBody(value)
+                          markDirty(true)
+                        }}
+                      />
                     ) : (
                       <FieldDescription>
-                        Open dit document in Payload om de bestaande opmaak te bewerken.
+                        {t('Open dit document in Payload om de bestaande opmaak te bewerken.')}
                       </FieldDescription>
                     )}
                   </Field>
                 </>
               ) : (
                 <>
-                  <TextField id="name" label="Websitenaam" value={document.name} required />
+                  <TextField id="name" label={t('Websitenaam')} value={document.name} required />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <TextField
                       id="contactEmail"
-                      label="Contactmail"
+                      label={t('Contactmail')}
                       type="email"
                       value={document.contactEmail}
                     />
-                    <TextField id="phone" label="Telefoonnummer" value={document.phone} />
+                    <TextField id="phone" label={t('Telefoonnummer')} value={document.phone} />
                   </div>
                   <NavigationFields navigation={document.navigation} />
                 </>
               )}
               <TextField
                 id="seoTitle"
-                label="SEO-titel"
+                label={t('SEO-titel')}
                 value={document.seo?.title}
                 maxLength={200}
               />
               <TextField
                 id="seoDescription"
-                label="SEO-beschrijving"
+                label={t('SEO-beschrijving')}
                 value={document.seo?.description}
                 multiline
                 maxLength={500}
               />
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" value="draft" variant="outline" disabled={pending}>
-                  Concept opslaan
+                  {t('Concept opslaan')}
                 </Button>
                 <Button type="submit" value="publish" disabled={pending}>
-                  Publiceren
+                  {t('Publiceren')}
                 </Button>
                 {document.id && (
                   <Button variant="ghost" nativeButton={false} render={<Link href={native} />}>
-                    Open in Payload <ExternalLink />
+                    {t('Open in Payload')}
+                    <ExternalLink />
                   </Button>
                 )}
                 {canDelete && document.id && !homepage && !isSettings && (
@@ -215,7 +236,8 @@ export function Editor({
                     disabled={pending}
                     onClick={() => setConfirmDelete(true)}
                   >
-                    <Trash2 /> Verwijderen
+                    <Trash2 />
+                    {t('Verwijderen')}
                   </Button>
                 )}
               </div>
@@ -223,10 +245,12 @@ export function Editor({
           </form>
           {confirmDelete && (
             <Alert variant="destructive">
-              <AlertDescription>Wil je dit document definitief verwijderen?</AlertDescription>
+              <AlertDescription>
+                {t('Wil je dit document definitief verwijderen?')}
+              </AlertDescription>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
-                  Annuleren
+                  {t('Annuleren')}
                 </Button>
                 <Button
                   type="button"
@@ -234,7 +258,7 @@ export function Editor({
                   disabled={pending}
                   onClick={() => save(new FormData(), 'delete')}
                 >
-                  Verwijderen bevestigen
+                  {t('Verwijderen bevestigen')}
                 </Button>
               </div>
             </Alert>
@@ -242,7 +266,8 @@ export function Editor({
           {versions.length > 0 && (
             <Collapsible className="border-t pt-3">
               <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
-                <History /> Versiegeschiedenis
+                <History />
+                {t('Versiegeschiedenis')}
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-2 pt-2">
                 {versions.map((version) => (
@@ -251,7 +276,7 @@ export function Editor({
                     className="flex flex-wrap items-center justify-between gap-2 text-sm"
                   >
                     <time dateTime={version.updatedAt}>
-                      {new Date(version.updatedAt).toLocaleString('nl-NL', {
+                      {new Date(version.updatedAt).toLocaleString(t('nl-NL'), {
                         timeZone: 'Europe/Amsterdam',
                       })}
                     </time>
@@ -261,7 +286,7 @@ export function Editor({
                       disabled={pending}
                       onClick={() => save(new FormData(), 'restore', version.id)}
                     >
-                      Herstel als concept
+                      {t('Herstel als concept')}
                     </Button>
                   </div>
                 ))}
@@ -270,7 +295,7 @@ export function Editor({
           )}
           {completion === 'conflict' && (
             <Button variant="outline" onClick={() => router.refresh()}>
-              Laad nieuwste versie
+              {t('Laad nieuwste versie')}
             </Button>
           )}
         </CardContent>
@@ -279,7 +304,7 @@ export function Editor({
         <Card>
           <CardHeader className="flex-row items-center justify-between gap-2">
             <CardTitle role="heading" aria-level={2}>
-              Websitevoorbeeld
+              {t('Websitevoorbeeld')}
             </CardTitle>
             {preview && (
               <Button
@@ -288,7 +313,8 @@ export function Editor({
                 nativeButton={false}
                 render={<Link href={preview} target="_blank" rel="noreferrer" />}
               >
-                Open in nieuw tabblad <ExternalLink />
+                {t('Open in nieuw tabblad')}
+                <ExternalLink />
               </Button>
             )}
           </CardHeader>
@@ -297,13 +323,13 @@ export function Editor({
               <iframe
                 key={document.updatedAt}
                 src={preview}
-                title="Websitevoorbeeld"
+                title={t('Websitevoorbeeld')}
                 className="h-[34rem] w-full rounded-md border bg-white"
                 referrerPolicy="no-referrer"
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                Voorbeeld is voor deze website nog niet beschikbaar.
+                {t('Voorbeeld is voor deze website nog niet beschikbaar.')}
               </p>
             )}
           </CardContent>
@@ -314,6 +340,8 @@ export function Editor({
 }
 
 function NavigationFields({ navigation }: { navigation: Document['navigation'] }) {
+  const t = useComparisonTranslations()
+
   const [links, setLinks] = useState(() =>
     (navigation ?? []).map((link, index) => ({
       ...link,
@@ -322,7 +350,7 @@ function NavigationFields({ navigation }: { navigation: Document['navigation'] }
   )
   return (
     <Field>
-      <FieldLabel>Websitenavigatie</FieldLabel>
+      <FieldLabel>{t('Websitenavigatie')}</FieldLabel>
       {links.map((link, index) => (
         <div
           className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
@@ -330,8 +358,8 @@ function NavigationFields({ navigation }: { navigation: Document['navigation'] }
         >
           <Input
             name="navLabel"
-            aria-label={'Linktekst ' + (index + 1)}
-            placeholder="Linktekst"
+            aria-label={t('Linktekst ') + (index + 1)}
+            placeholder={t('Linktekst')}
             required
             value={link.label}
             onChange={(event) =>
@@ -344,7 +372,7 @@ function NavigationFields({ navigation }: { navigation: Document['navigation'] }
           />
           <Input
             name="navHref"
-            aria-label={'Pad ' + (index + 1)}
+            aria-label={t('Pad ') + (index + 1)}
             placeholder="/contact"
             required
             value={link.href}
@@ -360,7 +388,7 @@ function NavigationFields({ navigation }: { navigation: Document['navigation'] }
             type="button"
             variant="outline"
             size="icon"
-            aria-label={'Verwijder link ' + (index + 1)}
+            aria-label={t('Verwijder link ') + (index + 1)}
             onClick={() => setLinks(links.filter((item) => item.key !== link.key))}
           >
             <Trash2 />
@@ -374,7 +402,8 @@ function NavigationFields({ navigation }: { navigation: Document['navigation'] }
         variant="outline"
         onClick={() => setLinks([...links, { key: crypto.randomUUID(), label: '', href: '' }])}
       >
-        <Plus /> Link toevoegen
+        <Plus />
+        {t('Link toevoegen')}
       </Button>
     </Field>
   )
