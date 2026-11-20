@@ -37,6 +37,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { AdminHeader } from './header'
+import { SettingsNavigation } from './settings-navigation'
 import { AccountMenu } from './account-menu'
 import { ShadcnAssistantLauncher, ShadcnAssistantProvider } from './assistant'
 import { assistantSettingsHref, adminRoot, contentLinks, siteHref } from './navigation'
@@ -127,6 +128,7 @@ export function AdminShell({
       active: pathname.startsWith(settingsRoot + '/') || pathname === settingsRoot,
     },
   ]
+  const inSettings = ['settings', 'site-settings', 'account', 'platform'].includes(section)
   const shell = (
     <SidebarProvider defaultOpen={sidebarOpen}>
       <Sidebar collapsible="icon" variant="inset">
@@ -159,7 +161,7 @@ export function AdminShell({
         </SidebarContent>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset className="min-w-0">
+      <SidebarInset className={assistant && section !== 'assistant' ? 'min-w-0 pb-20' : 'min-w-0'}>
         <AdminHeader
           breadcrumbs={
             <Breadcrumb className="min-w-0">
@@ -193,12 +195,17 @@ export function AdminShell({
             </Breadcrumb>
           }
         >
-          {assistant && section !== 'assistant' && (
-            <ShadcnAssistantLauncher route={assistantRoute} />
-          )}
           <AccountMenu website={selected?.id} platform={platform} />
         </AdminHeader>
-        {children}
+        {inSettings ? (
+          <div className="flex min-w-0 flex-1 flex-col lg:grid lg:grid-cols-[12rem_minmax(0,1fr)]">
+            <SettingsNavigation site={selected} membership={assistant} platform={platform} />
+            <div className="min-w-0">{children}</div>
+          </div>
+        ) : (
+          children
+        )}
+        {assistant && section !== 'assistant' && <ShadcnAssistantLauncher route={assistantRoute} />}
       </SidebarInset>
     </SidebarProvider>
   )

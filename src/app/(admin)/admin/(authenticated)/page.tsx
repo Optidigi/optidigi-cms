@@ -1,5 +1,7 @@
 import { adminTranslations } from '@/admin/i18n-server'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
+import { readPreferences } from '@/admin/preferences'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,7 +19,10 @@ export default async function ShadcnAdminPage() {
 
   const req = await adminRequest()
   const sites = await adminSites(req)
-  if (sites.length) redirect(adminRoot + '/' + sites[0].id)
+  const [preferences, jar] = await Promise.all([readPreferences(), cookies()])
+  const preferred = preferences?.website ?? Number(jar.get('optidigi-last-website')?.value)
+  const site = sites.find(({ id }) => id === preferred) ?? sites[0]
+  if (site) redirect(adminRoot + '/' + site.id)
   return (
     <Empty className="mx-auto mt-24 max-w-lg">
       <EmptyHeader>

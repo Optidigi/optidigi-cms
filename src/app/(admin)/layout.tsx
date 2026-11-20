@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getInterfaceLanguage } from '@/admin/i18n-server'
 import { InterfaceLanguageProvider } from '@/admin/i18n-context'
+import { readPreferences } from '@/admin/preferences'
 import { AdminTheme } from '@/admin/theme'
 import { GeistSans } from 'geist/font/sans'
 import type { ReactNode } from 'react'
@@ -13,11 +14,11 @@ export const metadata: Metadata = {
 }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const language = await getInterfaceLanguage()
+  const [language, preferences] = await Promise.all([getInterfaceLanguage(), readPreferences()])
   return (
     <html lang={language} className={GeistSans.variable} suppressHydrationWarning>
       <body>
-        <AdminTheme>
+        <AdminTheme theme={preferences?.theme}>
           <TooltipProvider>
             <InterfaceLanguageProvider language={language}>{children}</InterfaceLanguageProvider>
           </TooltipProvider>

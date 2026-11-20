@@ -19,11 +19,22 @@ import {
   Settings2,
   Sparkles,
   Square,
-  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Radio } from '@base-ui/react/radio'
+import { RadioGroup } from '@base-ui/react/radio-group'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import Image from 'next/image'
 import {
   createContext,
@@ -72,6 +83,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -193,7 +207,14 @@ export function ShadcnAssistantLauncher({ route }: { route: string }) {
   const state = useContext(AssistantState)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="outline" size="sm" />}>
+      <SheetTrigger
+        render={
+          <Button
+            size="lg"
+            className="fixed end-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 rounded-full px-5 shadow-lg aria-expanded:opacity-0 aria-expanded:pointer-events-none md:end-7 md:bottom-6"
+          />
+        }
+      >
         <Sparkles data-icon="inline-start" />
         {t('Vraag AI')}
       </SheetTrigger>
@@ -886,56 +907,53 @@ function ChatModelPicker({ chat }: { chat: AssistantController }) {
 
 function ChatOptions({ chat, efforts }: { chat: AssistantController; efforts: string[] }) {
   const t = useAdminTranslations()
-  const field = useId()
-  return (
-    <Dialog>
-      <DialogTrigger
-        render={
-          <InputGroupButton size="sm" disabled={chat.busy} aria-label={t('Antwoordopties')} />
-        }
-      >
-        <SlidersHorizontal />
-      </DialogTrigger>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{t('Antwoordopties')}</DialogTitle>
-          <DialogDescription>{t('Pas het volgende antwoord aan.')}</DialogDescription>
-        </DialogHeader>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor={field + '-detail'}>{t('Antwoordlengte')}</FieldLabel>
-            <NativeSelect
-              id={field + '-detail'}
-              value={chat.detail}
-              onChange={(event) => chat.setDetail(event.target.value as ResponseDetail)}
-            >
-              {Object.entries(responseLabels).map(([value, label]) => (
-                <NativeSelectOption key={value} value={value}>
-                  {t(label)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </Field>
-          {efforts.length > 0 && (
-            <Field>
-              <FieldLabel htmlFor={field + '-effort'}>{t('Redeneerinspanning')}</FieldLabel>
-              <NativeSelect
-                id={field + '-effort'}
-                value={chat.effort}
-                onChange={(event) => chat.setEffort(event.target.value)}
-              >
-                {['default', ...efforts].map((value) => (
-                  <NativeSelectOption key={value} value={value}>
-                    {t(effortLabels[value] ?? value)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </Field>
-          )}
-        </FieldGroup>
-      </DialogContent>
-    </Dialog>
-  )
+  const choices = [
+    ...(efforts.length
+      ? [
+          {
+            name: t('Redeneerinspanning'),
+            short: t('Inspanning'),
+            value: chat.effort,
+            change: chat.setEffort,
+            options: ['default', ...efforts].map(
+              (value) => [value, t(effortLabels[value] ?? value)] as const,
+            ),
+          },
+        ]
+      : []),
+    {
+      name: t('Antwoordlengte'),
+      short: t('Lengte'),
+      value: chat.detail,
+      change: (value: string) => chat.setDetail(value as ResponseDetail),
+      options: Object.entries(responseLabels).map(([value, label]) => [value, t(label)] as const),
+    },
+  ]
+  return choices.map(({ name, short, value, change, options }) => {
+    const selected = options.find(([id]) => id === value)?.[1]
+    return (
+      <DropdownMenu key={name}>
+        <DropdownMenuTrigger
+          disabled={chat.busy}
+          render={<InputGroupButton type="button" size="sm" aria-label={name + ': ' + selected} />}
+        >
+          <span className="hidden sm:inline">{short} · </span>
+          {selected}
+          <ChevronDown />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="start">
+          <DropdownMenuLabel>{name}</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={value} onValueChange={change}>
+            {options.map(([id, label]) => (
+              <DropdownMenuRadioItem key={id} value={id} closeOnClick>
+                {label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  })
 }
 
 function AttachmentCard({
@@ -1227,14 +1245,10 @@ function MediaPicker({
   )
 }
 
-export function ShadcnAssistantSettings({
-  panel = 'connection',
-}: {
-  panel?: 'connection' | 'models' | 'defaults'
-}) {
+export function ShadcnAssistantSettings() {
   const t = useAdminTranslations()
-
   const state = useContext(AssistantState)
+  const requested = useSearchParams().get('panel')
   if (!state)
     return (
       <Alert>
@@ -1243,8 +1257,58 @@ export function ShadcnAssistantSettings({
         </AlertDescription>
       </Alert>
     )
-  if (panel !== 'connection') return <CatalogSettings {...state} panel={panel} />
-  return <ConnectionSettings {...state} />
+  const { chat, tenant } = state
+  const panel =
+    requested === 'models' || (requested === 'defaults' && tenant.canManage)
+      ? requested
+      : 'connection'
+
+  return (
+    <Tabs
+      value={panel}
+      onValueChange={(value) => {
+        const url = new URL(window.location.href)
+        if (value === 'connection') url.searchParams.delete('panel')
+        else url.searchParams.set('panel', String(value))
+        window.history.pushState(null, '', url)
+      }}
+    >
+      <TabsList variant="line" aria-label={t('AI-assistent')}>
+        <TabsTrigger value="connection">{t('Modelverbinding')}</TabsTrigger>
+        <TabsTrigger value="models">{t('Modellen')}</TabsTrigger>
+        {tenant.canManage && <TabsTrigger value="defaults">{t('Assistentvoorkeuren')}</TabsTrigger>}
+      </TabsList>
+      {chat.modelStatus === 'loading' ? (
+        <div aria-busy="true" className="grid max-w-2xl gap-3 pt-3">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      ) : chat.modelStatus === 'error' ? (
+        <Alert role="alert" variant="destructive" className="mt-3 max-w-2xl">
+          <AlertDescription className="flex flex-wrap items-center gap-2">
+            {t('De modelverbinding kon niet worden geladen.')}
+            <Button onClick={chat.reloadModel} size="sm" variant="outline">
+              {t('Opnieuw laden')}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <TabsContent value="connection" className="pt-3">
+            <ConnectionSettings {...state} />
+          </TabsContent>
+          <TabsContent value="models" className="pt-3">
+            <CatalogSettings {...state} panel="models" />
+          </TabsContent>
+          {tenant.canManage && (
+            <TabsContent value="defaults" className="pt-3">
+              <CatalogSettings {...state} panel="defaults" />
+            </TabsContent>
+          )}
+        </>
+      )}
+    </Tabs>
+  )
 }
 
 function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'defaults' }) {
@@ -1302,6 +1366,7 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
             <CatalogRows
               key={JSON.stringify(options?.models)}
               baseModel={connection.model}
+              preferred={options?.defaultModel ?? connection.model}
               models={options?.models ?? []}
             />
           ) : (
@@ -1325,17 +1390,23 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
               </Field>
               <Field>
                 <FieldLabel htmlFor="assistant-default-detail">{t('Antwoordlengte')}</FieldLabel>
-                <NativeSelect
+                <RadioGroup
                   name="detail"
                   id="assistant-default-detail"
                   defaultValue={options?.detail ?? 'standard'}
+                  aria-label={t('Antwoordlengte')}
+                  className="flex flex-wrap gap-2"
                 >
                   {Object.entries(responseLabels).map(([value, label]) => (
-                    <NativeSelectOption key={value} value={value}>
+                    <Radio.Root
+                      key={value}
+                      value={value}
+                      className="rounded-md border px-3 py-2 text-sm data-checked:border-primary data-checked:bg-muted"
+                    >
                       {t(label)}
-                    </NativeSelectOption>
+                    </Radio.Root>
                   ))}
-                </NativeSelect>
+                </RadioGroup>
               </Field>
             </>
           )}
@@ -1361,65 +1432,168 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
 function CatalogRows({
   baseModel,
   models,
+  preferred,
 }: {
   baseModel: string
   models: { model: string; label?: string }[]
+  preferred: string
 }) {
   const t = useAdminTranslations()
   const [entries, setEntries] = useState(() => models.map((entry, id) => ({ ...entry, id })))
+  const [editing, setEditing] = useState<{ id: number; model: string; label?: string }>()
+  const [error, setError] = useState('')
   const nextID = useRef(entries.length)
+  const field = useId()
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm">
-        <span className="font-medium">{baseModel}</span>
-        <Badge variant="secondary">{t('Verbindingsmodel')}</Badge>
+      <div className="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('Modellen')}</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-20" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium">{baseModel}</TableCell>
+              <TableCell>
+                <Badge variant="secondary">
+                  {t(baseModel === preferred ? 'Standaard' : 'Verbindingsmodel')}
+                </Badge>
+              </TableCell>
+              <TableCell />
+            </TableRow>
+            {entries.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell>
+                  <span className="block font-medium">{entry.label || entry.model}</span>
+                  {entry.label && (
+                    <span className="block text-xs text-muted-foreground">{entry.model}</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {entry.model === preferred && <Badge variant="secondary">{t('Standaard')}</Badge>}
+                </TableCell>
+                <TableCell>
+                  <div className="flex">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('Model bewerken')}
+                      onClick={() => {
+                        setError('')
+                        setEditing(entry)
+                      }}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('Model verwijderen')}
+                      onClick={() =>
+                        setEntries((current) => current.filter(({ id }) => id !== entry.id))
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
       {entries.map(({ id, model, label }) => (
-        <div
-          key={id}
-          className="grid items-end gap-2 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto]"
-        >
-          <Field>
-            <FieldLabel htmlFor={'model-' + id}>{t('Model-ID')}</FieldLabel>
-            <Input
-              id={'model-' + id}
-              name="modelID"
-              defaultValue={model}
-              required
-              maxLength={150}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor={'model-label-' + id}>{t('Weergavenaam')}</FieldLabel>
-            <Input
-              id={'model-label-' + id}
-              name="modelLabel"
-              defaultValue={label}
-              maxLength={150}
-            />
-          </Field>
-          <Button
-            type="button"
-            variant="outline"
-            aria-label={t('Model verwijderen')}
-            onClick={() => setEntries((current) => current.filter((entry) => entry.id !== id))}
-          >
-            <Trash2 />
-          </Button>
+        <div key={id} hidden>
+          <input type="hidden" name="modelID" value={model} />
+          <input type="hidden" name="modelLabel" value={label ?? ''} />
         </div>
       ))}
-      <Button
-        type="button"
-        variant="outline"
-        disabled={entries.length >= 15}
-        onClick={() => {
-          const id = nextID.current++
-          setEntries((current) => [...current, { id, model: '' }])
+      <Sheet
+        open={Boolean(editing)}
+        onOpenChange={(value) => {
+          if (!value) setEditing(undefined)
         }}
       >
-        <Plus />
-        {t('Model toevoegen')}
-      </Button>
+        <SheetTrigger
+          render={<Button type="button" variant="outline" disabled={entries.length >= 15} />}
+          onClick={() => {
+            setError('')
+            setEditing({ id: nextID.current, model: '' })
+          }}
+        >
+          <Plus />
+          {t('Model toevoegen')}
+        </SheetTrigger>
+        <SheetContent className="w-full overflow-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{t(editing?.model ? 'Model bewerken' : 'Model toevoegen')}</SheetTitle>
+            <SheetDescription>
+              {t('Voeg een model aan de huidige verbinding toe.')}
+            </SheetDescription>
+          </SheetHeader>
+          {editing && (
+            <form
+              key={editing.id}
+              className="space-y-4 px-6 pb-6"
+              onSubmit={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                const form = new FormData(event.currentTarget)
+                const model = String(form.get('model') ?? '').trim()
+                if (
+                  !model ||
+                  model === baseModel ||
+                  entries.some((entry) => entry.id !== editing.id && entry.model === model)
+                ) {
+                  setError('Gebruik een uniek model-ID.')
+                  return
+                }
+                const label = String(form.get('label') ?? '').trim() || undefined
+                const next = { ...editing, model, label }
+                setEntries((current) =>
+                  current.some(({ id }) => id === editing.id)
+                    ? current.map((entry) => (entry.id === editing.id ? next : entry))
+                    : [...current, next],
+                )
+                if (editing.id === nextID.current) nextID.current++
+                setEditing(undefined)
+              }}
+            >
+              <Field>
+                <FieldLabel htmlFor={field + '-model'}>{t('Model-ID')}</FieldLabel>
+                <Input
+                  id={field + '-model'}
+                  name="model"
+                  defaultValue={editing.model}
+                  required
+                  maxLength={150}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor={field + '-label'}>{t('Weergavenaam')}</FieldLabel>
+                <Input
+                  id={field + '-label'}
+                  name="label"
+                  defaultValue={editing.label}
+                  maxLength={150}
+                />
+              </Field>
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {t(error)}
+                </p>
+              )}
+              <Button type="submit">{t('Toepassen')}</Button>
+            </form>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

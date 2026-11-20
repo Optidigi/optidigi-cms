@@ -39,7 +39,6 @@ export default async function SiteMembers({
   return (
     <SettingsWorkspace
       site={selected}
-      current="members"
       title={t('Leden en rollen')}
       action={
         isPlatformAdmin(req.user) && (

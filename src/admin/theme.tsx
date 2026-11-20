@@ -4,7 +4,8 @@ import { useAdminTranslations } from '@/admin/i18n-context'
 
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { ThemeProvider, useTheme } from 'next-themes'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
+import { saveTheme } from './preference-actions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,18 +15,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export function AdminTheme({ children }: { children: ReactNode }) {
+export function AdminTheme({ children, theme }: { children: ReactNode; theme?: string }) {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="system"
+      defaultTheme={theme ?? 'system'}
       enableSystem
       disableTransitionOnChange
-      storageKey="optidigi-admin-theme"
+      storageKey={theme ? 'optidigi-admin-theme-' + theme : 'optidigi-admin-theme'}
     >
+      <ApplyTheme theme={theme} />
       {children}
     </ThemeProvider>
   )
+}
+
+function ApplyTheme({ theme }: { theme?: string }) {
+  const { setTheme } = useTheme()
+  useEffect(() => {
+    if (theme) setTheme(theme)
+  }, [theme, setTheme])
+  return null
 }
 
 export function AppearanceMenu() {
@@ -41,7 +51,13 @@ export function AppearanceMenu() {
         <Moon className="hidden dark:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup value={theme ?? 'system'} onValueChange={setTheme}>
+        <DropdownMenuRadioGroup
+          value={theme ?? 'system'}
+          onValueChange={(value) => {
+            setTheme(value)
+            void saveTheme(value)
+          }}
+        >
           <DropdownMenuRadioItem value="light">
             <Sun />
             {t('Licht')}

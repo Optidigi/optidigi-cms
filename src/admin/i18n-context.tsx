@@ -11,8 +11,16 @@ import {
 } from 'react'
 import { translate, type InterfaceLanguage } from './i18n'
 
-type EditGuard = { markDirty: (dirty: boolean) => void; canNavigate: (message: string) => boolean }
-const GuardContext = createContext<EditGuard>({ markDirty() {}, canNavigate: () => true })
+type EditGuard = {
+  markDirty: (dirty: boolean) => void
+  hasChanges: () => boolean
+  canNavigate: (message: string) => boolean
+}
+const GuardContext = createContext<EditGuard>({
+  markDirty() {},
+  hasChanges: () => false,
+  canNavigate: () => true,
+})
 
 export function useEditingGuard() {
   return useContext(GuardContext)
@@ -41,6 +49,7 @@ export function InterfaceLanguageProvider({
       markDirty(value) {
         dirty.current = value
       },
+      hasChanges: () => dirty.current,
       canNavigate(message) {
         return !dirty.current || window.confirm(message)
       },

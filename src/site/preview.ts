@@ -35,21 +35,41 @@ export async function previewURL(
   if (!key) return null
 
   const doc = await req.payload.findByID({
-    collection, id, draft: true, depth: 0, locale, disableErrors: true, overrideAccess: false, req,
+    collection,
+    id,
+    draft: true,
+    depth: 0,
+    locale,
+    disableErrors: true,
+    overrideAccess: false,
+    req,
   })
   if (!doc || ('slug' in doc && doc.slug !== 'home')) return null
   const tenantID = relationID(doc.tenant)
   if (tenantID === undefined || !permitted(req.user, tenantID)) return null
   const tenant = await req.payload.findByID({
-    collection: 'tenants', id: tenantID, depth: 0, disableErrors: true, overrideAccess: false, req,
+    collection: 'tenants',
+    id: tenantID,
+    depth: 0,
+    disableErrors: true,
+    overrideAccess: false,
+    req,
   })
   if (!tenant) return null
 
-  const grant: Grant = { tenant: tenantID, user: req.user.id, locale, exp: Date.now() + 30 * 60_000 }
-  const body = Buffer.from(JSON.stringify(grant)).toString('base64url')
-  const signature = createHmac('sha256', key).update(body).digest('base64url')
+  const grant: Grant = {
+    tenant: tenantID,
+    user: req.user.id,
+    locale,
+    exp: Date.now() + 30 * 60_000,
+  }
+  const sign = (value: Grant) => {
+    const body = Buffer.from(JSON.stringify(value)).toString('base64url')
+    return body + '.' + createHmac('sha256', key).update(body).digest('base64url')
+  }
   const url = new URL('/cms-preview', tenant.siteOrigin)
-  url.searchParams.set('grant', body + '.' + signature)
+  url.searchParams.set('grant', sign(grant))
+  url.searchParams.set('alternateGrant', sign({ ...grant, locale: locale === 'nl' ? 'en' : 'nl' }))
   url.searchParams.set('locale', locale)
   return url.href
 }
@@ -71,11 +91,20 @@ export async function authorizePreview(req: PayloadRequest, tenant: number, loca
     return undefined
   }
   if (
-    !grant || grant.tenant !== tenant || grant.locale !== locale ||
-    typeof grant.exp !== 'number' || grant.exp <= Date.now() || !relationID(grant.user)
-  ) return undefined
+    !grant ||
+    grant.tenant !== tenant ||
+    grant.locale !== locale ||
+    typeof grant.exp !== 'number' ||
+    grant.exp <= Date.now() ||
+    !relationID(grant.user)
+  )
+    return undefined
   const user = await req.payload.findByID({
-    collection: 'users', id: grant.user!, depth: 0, disableErrors: true, overrideAccess: true,
+    collection: 'users',
+    id: grant.user!,
+    depth: 0,
+    disableErrors: true,
+    overrideAccess: true,
   })
   if (!user) return undefined
   const actor = { ...user, collection: 'users' as const }

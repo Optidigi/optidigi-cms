@@ -184,6 +184,7 @@ export function useAssistant({
     }
   }, [loadHistory])
 
+  const [modelLoadAttempt, setModelLoadAttempt] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
     void request<Status>(tenantID, { action: 'status' }, controller.signal)
@@ -197,7 +198,7 @@ export function useAssistant({
         if (!controller.signal.aborted) setModelStatus('error')
       })
     return () => controller.abort()
-  }, [tenantID])
+  }, [tenantID, modelLoadAttempt])
 
   function run(kind: NonNullable<typeof operation>, task: () => Promise<void>) {
     if (operationRef.current || chat.status === 'submitted' || chat.status === 'streaming') return
@@ -445,6 +446,10 @@ export function useAssistant({
         setNotice('Wijzigingen opgeslagen.')
       }),
     modelStatus,
+    reloadModel: () => {
+      setModelStatus('loading')
+      setModelLoadAttempt((attempt) => attempt + 1)
+    },
     input,
     setInput,
     detail,

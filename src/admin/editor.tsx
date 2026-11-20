@@ -3,7 +3,7 @@
 import { useAdminTranslations, useEditingGuard } from '@/admin/i18n-context'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { CircleAlert, ExternalLink, History, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
@@ -55,7 +56,6 @@ export function Editor({
   preview,
   versions,
   canDelete,
-  settingsPanel,
 }: {
   document: Document
   site: number
@@ -64,7 +64,6 @@ export function Editor({
   preview: string | null
   versions: { id: string; updatedAt: string }[]
   canDelete: boolean
-  settingsPanel?: 'website' | 'navigation' | 'seo'
 }) {
   const t = useAdminTranslations()
 
@@ -110,6 +109,23 @@ export function Editor({
     })
   }
 
+  const requestedPanel = useSearchParams().get('panel')
+  const panel =
+    document.id && (requestedPanel === 'navigation' || requestedPanel === 'seo')
+      ? requestedPanel
+      : 'website'
+  const seoFields = (
+    <div className="space-y-4">
+      <TextField id="seoTitle" label={t('SEO-titel')} value={document.seo?.title} maxLength={200} />
+      <TextField
+        id="seoDescription"
+        label={t('SEO-beschrijving')}
+        value={document.seo?.description}
+        multiline
+        maxLength={500}
+      />
+    </div>
+  )
   return (
     <div
       className={supportsPreview ? 'grid min-w-0 items-start gap-4 xl:grid-cols-2' : 'max-w-3xl'}
@@ -209,42 +225,52 @@ export function Editor({
                 </>
               ) : (
                 <>
-                  <div
-                    className="space-y-4"
-                    hidden={Boolean(settingsPanel && settingsPanel !== 'website')}
+                  <Tabs
+                    value={panel}
+                    onValueChange={(value) => {
+                      const url = new URL(window.location.href)
+                      if (value === 'website') url.searchParams.delete('panel')
+                      else url.searchParams.set('panel', String(value))
+                      window.history.pushState(null, '', url)
+                    }}
                   >
-                    <TextField id="name" label={t('Websitenaam')} value={document.name} required />
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <TabsList variant="line" aria-label={t('Website-instellingen')}>
+                      <TabsTrigger value="website">{t('Algemeen')}</TabsTrigger>
+                      <TabsTrigger value="navigation" disabled={!document.id}>
+                        {t('Navigatie')}
+                      </TabsTrigger>
+                      <TabsTrigger value="seo" disabled={!document.id}>
+                        SEO
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent keepMounted value="website" className="space-y-4 pt-4">
                       <TextField
-                        id="contactEmail"
-                        label={t('Contactmail')}
-                        type="email"
-                        value={document.contactEmail}
+                        id="name"
+                        label={t('Websitenaam')}
+                        value={document.name}
+                        required
                       />
-                      <TextField id="phone" label={t('Telefoonnummer')} value={document.phone} />
-                    </div>
-                  </div>
-                  <div hidden={Boolean(settingsPanel && settingsPanel !== 'navigation')}>
-                    <NavigationFields navigation={document.navigation} />
-                  </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <TextField
+                          id="contactEmail"
+                          label={t('Contactmail')}
+                          type="email"
+                          value={document.contactEmail}
+                        />
+                        <TextField id="phone" label={t('Telefoonnummer')} value={document.phone} />
+                      </div>
+                    </TabsContent>
+                    <TabsContent keepMounted value="navigation" className="pt-4">
+                      <NavigationFields navigation={document.navigation} />
+                    </TabsContent>
+                    <TabsContent keepMounted value="seo" className="pt-4">
+                      {seoFields}
+                    </TabsContent>
+                  </Tabs>
                 </>
               )}
-              <div className="space-y-4" hidden={Boolean(settingsPanel && settingsPanel !== 'seo')}>
-                <TextField
-                  id="seoTitle"
-                  label={t('SEO-titel')}
-                  value={document.seo?.title}
-                  maxLength={200}
-                />
-                <TextField
-                  id="seoDescription"
-                  label={t('SEO-beschrijving')}
-                  value={document.seo?.description}
-                  multiline
-                  maxLength={500}
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
+              {!isSettings && seoFields}
+              <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 border-t bg-card py-3">
                 <Button type="submit" value="draft" variant="outline" disabled={pending}>
                   {t('Concept opslaan')}
                 </Button>

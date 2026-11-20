@@ -118,25 +118,12 @@ export default async function SectionPage({
     : t(editorialSections[section])
 
   if (isSettings) {
-    const settingsPanel =
-      document && (query.panel === 'navigation' || query.panel === 'seo') ? query.panel : 'website'
     return (
-      <SettingsWorkspace
-        site={selected}
-        current={settingsPanel}
-        locale={locale}
-        title={t(
-          settingsPanel === 'navigation'
-            ? 'Navigatie'
-            : settingsPanel === 'seo'
-              ? 'SEO'
-              : 'Website-instellingen',
-        )}
-      >
+      <SettingsWorkspace site={selected} title={t('Website-instellingen')}>
         <Editor
-          key={locale + settingsPanel + (document?.id ?? 'new')}
+          key={locale + (document?.id ?? 'new')}
           document={document ?? {}}
-          {...{ locale, section, versions, preview, canDelete, settingsPanel }}
+          {...{ locale, section, versions, preview, canDelete }}
           site={selected.id}
         />
       </SettingsWorkspace>

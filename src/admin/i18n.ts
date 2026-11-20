@@ -4,7 +4,21 @@ export type InterfaceLanguage = 'nl' | 'en'
 export const interfaceLanguageCookie = 'payload-lng'
 
 const english: Record<string, string> = {
+  'Wijzigingen verwerpen': 'Discard changes',
+  'Model bewerken': 'Edit model',
+  'Voeg een model aan de huidige verbinding toe.': 'Add a model to the current connection.',
+  'Gebruik een uniek model-ID.': 'Enter a unique model ID.',
+  'Weergave en werkruimte': 'Appearance and workspace',
+  Interfacetaal: 'Interface language',
+  'Zijbalk uitgeklapt starten': 'Start with sidebar expanded',
+  'Geldt voor de desktopweergave.': 'Applies on desktop.',
+  Startwebsite: 'Starting website',
+  'Laatst gebruikt': 'Last used',
+  'Standaardinstellingen herstellen': 'Reset to defaults',
+  'Voorkeuren konden niet worden opgeslagen.': 'Preferences could not be saved.',
   Antwoordopties: 'Response options',
+  Inspanning: 'Effort',
+  Lengte: 'Length',
   'Pas het volgende antwoord aan.': 'Adjust the next response.',
   'Zoek website': 'Search websites',
   'Verbinding testen': 'Test connection',
