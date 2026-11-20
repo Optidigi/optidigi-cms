@@ -43,7 +43,10 @@ const linkSchema = z
 
 const writing = new Set<string>()
 
-export async function saveEditorial(req: PayloadRequest, form: FormData): Promise<{ result: SaveResult; id?: number }> {
+export async function saveEditorial(
+  req: PayloadRequest,
+  form: FormData,
+): Promise<{ result: SaveResult; id?: number }> {
   const parsed = formSchema.safeParse(Object.fromEntries(form))
   if (!parsed.success) return { result: 'invalid' }
   const input = parsed.data
@@ -184,7 +187,7 @@ export async function saveEditorial(req: PayloadRequest, form: FormData): Promis
         seo,
         _status: draft ? ('draft' as const) : ('published' as const),
       }
-      let bodyData = {}
+      let bodyData = !draft && previous && 'body' in previous ? { body: previous.body } : {}
       if (input.body !== undefined) {
         const body: unknown = JSON.parse(input.body)
         if (

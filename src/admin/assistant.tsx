@@ -83,6 +83,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -950,14 +951,16 @@ function ChatOptions({ chat, efforts }: { chat: AssistantController; efforts: st
           <ChevronDown />
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start">
-          <DropdownMenuLabel>{name}</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={value} onValueChange={change}>
-            {options.map(([id, label]) => (
-              <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-                {label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>{name}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={value} onValueChange={change}>
+              {options.map(([id, label]) => (
+                <DropdownMenuRadioItem key={id} value={id} closeOnClick>
+                  {label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     )

@@ -165,6 +165,15 @@ test('editor publishes localized content and uses the shared assistant in the ca
       headers: { Authorization: 'Bearer ' + grant },
     })
     expect(await draftFeed.json()).toMatchObject({ homepage: { heading: 'Draft from shadcn' } })
+    const savedDraft = await payload.findByID({
+      collection: 'pages',
+      id: home.id,
+      draft: true,
+      locale: 'nl',
+      overrideAccess: true,
+      depth: 0,
+    })
+    expect(JSON.stringify(savedDraft.body)).toContain('Rich text from shadcn')
     const alternate = new URL(previewSource!).searchParams.get('alternateGrant')
     expect(alternate).toBeTruthy()
     const englishFeed = '/api/site-content?tenant=' + slug + '&locale=en&draft=true'

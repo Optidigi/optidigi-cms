@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
@@ -211,7 +212,9 @@ export function Editor({
                     />
                     <Field>
                       <FieldLabel>{t('Inhoud')}</FieldLabel>
-                      {!document.body || editableBody(document.body) ? (
+                      {!ready ? (
+                        <Skeleton className="h-36 w-full" aria-busy="true" />
+                      ) : !document.body || editableBody(document.body) ? (
                         <RichTextEditor
                           value={document.body}
                           onChange={(value) => {
