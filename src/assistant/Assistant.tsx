@@ -211,7 +211,7 @@ export function Assistant({
             setReply(answer)
           } else if (event.type === 'approval') {
             setApproval(event.approval)
-          } else {
+          } else if (event.type === 'error') {
             setError(event.message)
           }
         })

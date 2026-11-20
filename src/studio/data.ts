@@ -45,7 +45,7 @@ export async function getHomepage(req: PayloadRequest, siteID: number, locale: S
     locale,
     limit: 1,
     where: { tenant: { equals: siteID }, slug: { equals: 'home' } },
-    select: { heading: true, description: true, updatedAt: true, _status: true },
+    select: { title: true, heading: true, description: true, updatedAt: true, _status: true },
   })
   return page ?? null
 }

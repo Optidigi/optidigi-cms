@@ -45,7 +45,7 @@ export const siteEndpoints: Endpoint[] = [
         ? { tenant: { equals: tenant.id } }
         : { tenant: { equals: tenant.id }, _status: { equals: 'published' } }
       const options = {
-        depth: 0 as const, draft, locale, limit: 1, overrideAccess: !draft, user: actor,
+        depth: 0 as const, draft, locale, fallbackLocale: false as const, limit: 1, overrideAccess: !draft, user: actor,
       }
 
       const [{ docs: [settings] }, { docs: [page] }] = await Promise.all([

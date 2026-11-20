@@ -2,21 +2,22 @@ import { ArrowUpRight, Monitor } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getHomepage, listSites, studioRequest } from '@/studio/data'
-import { saveHomepage } from '@/studio/actions'
+import { assistantMemberships } from '@/assistant/scope-shared'
+import { createHomepage, restoreHomepage } from '@/studio/actions'
+import { HomepageEditor } from '@/studio/homepage-editor'
+import { PreviewFrame } from '@/studio/preview-frame'
 import { StudioShell } from '@/studio/shell'
 import { StudioChat } from '@/studio/chat'
 import { Alert, AlertDescription } from '@/studio/ui/alert'
 import { Badge } from '@/studio/ui/badge'
 import { Button } from '@/studio/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/studio/ui/card'
-import { Input } from '@/studio/ui/input'
-import { Label } from '@/studio/ui/label'
-import { Textarea } from '@/studio/ui/textarea'
 import { previewURL, siteLocale } from '@/site/preview'
 
 const notices = {
   conflict:
     'Deze pagina is intussen gewijzigd. Controleer de nieuwste versie voordat je opnieuw opslaat.',
+  restored: 'De vorige versie is als concept teruggezet.',
   failed: 'Opslaan mislukt. Controleer je rechten of probeer het opnieuw.',
   saved: 'Concept opgeslagen.',
   published: 'Homepage gepubliceerd.',
@@ -37,7 +38,20 @@ export default async function SitePage({
   const active = sites.find(({ id }) => String(id) === site)
   if (!active) notFound()
   const page = await getHomepage(req, active.id, locale)
-  const preview = page && locale === 'nl' ? await previewURL('pages', page.id, locale, req) : null
+  const preview = page ? await previewURL('pages', page.id, locale, req) : null
+  const versions = page
+    ? (
+        await req.payload.findVersions({
+          collection: 'pages',
+          where: { parent: { equals: page.id } },
+          req,
+          overrideAccess: false,
+          depth: 0,
+          limit: 8,
+          sort: '-updatedAt',
+        })
+      ).docs
+    : []
   const result =
     query.result && Object.hasOwn(notices, query.result)
       ? (query.result as keyof typeof notices)
@@ -93,38 +107,41 @@ export default async function SitePage({
                 <CardDescription>Wijzig de kop en intro van de homepage.</CardDescription>
               </CardHeader>
               <CardContent>
-                <form action={saveHomepage} className="grid gap-4" key={page.updatedAt + locale}>
-                  <input type="hidden" name="site" value={site} />
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="revision" value={page.updatedAt} />
-                  <div className="grid gap-2">
-                    <Label htmlFor="heading">Kop</Label>
-                    <Input
-                      id="heading"
-                      name="heading"
-                      defaultValue={page.heading ?? ''}
-                      maxLength={200}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Intro</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      defaultValue={page.description ?? ''}
-                      maxLength={1000}
-                      rows={5}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="submit" name="intent" value="draft" variant="outline">
-                      Concept opslaan
-                    </Button>
-                    <Button type="submit" name="intent" value="publish" disabled={locale !== 'nl'}>
-                      Publiceren
-                    </Button>
-                  </div>
-                </form>
+                <HomepageEditor
+                  key={site + locale + page.updatedAt}
+                  site={active.id}
+                  locale={locale}
+                  initial={page}
+                />
+                {versions.length > 0 && (
+                  <details className="mt-5 border-t pt-4">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Versiegeschiedenis
+                    </summary>
+                    <ul className="mt-3 grid gap-2">
+                      {versions.map((version) => (
+                        <li
+                          key={version.id}
+                          className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                        >
+                          <time dateTime={version.updatedAt}>
+                            {new Date(version.updatedAt).toLocaleString('nl-NL', {
+                              timeZone: 'Europe/Amsterdam',
+                            })}
+                          </time>
+                          <form action={restoreHomepage}>
+                            <input type="hidden" name="site" value={site} />
+                            <input type="hidden" name="locale" value={locale} />
+                            <input type="hidden" name="version" value={version.id} />
+                            <Button type="submit" variant="outline" size="sm">
+                              Herstel als concept
+                            </Button>
+                          </form>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -136,12 +153,7 @@ export default async function SitePage({
               </CardHeader>
               <CardContent>
                 {preview ? (
-                  <iframe
-                    className="h-[28rem] w-full rounded-lg border bg-white"
-                    title="Homepagevoorbeeld"
-                    src={preview}
-                    referrerPolicy="no-referrer"
-                  />
+                  <PreviewFrame src={preview} />
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Voorbeeld is voor deze website of taal nog niet beschikbaar.
@@ -149,16 +161,33 @@ export default async function SitePage({
                 )}
               </CardContent>
             </Card>
-            {locale === 'nl' && (
+            {assistantMemberships(req.user).some(({ id }) => id === active.id) && (
               <div className="xl:col-span-2">
-                <StudioChat key={site} site={active.id} documentID={page.id} />
+                <StudioChat
+                  key={site + locale}
+                  site={active.id}
+                  documentID={page.id}
+                  locale={locale}
+                  canManage={assistantMemberships(req.user).some(
+                    ({ id, canManage }) => id === active.id && canManage,
+                  )}
+                />
               </div>
             )}
           </div>
         ) : (
-          <Alert>
-            <AlertDescription>Voor deze website is nog geen homepage ingesteld.</AlertDescription>
-          </Alert>
+          <Card>
+            <CardHeader>
+              <CardTitle>Homepage toevoegen</CardTitle>
+              <CardDescription>Voor deze website is nog geen homepage ingesteld.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form action={createHomepage}>
+                <input type="hidden" name="site" value={site} />
+                <Button type="submit">Maak homepageconcept</Button>
+              </form>
+            </CardContent>
+          </Card>
         )}
       </div>
     </StudioShell>
