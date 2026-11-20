@@ -43,7 +43,7 @@ test('platform administrator signs in through MCP consent and manages a website 
     await page.locator('input[name="siteOrigin"]').fill('https://example.com')
     await page.getByRole('button', { name: 'Website opslaan' }).click()
     await expect(page).toHaveURL(/result=saved/)
-    await expect(page.getByText('Release QA', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Release QA', exact: true }).first()).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   } finally {
     await payload.delete({ collection: 'tenants', where: { slug: { equals: slug } }, overrideAccess: true })
