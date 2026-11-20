@@ -50,7 +50,7 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { ShadcnAssistantLauncher, ShadcnAssistantProvider } from './assistant'
-import { ContentLanguageMenu, InterfaceLanguageMenu } from './language-menu'
+import { InterfaceLanguageMenu } from './language-menu'
 import { AppearanceMenu } from './theme'
 import { assistantSettingsHref, comparisonRoot, contentLinks, siteHref } from './navigation'
 import type { AssistantContext, AssistantTenant } from '@/assistant/use-assistant'
@@ -64,7 +64,6 @@ export function ComparisonShell({
   assistant,
   platform,
   sidebarOpen,
-  defaultLocale,
   children,
 }: {
   sites: Website[]
@@ -72,7 +71,6 @@ export function ComparisonShell({
   assistant?: AssistantTenant
   platform?: boolean
   sidebarOpen?: boolean
-  defaultLocale: 'nl' | 'en'
   children: ReactNode
 }) {
   const t = useComparisonTranslations()
@@ -94,9 +92,7 @@ export function ComparisonShell({
     collection && Number.isSafeInteger(onDocument) && onDocument > 0
       ? { collection, id: onDocument }
       : undefined
-  const requestedLocale = query.get('locale')
-  const locale =
-    requestedLocale === 'en' || requestedLocale === 'nl' ? requestedLocale : defaultLocale
+  const locale = query.get('locale') === 'en' ? 'en' : 'nl'
   const assistantRoute = document
     ? base +
       '/assistant?document=' +
@@ -233,7 +229,6 @@ export function ComparisonShell({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <InterfaceLanguageMenu />
-            {(collection || !section) && <ContentLanguageMenu locale={locale} />}
             <AppearanceMenu />
             {assistant && section !== 'assistant' && (
               <ShadcnAssistantLauncher route={assistantRoute} />

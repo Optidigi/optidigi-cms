@@ -1,4 +1,4 @@
-import { comparisonTranslations, getContentLanguage } from '@/admin-comparison/i18n-server'
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { ArrowUpRight, ChevronRight, FilePlus2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,7 @@ export default async function SitePage({
   const t = await comparisonTranslations()
 
   const { selected, req } = await currentSite((await params).site)
-  const locale = await getContentLanguage((await searchParams).locale)
+  const locale = (await searchParams).locale === 'en' ? 'en' : 'nl'
   const base = siteHref(selected.id)
   const options = {
     req,

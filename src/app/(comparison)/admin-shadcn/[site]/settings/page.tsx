@@ -1,4 +1,4 @@
-import { comparisonTranslations, getContentLanguage } from '@/admin-comparison/i18n-server'
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { ChevronRight, Globe2, Shield, Sparkles, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -21,7 +21,7 @@ export default async function SettingsPage({
   const t = await comparisonTranslations()
 
   const { selected, req } = await currentSite((await params).site)
-  const locale = await getContentLanguage((await searchParams).locale)
+  const locale = (await searchParams).locale === 'en' ? 'en' : 'nl'
   const member = assistantMemberships(req.user).find(({ id }) => id === selected.id)
   const websiteSettings = [
     {

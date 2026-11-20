@@ -12,13 +12,11 @@ export function NativeInterfaceLanguage() {
       buttonStyle="secondary"
       margin={false}
       aria-label={
-        english
-          ? 'Interface language: English. Switch to Dutch'
-          : 'Interfacetaal: Nederlands. Schakel naar Engels'
+        english ? 'Language: English. Switch to Dutch' : 'Taal: Nederlands. Schakel naar Engels'
       }
       onClick={() => void switchLanguage(english ? 'nl' : 'en')}
     >
-      {english ? 'Interface EN' : 'Interface NL'}
+      {english ? 'Language EN' : 'Taal NL'}
     </Button>
   )
 }

@@ -1,4 +1,4 @@
-import { comparisonTranslations, getContentLanguage } from '@/admin-comparison/i18n-server'
+import { comparisonTranslations } from '@/admin-comparison/i18n-server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { FileText, Plus } from 'lucide-react'
@@ -23,7 +23,7 @@ import {
   type EditorialSection,
 } from '@/admin-comparison/data'
 import { Editor } from '@/admin-comparison/editor'
-import { previewURL } from '@/site/preview'
+import { previewURL, siteLocale } from '@/site/preview'
 import { isPlatformAdmin, relationID } from '@/site/access'
 
 export default async function SectionPage({
@@ -39,7 +39,7 @@ export default async function SectionPage({
   if (!Object.hasOwn(editorialSections, value)) notFound()
   const section = value as EditorialSection
   const query = await searchParams
-  const locale = await getContentLanguage(query.locale)
+  const locale = siteLocale(query.locale) ?? 'nl'
   const { req, selected } = await currentSite(site)
   const root = adminRoot + '/' + selected.id + '/' + section
   const localized = root + '?locale=' + locale

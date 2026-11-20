@@ -2,7 +2,6 @@ export type InterfaceLanguage = 'nl' | 'en'
 
 // Payload uses this cookie for its admin interface language.
 export const interfaceLanguageCookie = 'payload-lng'
-export const contentLanguageCookie = 'optidigi-content-language'
 
 const english: Record<string, string> = {
   'Geen websites beschikbaar': 'No websites available',
@@ -315,15 +314,10 @@ const english: Record<string, string> = {
   'Model verbonden.': 'Model connected.',
   'Model losgekoppeld.': 'Model disconnected.',
   'Verwijdering geannuleerd.': 'Deletion canceled.',
-  Interfacetaal: 'Interface language',
-  Inhoudstaal: 'Content language',
-  'Inhoud NL': 'Content NL',
-  'Inhoud EN': 'Content EN',
+  Taal: 'Language',
   'nl-NL': 'en-GB',
   'Je hebt niet-opgeslagen wijzigingen. Deze pagina toch verlaten?':
     'You have unsaved changes. Leave this page anyway?',
-  'Je hebt niet-opgeslagen wijzigingen. Toch van inhoudstaal wisselen?':
-    'You have unsaved changes. Switch content language anyway?',
 }
 
 export function translate(language: InterfaceLanguage, text: string) {

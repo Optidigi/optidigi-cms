@@ -1,4 +1,3 @@
-import { getContentLanguage } from '@/admin-comparison/i18n-server'
 import { Suspense, type ReactNode } from 'react'
 import { cookies } from 'next/headers'
 import { ComparisonShell } from '@/admin-comparison/shell'
@@ -23,7 +22,6 @@ export default async function SiteLayout({
         selected={selected}
         platform={isPlatformAdmin(req.user)}
         sidebarOpen={sidebarOpen}
-        defaultLocale={await getContentLanguage()}
         assistant={membership && { ...membership, name: selected.name }}
       >
         {children}

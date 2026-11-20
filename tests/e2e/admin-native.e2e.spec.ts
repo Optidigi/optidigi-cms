@@ -50,7 +50,7 @@ test('stock Payload keeps native editors and role-scoped navigation', async ({
     expect((await page.goto(documentRoute, { waitUntil: 'domcontentloaded' }))?.status()).toBe(200)
     const appearance = await page.locator('html').getAttribute('lang')
     const nativeLanguage = page.getByRole('button', {
-      name: /^(Interface language|Interfacetaal):/,
+      name: /^(Language|Taal):/,
     })
     await expect(nativeLanguage).toBeVisible()
     await nativeLanguage.click()
