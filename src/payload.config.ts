@@ -97,7 +97,14 @@ export default buildConfig({
     pool: { connectionString: process.env.DATABASE_URL ?? '' },
     push: false,
   }),
-  i18n: { supportedLanguages: { nl, en }, fallbackLanguage: 'nl' },
+  i18n: {
+    supportedLanguages: { nl, en },
+    fallbackLanguage: 'nl',
+    translations: {
+      nl: { general: { locale: 'Documentvertaling' } },
+      en: { general: { locale: 'Document translation' } },
+    },
+  },
   localization: {
     locales: [{ code: 'nl', label: 'Nederlands' }, { code: 'en', label: 'English' }],
     fallback: true,
