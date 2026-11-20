@@ -54,6 +54,8 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - name: Build the release image
         run: docker build --tag "$IMAGE:$GITHUB_SHA" .
+      - name: Install Chromium for the admin comparison
+        run: npx --no-install playwright install --with-deps chromium
       - name: Test the image against a fresh database
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
@@ -74,6 +76,8 @@ jobs:
             "$IMAGE:$GITHUB_SHA"
           curl --fail --silent --show-error --retry 30 --retry-delay 2 \
             --retry-all-errors --max-time 5 http://localhost:3000/api/health
+          PLAYWRIGHT_BASE_URL=http://localhost:3000 DATABASE_URL=postgres://ci:ci@127.0.0.1:5432/cms_smoke \
+            npm run test:e2e -- tests/e2e/admin-comparison.e2e.spec.ts --reporter=line
       - name: Publish tested image
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:

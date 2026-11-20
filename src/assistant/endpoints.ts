@@ -23,6 +23,7 @@ const action = z.discriminatedUnion('action', [
     action: z.literal('chat'),
     tenant,
     detail: z.optional(z.enum(responseDetail)),
+    locale: z.optional(z.enum(['nl', 'en'])),
     context: z.optional(z.object({ collection: z.enum(contextCollections), id: tenant })),
     messages: z
       .array(
@@ -175,7 +176,7 @@ async function handleAssistant(req: PayloadRequest) {
       return json({ error: 'The conversation must begin and end with a user message.' }, 400)
     }
     const context = input.context
-    let document: { collection: string; id: number; title: string } | undefined
+    let document: { collection: string; id: number; title: string; homepage: boolean } | undefined
     if (context) {
       const {
         docs: [record],
@@ -185,6 +186,7 @@ async function handleAssistant(req: PayloadRequest) {
         limit: 1,
         depth: 0,
         draft: true,
+        locale: input.locale,
         overrideAccess: false,
         req,
       })
@@ -192,11 +194,13 @@ async function handleAssistant(req: PayloadRequest) {
         return json({ error: 'The current document is unavailable in this tenant.' }, 404)
       document = {
         ...context,
+        homepage: context.collection === 'pages' && 'slug' in record && record.slug === 'home',
         title: ('title' in record ? record.title : record.name)?.slice(0, 200) ?? '',
       }
     }
     return await streamAssistant({
       document,
+      locale: input.locale ?? 'nl',
       detail: input.detail ?? 'standard',
       canDelete: membership.canManage,
       connection: { ...connection, ciphertext: connection.ciphertext },

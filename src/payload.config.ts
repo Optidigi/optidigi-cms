@@ -6,7 +6,7 @@ import { en } from '@payloadcms/translations/languages/en'
 import { nl } from '@payloadcms/translations/languages/nl'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
-import { APIError, buildConfig, type CollectionConfig } from 'payload'
+import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
 import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
 import { assistantEndpoints } from './assistant/endpoints'
@@ -77,6 +77,13 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: dirname },
+    components: {
+      actions: ['/admin-native/assistant#NativeAssistantAction'],
+      afterNavLinks: ['/admin-native/assistant#NativeAssistantLink'],
+      views: {
+        assistant: { Component: '/admin-native/view#NativeAssistantView', path: '/assistant', exact: true },
+      },
+    },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
   collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts].map(withCollectionLabels),
@@ -118,6 +125,20 @@ export default buildConfig({
       },
       userHasAccessToAllTenants: isPlatformAdmin,
     }),
+    definePlugin({
+      slug: 'optidigi-native-admin-theme',
+      order: 20,
+      plugin: ({ config }) => ({
+        ...config,
+        admin: {
+          ...config.admin,
+          components: {
+            ...config.admin?.components,
+            providers: [...(config.admin?.components?.providers ?? []), '/admin-native/theme#NativeAdminTheme'],
+          },
+        },
+      }),
+    })(),
     mcpPlugin({
       access: ({ req }) => Boolean(req.user),
       collections: {
