@@ -47,7 +47,7 @@ export function threadHref(route: string, thread?: number) {
 }
 
 function syncThreadURL(thread?: number) {
-  if (/^\/admin-shadcn\/\d+\/assistant\/?$/.test(window.location.pathname)) {
+  if (/^\/admin\/\d+\/assistant\/?$/.test(window.location.pathname)) {
     window.history.replaceState(
       null,
       '',

@@ -1,0 +1,4 @@
+- [x] Audit, select templates, and record the rollback digest.
+- [ ] Remove alternate routes and verify the canonical route tree.
+- [ ] Connect the new interface to scoped HTTP endpoints and verify editor and platform journeys.
+- [ ] Verify assistant and MCP consent, pass CI, deploy the pinned image and smoke-test production.

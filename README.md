@@ -1,6 +1,6 @@
 # Optidigi CMS
 
-A shared headless CMS for independently deployed sites. The Payload admin and assistant run in this Next.js application. The public sites render published content on their own domains.
+A shared headless CMS for independently deployed sites. The shadcn admin at `/admin` uses Payload HTTP APIs for sessions, editorial content, and the assistant. Payload renders its OAuth consent and account recovery views. The public sites render published content on their own domains.
 
 ## Local development
 
@@ -29,6 +29,6 @@ npm run dev
 
 Open [the local admin](http://localhost:3000/admin). To try assistant credential storage or draft preview, generate a separate 32-byte hex key for each feature with `openssl rand -hex 32`. Store the keys in separate local files and set their paths in `.env`.
 
-Run `npm run lint`, `npx tsc --noEmit`, and `npm run test:int` to check the app against the migrated local database.
+Run `npm run lint`, `npx tsc --noEmit`, `npm run test:int`, and `npm run test:e2e` to check the app against the migrated local database.
 
 See [production deployment](deploy/README.md) for the published image, first operator setup, and the release procedure.

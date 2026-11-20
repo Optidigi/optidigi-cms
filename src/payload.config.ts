@@ -6,7 +6,7 @@ import { en } from '@payloadcms/translations/languages/en'
 import { nl } from '@payloadcms/translations/languages/nl'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
-import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
+import { APIError, buildConfig, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
 import { AssistantMessages, AssistantThreads, AssistantUploads } from './assistant/collections'
 import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
@@ -19,6 +19,7 @@ import { bootstrapOperator } from './site/bootstrap'
 import { collectionLabels } from './site/collection-labels'
 import { Articles, Pages, Projects, SiteSettings, Tenants } from './site/content'
 import { siteEndpoints } from './site/endpoints'
+import { adminEndpoints } from './site/admin/endpoints'
 import { checkSitePage } from './site/tools'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -78,16 +79,12 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: dirname },
-    components: {
-      actions: ['/admin-native/language#NativeInterfaceLanguage'],
-      afterNavLinks: ['/admin-native/settings-nav#TweakedAssistantLink'],
-    },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
   collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts, AssistantThreads, AssistantMessages, AssistantUploads].map(withCollectionLabels),
   csrf: origin ? [origin] : [],
   editor: lexicalEditor(),
-  endpoints: [...siteEndpoints, ...assistantEndpoints],
+  endpoints: [...siteEndpoints, ...assistantEndpoints, ...adminEndpoints],
   llmInstructions: { access: platformOnly },
   secret: process.env.PAYLOAD_SECRET ?? '',
   serverURL: origin ?? '',
@@ -130,23 +127,6 @@ export default buildConfig({
       },
       userHasAccessToAllTenants: isPlatformAdmin,
     }),
-    definePlugin({
-      slug: 'optidigi-native-admin-theme',
-      order: 20,
-      plugin: ({ config }) => ({
-        ...config,
-        admin: {
-          ...config.admin,
-          components: {
-            ...config.admin?.components,
-            providers: [
-              ...(config.admin?.components?.providers ?? []),
-              '/admin-native/theme#NativeAdminTheme',
-            ],
-          },
-        },
-      }),
-    })(),
     mcpPlugin({
       access: ({ req }) => Boolean(req.user),
       collections: {
