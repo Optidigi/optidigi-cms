@@ -7,8 +7,8 @@ import { isPlatformAdmin, tenantIDs } from '../site/access'
 import type { SiteLocale } from '../site/preview'
 
 export const studioRequest = cache(async () => {
-  const payload = await getPayload({ config })
   const requestHeaders = new Headers(await headers())
+  const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: requestHeaders })
   if (!user || user.collection !== 'users') redirect('/studio/login')
   return createPayloadRequest({ payload, user, req: { headers: requestHeaders } })
