@@ -31,10 +31,14 @@ import { LLMInstructionsCell as LLMInstructionsCell_ab83ff7e88da8d3530831f296ec4
 import { NativeAssistantAction as NativeAssistantAction_eb285de3bc32b905e4c8b31cccca62ae } from '../../../admin-native/assistant'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { NativeAssistantLink as NativeAssistantLink_eb285de3bc32b905e4c8b31cccca62ae } from '../../../admin-native/assistant'
+import { NativeSettingsLink as NativeSettingsLink_b340862c40c3f96f6c43e00ef0893339 } from '../../../admin-native/settings-nav'
+import { NativeThemeLoginIntro as NativeThemeLoginIntro_4a9a2b83dabe942365be7665fe007c79 } from '../../../admin-native/theme'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { NativeAdminTheme as NativeAdminTheme_4a9a2b83dabe942365be7665fe007c79 } from '../../../admin-native/theme'
+import { NativeAssistantProvider as NativeAssistantProvider_eb285de3bc32b905e4c8b31cccca62ae } from '../../../admin-native/assistant'
 import { NativeAssistantView as NativeAssistantView_2ad82966f19eabfb8978c056d668cacb } from '../../../admin-native/view'
+import { NativeSettingsView as NativeSettingsView_13b9e2ff4b071f9f1f78547057c1e1d7 } from '../../../admin-native/settings'
 import { MCPAuthorizeView as MCPAuthorizeView_a5859e694d23fd11a46e2dcf78fce1a2 } from '@payloadcms/plugin-mcp/rsc'
 import { WelcomeWidget as WelcomeWidget_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 import { CollectionCards as CollectionCards_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
@@ -81,10 +85,14 @@ export const importMap = {
   "/admin-native/assistant#NativeAssistantAction": NativeAssistantAction_eb285de3bc32b905e4c8b31cccca62ae,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin-native/assistant#NativeAssistantLink": NativeAssistantLink_eb285de3bc32b905e4c8b31cccca62ae,
+  "/admin-native/settings-nav#NativeSettingsLink": NativeSettingsLink_b340862c40c3f96f6c43e00ef0893339,
+  "/admin-native/theme#NativeThemeLoginIntro": NativeThemeLoginIntro_4a9a2b83dabe942365be7665fe007c79,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
   "/admin-native/theme#NativeAdminTheme": NativeAdminTheme_4a9a2b83dabe942365be7665fe007c79,
+  "/admin-native/assistant#NativeAssistantProvider": NativeAssistantProvider_eb285de3bc32b905e4c8b31cccca62ae,
   "/admin-native/view#NativeAssistantView": NativeAssistantView_2ad82966f19eabfb8978c056d668cacb,
+  "/admin-native/settings#NativeSettingsView": NativeSettingsView_13b9e2ff4b071f9f1f78547057c1e1d7,
   "@payloadcms/plugin-mcp/rsc#MCPAuthorizeView": MCPAuthorizeView_a5859e694d23fd11a46e2dcf78fce1a2,
   "@payloadcms/ui/rsc#WelcomeWidget": WelcomeWidget_ab83ff7e88da8d3530831f296ec4756a,
   "@payloadcms/ui/rsc#CollectionCards": CollectionCards_ab83ff7e88da8d3530831f296ec4756a,

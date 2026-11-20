@@ -11,7 +11,7 @@ import {
   Square,
   Trash2,
 } from 'lucide-react'
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useId, useState, type ReactNode } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -145,6 +145,49 @@ export function ShadcnAssistantBody() {
     )
   }
   return <Chat {...state} />
+}
+
+export function ShadcnAssistantSettings() {
+  const state = useContext(AssistantState)
+  if (!state) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Je hebt geen toegang tot de assistent voor deze website.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+  const { chat, tenant } = state
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={chat.model?.connected ? 'default' : 'secondary'}>
+          {chat.model?.connected
+            ? 'Verbonden'
+            : chat.model
+              ? 'Geen model verbonden'
+              : 'Verbinding laden…'}
+        </Badge>
+        {chat.model?.model && <span className="text-sm">{chat.model.model}</span>}
+      </div>
+      {(chat.error || chat.notice) && (
+        <Alert
+          variant={chat.error ? 'destructive' : 'default'}
+          role={chat.error ? 'alert' : 'status'}
+        >
+          <AlertDescription>{chat.error || chat.notice}</AlertDescription>
+        </Alert>
+      )}
+      {tenant.canManage ? (
+        chat.model && <ModelConnection key={chat.model.settings?.provider} chat={chat} />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Websitebeheerders kunnen de modelverbinding wijzigen.
+        </p>
+      )}
+    </div>
+  )
 }
 
 function Chat({ chat, tenant }: { chat: AssistantController; tenant: AssistantTenant }) {
@@ -393,7 +436,8 @@ function Chat({ chat, tenant }: { chat: AssistantController; tenant: AssistantTe
   )
 }
 
-function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved: () => void }) {
+function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved?: () => void }) {
+  const formId = useId()
   const values = chat.model?.settings
   const [provider, setProvider] = useState<ModelProvider>(values?.provider ?? 'openai')
   return (
@@ -405,15 +449,15 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
             const form = event.currentTarget
             void chat.connect(new FormData(form), () => {
               form.reset()
-              onSaved()
+              onSaved?.()
             })
           }}
         >
           <FieldGroup className="gap-3">
             <Field>
-              <FieldLabel htmlFor="model-provider">Provider</FieldLabel>
+              <FieldLabel htmlFor={formId + '-provider'}>Provider</FieldLabel>
               <NativeSelect
-                id="model-provider"
+                id={formId + '-provider'}
                 name="provider"
                 value={provider}
                 onChange={(event) => setProvider(event.target.value as ModelProvider)}
@@ -424,14 +468,14 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
               </NativeSelect>
             </Field>
             <Field>
-              <FieldLabel htmlFor="model-id">Model-ID</FieldLabel>
-              <Input id="model-id" name="model" required defaultValue={values?.model} />
+              <FieldLabel htmlFor={formId + '-id'}>Model-ID</FieldLabel>
+              <Input id={formId + '-id'} name="model" required defaultValue={values?.model} />
             </Field>
             {provider === 'openai-compatible' && (
               <Field>
-                <FieldLabel htmlFor="model-url">Provider-URL</FieldLabel>
+                <FieldLabel htmlFor={formId + '-url'}>Provider-URL</FieldLabel>
                 <Input
-                  id="model-url"
+                  id={formId + '-url'}
                   name="baseURL"
                   type="url"
                   required
@@ -440,9 +484,9 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
               </Field>
             )}
             <Field>
-              <FieldLabel htmlFor="model-key">API-sleutel</FieldLabel>
+              <FieldLabel htmlFor={formId + '-key'}>API-sleutel</FieldLabel>
               <Input
-                id="model-key"
+                id={formId + '-key'}
                 name="apiKey"
                 type="password"
                 required

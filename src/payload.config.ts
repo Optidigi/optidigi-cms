@@ -79,9 +79,14 @@ export default buildConfig({
     importMap: { baseDir: dirname },
     components: {
       actions: ['/admin-native/assistant#NativeAssistantAction'],
-      afterNavLinks: ['/admin-native/assistant#NativeAssistantLink'],
+      beforeLogin: ['/admin-native/theme#NativeThemeLoginIntro'],
+      afterNavLinks: [
+        '/admin-native/assistant#NativeAssistantLink',
+        '/admin-native/settings-nav#NativeSettingsLink',
+      ],
       views: {
         assistant: { Component: '/admin-native/view#NativeAssistantView', path: '/assistant', exact: true },
+        settings: { Component: '/admin-native/settings#NativeSettingsView', path: '/settings', exact: true },
       },
     },
   },
@@ -134,7 +139,11 @@ export default buildConfig({
           ...config.admin,
           components: {
             ...config.admin?.components,
-            providers: [...(config.admin?.components?.providers ?? []), '/admin-native/theme#NativeAdminTheme'],
+            providers: [
+              ...(config.admin?.components?.providers ?? []),
+              '/admin-native/theme#NativeAdminTheme',
+              '/admin-native/assistant#NativeAssistantProvider',
+            ],
           },
         },
       }),

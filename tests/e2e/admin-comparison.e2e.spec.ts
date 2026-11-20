@@ -62,10 +62,29 @@ test('compares the native admin and shadcn editor using one Payload session', as
     await page.keyboard.press('Escape')
     await expect(page.getByRole('button', { name: 'Vraag AI' })).toBeFocused()
 
-    expect((await page.goto('/admin-shadcn/' + other.id + '/pages'))?.status()).toBe(404)
+    await context.clearCookies()
+    await page.goto('/admin-shadcn')
+    await expect(page).toHaveURL('/admin-shadcn/login')
+    await expect(page.getByRole('heading', { name: 'Inloggen' })).toBeVisible()
+    await page.getByRole('button', { name: 'Weergave' }).click()
+    await page.getByRole('menuitemradio', { name: 'Donker' }).press('Enter')
+    await expect(page.locator('html')).toHaveClass(/(?:^| )dark(?: |$)/)
+    await page.reload()
+    await expect(page.locator('html')).toHaveClass(/(?:^| )dark(?: |$)/)
+    await page.getByLabel('E-mailadres').fill(email)
+    await page.getByLabel('Wachtwoord', { exact: true }).fill(password)
+    await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
     const root = '/admin-shadcn/' + tenant.id
+    await expect(page).toHaveURL(new RegExp(root + '(/.*)?$'))
+    await expect(page.locator('html')).toHaveClass(/(?:^| )dark(?: |$)/)
+    for (const collection of ['Pagina’s', 'Artikelen', 'Portfolio', 'Media', 'Instellingen']) {
+      await expect(page.getByRole('link', { name: collection, exact: true }).first()).toBeVisible()
+    }
+    expect((await page.goto('/admin-shadcn/' + other.id + '/pages'))?.status()).toBe(404)
+    expect((await page.goto('/admin-shadcn/platform'))?.status()).toBe(404)
     expect((await page.goto(root + '/pages?id=' + home.id))?.status()).toBe(200)
     await page.getByRole('textbox', { name: 'Paginakop' }).fill('Draft from shadcn')
+    await page.getByLabel('Inhoud', { exact: true }).fill('Rich text from shadcn')
     await page.getByRole('button', { name: 'Concept opslaan' }).click()
     await expect(page.getByText('Concept opgeslagen.', { exact: true })).toBeVisible()
     const feed = '/api/site-content?tenant=' + slug + '&locale=nl'
@@ -77,6 +96,25 @@ test('compares the native admin and shadcn editor using one Payload session', as
     expect(await (await context.request.get(feed)).json()).toMatchObject({
       homepage: { heading: 'Draft from shadcn' },
     })
+    const publishedPage = await payload.findByID({
+      collection: 'pages',
+      id: home.id,
+      locale: 'nl',
+      overrideAccess: true,
+      depth: 0,
+    })
+    expect(JSON.stringify(publishedPage.body)).toContain('Rich text from shadcn')
+    await page.goto('/admin-shadcn/account')
+    await expect(page.getByLabel('E-mailadres')).toHaveValue(email)
+    const updatedPassword = randomUUID()
+    await page.getByLabel('Huidig wachtwoord', { exact: true }).fill(password)
+    await page.getByLabel('Nieuw wachtwoord', { exact: true }).fill(updatedPassword)
+    await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
+    await expect(page).toHaveURL('/admin-shadcn/login?updated=1')
+    await page.getByLabel('E-mailadres').fill(email)
+    await page.getByLabel('Wachtwoord', { exact: true }).fill(updatedPassword)
+    await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(root + '(/.*)?$'))
 
     await page.route('**/api/assistant', async (route) => {
       const input = route.request().postDataJSON()
@@ -97,14 +135,20 @@ test('compares the native admin and shadcn editor using one Payload session', as
         body: 'data: ' + JSON.stringify({ type: 'text', text: 'Draft reply' }) + '\n\n',
       })
     })
-    await page.reload()
+    await page.goto(root + '/settings/assistant')
+    await expect(page.getByLabel('Model-ID')).toBeVisible()
+    await expect(page.getByLabel('API-sleutel')).toHaveValue('')
+    await page.goto(root + '/pages?id=' + home.id)
     await page.getByRole('button', { name: 'Vraag AI' }).click()
     const drawer = page.getByRole('dialog')
     await drawer.getByRole('button', { name: 'fixture-model' }).click()
     await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeVisible()
     await page.keyboard.press('Escape')
-    await drawer.getByRole('button', { name: /Antwoordlengte/ }).click()
-    await page.getByRole('menuitemradio', { name: 'Uitgebreid' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeHidden()
+    await drawer.getByRole('button', { name: /Antwoordlengte/ }).press('Enter')
+    const detailed = page.getByRole('menuitemradio', { name: 'Uitgebreid' })
+    await expect(detailed).toBeVisible()
+    await detailed.press('Enter')
     await expect(drawer.getByRole('button', { name: 'Antwoordlengte: Uitgebreid' })).toBeVisible()
     await drawer.getByRole('textbox', { name: 'Bericht' }).fill('Werk deze pagina bij')
     await drawer.getByRole('button', { name: 'Versturen' }).click()

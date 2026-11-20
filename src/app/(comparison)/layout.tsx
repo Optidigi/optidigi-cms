@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ComparisonTheme } from '@/admin-comparison/theme'
 import { GeistSans } from 'geist/font/sans'
 import type { ReactNode } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -11,9 +12,11 @@ export const metadata: Metadata = {
 
 export default function ComparisonLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="nl" className={GeistSans.variable}>
+    <html lang="nl" className={GeistSans.variable} suppressHydrationWarning>
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
+        <ComparisonTheme>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ComparisonTheme>
       </body>
     </html>
   )

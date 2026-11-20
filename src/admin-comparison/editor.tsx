@@ -14,12 +14,17 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { saveComparison, type SaveResult } from './actions'
 import type { EditorialSection } from './data'
+import type { Page } from '@/payload-types'
+import { editableBody } from './rich-text-data'
+import { RichTextEditor } from './rich-text'
 
 type Document = {
-  id: number
-  updatedAt: string
+  id?: number
+  updatedAt?: string
   _status?: 'draft' | 'published' | null
   title?: string | null
+  slug?: string
+  body?: Page['body']
   heading?: string | null
   description?: string | null
   name?: string
@@ -33,6 +38,7 @@ const notices: Record<SaveResult, string> = {
   saved: 'Concept opgeslagen.',
   published: 'Gepubliceerd.',
   restored: 'Vorige versie als concept opgeslagen.',
+  deleted: 'Document verwijderd.',
   conflict: 'Het document is intussen gewijzigd. Je invoer staat nog in het formulier.',
   invalid: 'Controleer de verplichte velden en de linkpaden.',
   failed: 'Opslaan is mislukt. Controleer je toegang of probeer opnieuw.',
@@ -45,6 +51,7 @@ export function Editor({
   locale,
   preview,
   versions,
+  canDelete,
 }: {
   document: Document
   site: number
@@ -52,41 +59,56 @@ export function Editor({
   locale: 'nl' | 'en'
   preview: string | null
   versions: { id: string; updatedAt: string }[]
+  canDelete: boolean
 }) {
   const router = useRouter()
   const [pending, run] = useTransition()
   const [completion, setCompletion] = useState<SaveResult>()
-  const [links, setLinks] = useState(() =>
-    (document.navigation ?? []).map((link, index) => ({
-      ...link,
-      key: link.id || String(index),
-    })),
-  )
-  const homepage = section === 'pages'
+  const isSettings = section === 'site-settings'
+  const homepage = section === 'pages' && document.slug === 'home'
+  const supportsPreview = Boolean(document.id && (homepage || isSettings))
   const native = '/admin/collections/' + section + '/' + document.id
+  const base = '/admin-shadcn/' + site + '/' + section
+  const [body, setBody] = useState<string>()
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const failed = completion === 'conflict' || completion === 'invalid' || completion === 'failed'
 
   function save(form: FormData, intent: string, version?: string) {
     form.set('site', String(site))
-    form.set('id', String(document.id))
-    form.set('revision', document.updatedAt)
+    if (document.id) form.set('id', String(document.id))
+    if (document.updatedAt) form.set('revision', document.updatedAt)
+    if (body !== undefined && (intent === 'draft' || intent === 'publish')) form.set('body', body)
     form.set('section', section)
     form.set('locale', locale)
     form.set('intent', intent)
     if (version) form.set('version', String(version))
     run(async () => {
-      const result = await saveComparison(form)
+      const { result, id } = await saveComparison(form)
       setCompletion(result)
-      if (result === 'saved' || result === 'published' || result === 'restored') router.refresh()
+      if (result === 'deleted') router.replace(base + '?locale=' + locale)
+      else if (id && !document.id)
+        router.replace(base + '?locale=' + locale + (isSettings ? '' : '&id=' + id))
+      else if (result === 'saved' || result === 'published' || result === 'restored') {
+        setBody(undefined)
+        router.refresh()
+      }
     })
   }
 
   return (
-    <div className="grid min-w-0 items-start gap-4 xl:grid-cols-2">
+    <div
+      className={supportsPreview ? 'grid min-w-0 items-start gap-4 xl:grid-cols-2' : 'max-w-3xl'}
+    >
       <Card className="min-w-0">
         <CardHeader className="flex-row items-center justify-between gap-3">
           <CardTitle role="heading" aria-level={2}>
-            {homepage ? 'Homepage bewerken' : 'Website-instellingen bewerken'}
+            {isSettings
+              ? 'Website-instellingen bewerken'
+              : homepage
+                ? 'Homepage bewerken'
+                : document.id
+                  ? 'Document bewerken'
+                  : 'Document aanmaken'}
           </CardTitle>
           <Badge variant="secondary">
             {document._status === 'published' ? 'Gepubliceerd' : 'Concept'}
@@ -107,9 +129,21 @@ export function Editor({
             }}
           >
             <FieldGroup key={document.updatedAt}>
-              {homepage ? (
+              {!isSettings ? (
                 <>
                   <TextField id="title" label="Titel" required value={document.title} />
+                  <Field>
+                    <FieldLabel htmlFor="slug">URL-naam</FieldLabel>
+                    <Input
+                      id="slug"
+                      name="slug"
+                      required
+                      pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                      defaultValue={document.slug ?? ''}
+                      readOnly={homepage}
+                      maxLength={150}
+                    />
+                  </Field>
                   <TextField
                     id="heading"
                     label="Paginakop"
@@ -123,9 +157,16 @@ export function Editor({
                     multiline
                     maxLength={1000}
                   />
-                  <FieldDescription>
-                    Open het document in Payload om opgemaakte inhoud te bewerken.
-                  </FieldDescription>
+                  <Field>
+                    <FieldLabel>Inhoud</FieldLabel>
+                    {!document.body || editableBody(document.body) ? (
+                      <RichTextEditor value={document.body} onChange={setBody} />
+                    ) : (
+                      <FieldDescription>
+                        Open dit document in Payload om de bestaande opmaak te bewerken.
+                      </FieldDescription>
+                    )}
+                  </Field>
                 </>
               ) : (
                 <>
@@ -139,68 +180,7 @@ export function Editor({
                     />
                     <TextField id="phone" label="Telefoonnummer" value={document.phone} />
                   </div>
-                  <Field>
-                    <FieldLabel>Websitenavigatie</FieldLabel>
-                    {links.map((link, index) => (
-                      <div
-                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
-                        key={link.key}
-                      >
-                        <Input
-                          name="navLabel"
-                          aria-label={'Linktekst ' + (index + 1)}
-                          placeholder="Linktekst"
-                          required
-                          value={link.label}
-                          onChange={(event) =>
-                            setLinks(
-                              links.map((item) =>
-                                item.key === link.key
-                                  ? { ...item, label: event.target.value }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                        <Input
-                          name="navHref"
-                          aria-label={'Pad ' + (index + 1)}
-                          placeholder="/contact"
-                          required
-                          value={link.href}
-                          onChange={(event) =>
-                            setLinks(
-                              links.map((item) =>
-                                item.key === link.key
-                                  ? { ...item, href: event.target.value }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          aria-label={'Verwijder link ' + (index + 1)}
-                          onClick={() => setLinks(links.filter((item) => item.key !== link.key))}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      className="self-start"
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setLinks([...links, { key: crypto.randomUUID(), label: '', href: '' }])
-                      }
-                    >
-                      <Plus /> Link toevoegen
-                    </Button>
-                  </Field>
+                  <NavigationFields navigation={document.navigation} />
                 </>
               )}
               <TextField
@@ -223,12 +203,42 @@ export function Editor({
                 <Button type="submit" value="publish" disabled={pending}>
                   Publiceren
                 </Button>
-                <Button variant="ghost" nativeButton={false} render={<a href={native} />}>
-                  Open in Payload <ExternalLink />
-                </Button>
+                {document.id && (
+                  <Button variant="ghost" nativeButton={false} render={<Link href={native} />}>
+                    Open in Payload <ExternalLink />
+                  </Button>
+                )}
+                {canDelete && document.id && !homepage && !isSettings && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 /> Verwijderen
+                  </Button>
+                )}
               </div>
             </FieldGroup>
           </form>
+          {confirmDelete && (
+            <Alert variant="destructive">
+              <AlertDescription>Wil je dit document definitief verwijderen?</AlertDescription>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
+                  Annuleren
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={pending}
+                  onClick={() => save(new FormData(), 'delete')}
+                >
+                  Verwijderen bevestigen
+                </Button>
+              </div>
+            </Alert>
+          )}
           {versions.length > 0 && (
             <Collapsible className="border-t pt-3">
               <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>
@@ -265,39 +275,108 @@ export function Editor({
           )}
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="flex-row items-center justify-between gap-2">
-          <CardTitle role="heading" aria-level={2}>
-            Websitevoorbeeld
-          </CardTitle>
-          {preview && (
-            <Button
-              variant="ghost"
-              size="sm"
-              nativeButton={false}
-              render={<Link href={preview} target="_blank" rel="noreferrer" />}
-            >
-              Open in nieuw tabblad <ExternalLink />
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {preview ? (
-            <iframe
-              key={document.updatedAt}
-              src={preview}
-              title="Websitevoorbeeld"
-              className="h-[34rem] w-full rounded-md border bg-white"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Voorbeeld is voor deze website nog niet beschikbaar.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {supportsPreview && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between gap-2">
+            <CardTitle role="heading" aria-level={2}>
+              Websitevoorbeeld
+            </CardTitle>
+            {preview && (
+              <Button
+                variant="ghost"
+                size="sm"
+                nativeButton={false}
+                render={<Link href={preview} target="_blank" rel="noreferrer" />}
+              >
+                Open in nieuw tabblad <ExternalLink />
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {preview ? (
+              <iframe
+                key={document.updatedAt}
+                src={preview}
+                title="Websitevoorbeeld"
+                className="h-[34rem] w-full rounded-md border bg-white"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Voorbeeld is voor deze website nog niet beschikbaar.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
+  )
+}
+
+function NavigationFields({ navigation }: { navigation: Document['navigation'] }) {
+  const [links, setLinks] = useState(() =>
+    (navigation ?? []).map((link, index) => ({
+      ...link,
+      key: link.id || String(index),
+    })),
+  )
+  return (
+    <Field>
+      <FieldLabel>Websitenavigatie</FieldLabel>
+      {links.map((link, index) => (
+        <div
+          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
+          key={link.key}
+        >
+          <Input
+            name="navLabel"
+            aria-label={'Linktekst ' + (index + 1)}
+            placeholder="Linktekst"
+            required
+            value={link.label}
+            onChange={(event) =>
+              setLinks(
+                links.map((item) =>
+                  item.key === link.key ? { ...item, label: event.target.value } : item,
+                ),
+              )
+            }
+          />
+          <Input
+            name="navHref"
+            aria-label={'Pad ' + (index + 1)}
+            placeholder="/contact"
+            required
+            value={link.href}
+            onChange={(event) =>
+              setLinks(
+                links.map((item) =>
+                  item.key === link.key ? { ...item, href: event.target.value } : item,
+                ),
+              )
+            }
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={'Verwijder link ' + (index + 1)}
+            onClick={() => setLinks(links.filter((item) => item.key !== link.key))}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      ))}
+      <Button
+        className="self-start"
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => setLinks([...links, { key: crypto.randomUUID(), label: '', href: '' }])}
+      >
+        <Plus /> Link toevoegen
+      </Button>
+    </Field>
   )
 }
 

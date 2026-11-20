@@ -7,17 +7,29 @@ import {
   Link,
   useAuth,
   useConfig,
+  useLocale,
   usePathname,
   useSearchParams,
-  useTranslation,
 } from '@payloadcms/ui'
 import { ArrowUp, ExternalLink, Settings2, Sparkles, Square, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import type { ModelProvider, ResponseDetail } from '@/assistant/protocol'
+import {
+  createContext,
+  memo,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { contextCollections, type ModelProvider, type ResponseDetail } from '@/assistant/protocol'
 import { assistantMemberships } from '@/assistant/scope-shared'
 import {
   useAssistant,
   type AssistantContext,
+  type AssistantController,
   type AssistantTenant,
 } from '@/assistant/use-assistant'
 import './native.css'
@@ -26,17 +38,35 @@ function useNativeContext() {
   const { user } = useAuth()
   const { config } = useConfig()
   const { selectedTenantID, options } = useTenantSelection()
-  const { i18n } = useTranslation()
+  const payloadLocale = useLocale()
   const pathname = usePathname()
-  const locale = useSearchParams().get('locale')
+  const searchParams = useSearchParams()
+  const localeParam = searchParams.get('locale')
+  const locale: 'nl' | 'en' =
+    localeParam === 'en' || localeParam === 'nl'
+      ? localeParam
+      : payloadLocale?.code === 'en'
+        ? 'en'
+        : 'nl'
   const memberships = assistantMemberships(user)
   const active =
     memberships.find(({ id }) => id === Number(selectedTenantID)) ??
     (memberships.length === 1 ? memberships[0] : undefined)
   const root = config.routes.admin
-  const document = pathname
+  const route = root + '/assistant'
+  const pathDocument = pathname
     ?.slice(root.length)
     .match(/^\/collections\/(pages|articles|projects|site-settings)\/(\d+)\/?$/)
+  const collection =
+    pathDocument?.[1] ?? (pathname === route ? searchParams.get('collection') : null)
+  const documentId = Number(
+    pathDocument?.[2] ?? (pathname === route ? searchParams.get('document') : null),
+  )
+  const type = contextCollections.find((candidate) => candidate === collection)
+  const document =
+    type && Number.isSafeInteger(documentId) && documentId > 0
+      ? { collection: type, id: documentId }
+      : undefined
   return {
     user,
     tenant: active && {
@@ -44,20 +74,91 @@ function useNativeContext() {
       name: String(options.find(({ value }) => Number(value) === active.id)?.label ?? 'Website'),
     },
     endpoint: config.routes.api + '/assistant',
-    route: root + '/assistant',
+    root,
+    route,
+    expandedRoute: document
+      ? route +
+        '?' +
+        new URLSearchParams({
+          collection: document.collection,
+          document: String(document.id),
+          locale,
+        })
+      : route,
     pathname,
-    locale:
-      locale === 'nl' || locale === 'en'
-        ? locale
-        : i18n.language === 'en'
-          ? ('en' as const)
-          : ('nl' as const),
-    document: document
-      ? { collection: document[1] as AssistantContext['collection'], id: Number(document[2]) }
-      : undefined,
+    locale,
+    document,
+    openModelSettings: pathname === route && searchParams.get('settings') === 'model',
     hasMemberships: memberships.length > 0,
   }
 }
+
+type NativeSession = { scope: string; chat: AssistantController }
+const NativeAssistantContext = createContext<NativeSession | undefined>(undefined)
+
+// Key the assistant controller independently so a tenant change leaves Payload's editor tree mounted.
+export function NativeAssistantProvider({ children }: { children: ReactNode }) {
+  const { user, tenant, endpoint, document, locale } = useNativeContext()
+  const scope = user && tenant ? String(user.id) + ':' + tenant.id : undefined
+  const [session, setSession] = useState<NativeSession>()
+  const [previousScope, setPreviousScope] = useState(scope)
+  if (scope !== previousScope) {
+    setPreviousScope(scope)
+    setSession(undefined)
+  }
+  return (
+    <NativeAssistantContext.Provider value={session?.scope === scope ? session : undefined}>
+      {scope && tenant && (
+        <NativeAssistantSession
+          key={scope}
+          scope={scope}
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          canManage={tenant.canManage}
+          endpoint={endpoint}
+          collection={document?.collection}
+          documentId={document?.id}
+          locale={locale}
+          publish={setSession}
+        />
+      )}
+      {children}
+    </NativeAssistantContext.Provider>
+  )
+}
+
+const NativeAssistantSession = memo(function NativeAssistantSession({
+  scope,
+  tenantId,
+  tenantName,
+  canManage,
+  endpoint,
+  collection,
+  documentId,
+  locale,
+  publish,
+}: {
+  scope: string
+  tenantId: number
+  tenantName: string
+  canManage: boolean
+  endpoint: string
+  collection?: AssistantContext['collection']
+  documentId?: number
+  locale: 'nl' | 'en'
+  publish: (session: NativeSession) => void
+}) {
+  const chat = useAssistant({
+    tenant: { id: tenantId, name: tenantName, canManage },
+    endpoint,
+    document: collection && documentId ? { collection, id: documentId } : undefined,
+    locale,
+  })
+  useLayoutEffect(() => {
+    publish({ scope, chat })
+  }, [chat, publish, scope])
+  return null
+})
 
 export function NativeAssistantLink() {
   const { user, route } = useNativeContext()
@@ -69,7 +170,7 @@ export function NativeAssistantLink() {
 }
 
 export function NativeAssistantAction() {
-  const { user, route, pathname } = useNativeContext()
+  const { user, route, expandedRoute, pathname } = useNativeContext()
   const [open, setOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
   const trigger = useRef<HTMLDivElement>(null)
@@ -119,7 +220,7 @@ export function NativeAssistantAction() {
             </strong>
             <div>
               <Link
-                href={route}
+                href={expandedRoute}
                 className="native-ai-icon"
                 aria-label="Open assistentpagina"
                 title="Open assistentpagina"
@@ -145,7 +246,8 @@ export function NativeAssistantAction() {
 }
 
 export function NativeAssistantSurface() {
-  const { user, tenant, endpoint, document, locale, hasMemberships } = useNativeContext()
+  const { tenant, document, root, openModelSettings, hasMemberships } = useNativeContext()
+  const session = useContext(NativeAssistantContext)
   if (!tenant)
     return (
       <div className="native-ai-empty">
@@ -156,22 +258,38 @@ export function NativeAssistantSurface() {
         </Banner>
       </div>
     )
+  if (!session)
+    return (
+      <p className="native-ai-status" role="status">
+        Assistent laden…
+      </p>
+    )
   return (
     <NativeChat
-      key={String(user?.id) + ':' + tenant.id}
-      {...{ tenant, endpoint, document, locale }}
+      key={session.scope + (openModelSettings ? ':settings' : '')}
+      tenant={tenant}
+      attached={Boolean(document)}
+      root={root}
+      openModelSettings={openModelSettings}
+      chat={session.chat}
     />
   )
 }
 
-function NativeChat(props: {
+function NativeChat({
+  tenant,
+  attached,
+  root,
+  openModelSettings,
+  chat,
+}: {
   tenant: AssistantTenant
-  endpoint: string
-  document?: AssistantContext
-  locale: 'nl' | 'en'
+  attached: boolean
+  root: string
+  openModelSettings: boolean
+  chat: AssistantController
 }) {
-  const chat = useAssistant(props)
-  const [settings, setSettings] = useState(false)
+  const [settings, setSettings] = useState(openModelSettings && tenant.canManage)
   const scroller = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
   const active = chat.busy === 'chat'
@@ -187,8 +305,8 @@ function NativeChat(props: {
     <div className="native-ai-chat">
       <div className="native-ai-meta">
         <span>
-          {props.tenant.name}
-          {props.document ? ' · Huidig document' : ''}
+          {tenant.name}
+          {attached ? ' · Huidig document' : ''}
         </span>
         <Button
           margin={false}
@@ -219,7 +337,13 @@ function NativeChat(props: {
         )}
         {chat.turns.map(({ id, role, content }) => (
           <div key={id} className={'native-ai-message native-ai-message--' + role}>
-            {content}
+            {role === 'assistant' ? (
+              <Markdown remarkPlugins={[remarkGfm]} disallowedElements={['img']}>
+                {content}
+              </Markdown>
+            ) : (
+              content
+            )}
           </div>
         ))}
         {active && (
@@ -230,11 +354,20 @@ function NativeChat(props: {
         {chat.result && (
           <div className="native-ai-result">
             <strong>Homepageconcept opgeslagen</strong>
-            {chat.result.preview && (
-              <a href={chat.result.preview} target="_blank" rel="noreferrer">
-                Open voorbeeld
-              </a>
-            )}
+            <div className="native-ai-controls">
+              <Link
+                href={
+                  root + '/collections/pages/' + chat.result.id + '?locale=' + chat.result.locale
+                }
+              >
+                Open concept
+              </Link>
+              {chat.result.preview && (
+                <a href={chat.result.preview} target="_blank" rel="noreferrer">
+                  Open voorbeeld
+                </a>
+              )}
+            </div>
           </div>
         )}
         {chat.approval && (
@@ -250,7 +383,7 @@ function NativeChat(props: {
               >
                 Annuleren
               </Button>
-              {props.tenant.canManage && (
+              {tenant.canManage && (
                 <Button
                   size="medium"
                   margin={false}
@@ -275,10 +408,10 @@ function NativeChat(props: {
             Modelverbinding laden…
           </p>
         )}
-        {configured === false && !props.tenant.canManage && (
+        {configured === false && !tenant.canManage && (
           <p className="native-ai-status">Vraag een websitebeheerder om een model te verbinden.</p>
         )}
-        {settings && props.tenant.canManage && (
+        {settings && tenant.canManage && chat.model && (
           <NativeModelSettings
             key={connection?.provider}
             {...{ chat }}
@@ -309,7 +442,7 @@ function NativeChat(props: {
             }}
           />
           <div className="native-ai-controls">
-            {props.tenant.canManage ? (
+            {tenant.canManage ? (
               <button
                 type="button"
                 className="native-ai-quiet"

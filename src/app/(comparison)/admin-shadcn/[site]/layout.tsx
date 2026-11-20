@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from 'react'
 import { ComparisonShell } from '@/admin-comparison/shell'
 import { currentSite } from '@/admin-comparison/data'
+import { isPlatformAdmin } from '@/site/access'
 import { assistantMemberships } from '@/assistant/scope-shared'
 
 export default async function SiteLayout({
@@ -17,6 +18,7 @@ export default async function SiteLayout({
       <ComparisonShell
         sites={sites}
         selected={selected}
+        platform={isPlatformAdmin(req.user)}
         assistant={membership && { ...membership, name: selected.name }}
       >
         {children}

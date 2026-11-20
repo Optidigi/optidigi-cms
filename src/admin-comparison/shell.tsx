@@ -2,7 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { ExternalLink, FileText, Globe2, Settings2, Sparkles } from 'lucide-react'
+import {
+  BriefcaseBusiness,
+  ExternalLink,
+  FileText,
+  Globe2,
+  Images,
+  LayoutDashboard,
+  Newspaper,
+  Settings2,
+  Shield,
+  Sparkles,
+  UserRound,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
   Sidebar,
@@ -34,13 +46,18 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { ChevronsUpDown } from 'lucide-react'
 import { ShadcnAssistantLauncher, ShadcnAssistantProvider } from './assistant'
-import type { AssistantTenant } from '@/assistant/use-assistant'
+import { AppearanceMenu } from './theme'
+import type { AssistantContext, AssistantTenant } from '@/assistant/use-assistant'
 
 type Website = { id: number; name: string; siteOrigin: string }
 const root = '/admin-shadcn'
 const links = [
+  { slug: '', title: 'Overzicht', Icon: LayoutDashboard },
   { slug: 'pages', title: 'Pagina’s', Icon: FileText },
-  { slug: 'site-settings', title: 'Website-instellingen', Icon: Settings2 },
+  { slug: 'articles', title: 'Artikelen', Icon: Newspaper },
+  { slug: 'projects', title: 'Portfolio', Icon: BriefcaseBusiness },
+  { slug: 'media', title: 'Media', Icon: Images },
+  { slug: 'settings', title: 'Instellingen', Icon: Settings2 },
   { slug: 'assistant', title: 'AI-assistent', Icon: Sparkles },
 ]
 
@@ -48,30 +65,45 @@ export function ComparisonShell({
   sites,
   selected,
   assistant,
+  platform,
   children,
 }: {
   sites: Website[]
   selected: Website
   assistant?: AssistantTenant
+  platform?: boolean
   children: ReactNode
 }) {
   const pathname = usePathname()
   const query = useSearchParams()
   const base = root + '/' + selected.id
-  const active = links.find(({ slug }) => pathname === base + '/' + slug)
+  const section = pathname.slice(base.length).split('/')[1] ?? ''
+  const active = links.find(
+    ({ slug }) => slug === (section === 'site-settings' ? 'settings' : section),
+  )
   const onDocument = Number(query.get(active?.slug === 'assistant' ? 'document' : 'id'))
-  const document =
-    (active?.slug === 'pages' || active?.slug === 'assistant') &&
-    Number.isSafeInteger(onDocument) &&
-    onDocument > 0
-      ? { collection: 'pages' as const, id: onDocument }
+  const candidate = section === 'assistant' ? (query.get('collection') ?? 'pages') : section
+  const collection =
+    candidate === 'pages' ||
+    candidate === 'articles' ||
+    candidate === 'projects' ||
+    candidate === 'site-settings'
+      ? candidate
+      : undefined
+  const document: AssistantContext | undefined =
+    collection && Number.isSafeInteger(onDocument) && onDocument > 0
+      ? { collection, id: onDocument }
       : undefined
   const locale = query.get('locale') === 'en' ? 'en' : 'nl'
   const assistantRoute =
     base +
     '/assistant' +
     (document
-      ? '?document=' + document.id + '&locale=' + locale
+      ? '?document=' +
+        document.id +
+        '&locale=' +
+        locale +
+        (document.collection === 'pages' ? '' : '&collection=' + document.collection)
       : locale === 'en'
         ? '?locale=en'
         : '')
@@ -97,10 +129,7 @@ export function ComparisonShell({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-52">
                   {sites.map((site) => (
-                    <DropdownMenuItem
-                      key={site.id}
-                      render={<Link href={root + '/' + site.id + '/pages'} />}
-                    >
+                    <DropdownMenuItem key={site.id} render={<Link href={root + '/' + site.id} />}>
                       {site.name}
                     </DropdownMenuItem>
                   ))}
@@ -119,7 +148,11 @@ export function ComparisonShell({
                     isActive={active?.slug === slug}
                     tooltip={title}
                     render={
-                      <Link href={slug === 'assistant' ? assistantRoute : base + '/' + slug} />
+                      <Link
+                        href={
+                          slug === 'assistant' ? assistantRoute : base + (slug ? '/' + slug : '')
+                        }
+                      />
                     }
                   >
                     <Icon />
@@ -132,6 +165,23 @@ export function ComparisonShell({
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Mijn account" render={<Link href={root + '/account'} />}>
+                <UserRound />
+                <span>Mijn account</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            {platform && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Platformbeheer"
+                  render={<Link href={root + '/platform'} />}
+                >
+                  <Shield />
+                  <span>Platformbeheer</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Open Payload" render={<Link href="/admin" />}>
                 <ExternalLink />
@@ -158,7 +208,10 @@ export function ComparisonShell({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          {active?.slug !== 'assistant' && <ShadcnAssistantLauncher route={assistantRoute} />}
+          <div className="flex items-center gap-1">
+            <AppearanceMenu />
+            {active?.slug !== 'assistant' && <ShadcnAssistantLauncher route={assistantRoute} />}
+          </div>
         </header>
         {children}
       </SidebarInset>

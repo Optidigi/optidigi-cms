@@ -79,7 +79,8 @@ jobs:
             --retry-all-errors --max-time 5 http://localhost:3000/api/health
           docker exec optidigi-cms-smoke sh -ec 'test -r "$ASSISTANT_KEY_FILE" && test -r "$PREVIEW_SIGNING_KEY_FILE"'
           PLAYWRIGHT_BASE_URL=http://localhost:3000 DATABASE_URL=postgres://ci:ci@127.0.0.1:5432/cms_smoke \
-            npm run test:e2e -- tests/e2e/admin-comparison.e2e.spec.ts --reporter=line
+            npm run test:e2e -- tests/e2e/admin-comparison.e2e.spec.ts tests/e2e/admin-native.e2e.spec.ts \
+              tests/e2e/admin-themed.e2e.spec.ts --reporter=line
       - name: Publish tested image
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
