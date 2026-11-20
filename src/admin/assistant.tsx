@@ -487,12 +487,15 @@ function Chat({
   const allowedTypes = chat.capabilities?.attachmentTypes ?? []
   const efforts = chat.capabilities?.efforts ?? []
   const composerAvailable = connected && !chat.thread?.archived
+  const emptyConversation =
+    chat.messages.length === 0 && chat.operation !== 'thread' && !chat.streaming
+  const contextLabel = t(includeContext ? 'Documentcontext actief' : 'Documentcontext uit')
   const statusText =
     t(chat.notice) || (chat.modelStatus === 'loading' ? t('Modelverbinding laden…') : '')
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-1 border-b px-3 py-2 sm:gap-2 sm:px-4">
         <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
           <DialogTrigger
             render={
@@ -523,17 +526,22 @@ function Chat({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        <span className="min-w-0 truncate text-sm font-medium">{chat.thread?.title ?? ''}</span>
+        <span className="min-w-0 truncate text-sm font-medium">
+          {chat.thread?.title && chat.thread.title !== 'Nieuw gesprek'
+            ? chat.thread.title
+            : t('Gesprek')}
+        </span>
         {document && (
           <Button
             size="sm"
             type="button"
             variant="ghost"
+            aria-label={contextLabel}
             aria-pressed={includeContext}
             disabled={chat.busy}
             onClick={() => setIncludeContext(!includeContext)}
           >
-            <FileText /> {includeContext ? t('Documentcontext actief') : t('Documentcontext uit')}
+            <FileText /> <span className="hidden sm:inline">{contextLabel}</span>
           </Button>
         )}
         <div className="flex-1" />
@@ -541,93 +549,99 @@ function Chat({
           size="sm"
           variant="ghost"
           className={full ? 'lg:hidden' : undefined}
+          aria-label={t('Nieuw gesprek')}
           onClick={chat.newThread}
           disabled={chat.busy}
         >
           <Plus />
-          {t('Nieuw gesprek')}
+          <span className="hidden sm:inline">{t('Nieuw gesprek')}</span>
         </Button>
       </div>
-      <div className="min-h-0 flex-1">
-        <MessageScrollerProvider autoScroll>
-          <MessageScroller>
-            <MessageScrollerViewport role="log" aria-label={t('Gesprek')} aria-live="polite">
-              <MessageScrollerContent className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6">
-                {chat.operation === 'thread' && !chat.messages.length && (
-                  <Skeleton className="h-20 w-full" />
-                )}
-                {!chat.messages.length && chat.operation !== 'thread' && (
-                  <ChatOverview
-                    contextual={Boolean(document && includeContext)}
-                    enabled={composerAvailable && !chat.busy}
-                    onSelect={chat.setInput}
-                  />
-                )}
-                {chat.messages.map((message) => (
-                  <MessageScrollerItem
-                    key={message.id}
-                    messageId={message.id}
-                    scrollAnchor={message.role === 'user'}
-                  >
-                    <ChatTurn message={message} tenant={tenant.id} />
-                  </MessageScrollerItem>
-                ))}
-                {chat.status === 'submitted' && (
-                  <Trace>
-                    <TraceLine status="running">
-                      <TraceIcon>
-                        <Spinner />
-                      </TraceIcon>
-                      <TraceTitle>{t('Antwoord voorbereiden')}</TraceTitle>
-                    </TraceLine>
-                  </Trace>
-                )}
-                {chat.result &&
-                  !chat.messages.at(-1)?.parts.some((part) => part.type === 'data-draft-saved') && (
-                    <DraftLink tenant={tenant.id} result={chat.result} />
+      {emptyConversation ? (
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+          <ChatOverview
+            contextual={Boolean(document && includeContext)}
+            enabled={composerAvailable && !chat.busy}
+            onSelect={chat.setInput}
+          />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1">
+          <MessageScrollerProvider autoScroll>
+            <MessageScroller>
+              <MessageScrollerViewport role="log" aria-label={t('Gesprek')} aria-live="polite">
+                <MessageScrollerContent className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6">
+                  {chat.operation === 'thread' && !chat.messages.length && (
+                    <Skeleton className="h-20 w-full" />
                   )}
-                {chat.approval && (
-                  <Item variant="outline" size="sm">
-                    <ItemMedia variant="icon">
-                      <Trash2 />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>
-                        {chat.approval.label}
-                        {t('verwijderen?')}
-                      </ItemTitle>
-                      <ItemDescription>
-                        {t('Dit verwijdert het document uit Payload.')}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions className="flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={chat.busy}
-                        onClick={chat.reject}
-                      >
-                        {t('Annuleren')}
-                      </Button>
-                      {tenant.canManage && (
+                  {chat.messages.map((message) => (
+                    <MessageScrollerItem
+                      key={message.id}
+                      messageId={message.id}
+                      scrollAnchor={message.role === 'user'}
+                    >
+                      <ChatTurn message={message} tenant={tenant.id} />
+                    </MessageScrollerItem>
+                  ))}
+                  {chat.status === 'submitted' && (
+                    <Trace>
+                      <TraceLine status="running">
+                        <TraceIcon>
+                          <Spinner />
+                        </TraceIcon>
+                        <TraceTitle>{t('Antwoord voorbereiden')}</TraceTitle>
+                      </TraceLine>
+                    </Trace>
+                  )}
+                  {chat.result &&
+                    !chat.messages
+                      .at(-1)
+                      ?.parts.some((part) => part.type === 'data-draft-saved') && (
+                      <DraftLink tenant={tenant.id} result={chat.result} />
+                    )}
+                  {chat.approval && (
+                    <Item variant="outline" size="sm">
+                      <ItemMedia variant="icon">
+                        <Trash2 />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>
+                          {chat.approval.label}
+                          {t('verwijderen?')}
+                        </ItemTitle>
+                        <ItemDescription>
+                          {t('Dit verwijdert het document uit Payload.')}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions className="flex-wrap">
                         <Button
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
                           disabled={chat.busy}
-                          onClick={chat.approve}
+                          onClick={chat.reject}
                         >
-                          {t('Verwijderen')}
+                          {t('Annuleren')}
                         </Button>
-                      )}
-                    </ItemActions>
-                  </Item>
-                )}
-              </MessageScrollerContent>
-            </MessageScrollerViewport>
-            <MessageScrollerButton />
-          </MessageScroller>
-        </MessageScrollerProvider>
-      </div>
+                        {tenant.canManage && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={chat.busy}
+                            onClick={chat.approve}
+                          >
+                            {t('Verwijderen')}
+                          </Button>
+                        )}
+                      </ItemActions>
+                    </Item>
+                  )}
+                </MessageScrollerContent>
+              </MessageScrollerViewport>
+              <MessageScrollerButton />
+            </MessageScroller>
+          </MessageScrollerProvider>
+        </div>
+      )}
       <footer className="mx-auto w-full max-w-2xl space-y-2 px-4 pb-4 pt-2 sm:px-6">
         {statusText && (
           <p role="status" className="text-sm text-muted-foreground">

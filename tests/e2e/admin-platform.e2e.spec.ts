@@ -48,7 +48,7 @@ test('platform administrator signs in through MCP consent and manages a website 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/admin/platform')
     await expect(page.getByRole('heading', { name: 'Platformbeheer' })).toBeVisible()
-    await page.getByRole('link', { name: 'Website toevoegen' }).click()
+    await page.getByText('Website toevoegen', { exact: true }).click({ timeout: 15000 })
     await page.locator('input[name="name"]').fill('Release QA')
     await page.locator('input[name="slug"]').fill(slug)
     await page.locator('input[name="siteOrigin"]').fill('https://example.com')
