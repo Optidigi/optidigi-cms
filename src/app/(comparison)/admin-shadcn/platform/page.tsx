@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { adminRoot, comparisonRequest, comparisonSites } from '@/admin-comparison/data'
 import { savePlatform } from '@/admin-comparison/admin-actions'
+import { siteHref } from '@/admin-comparison/navigation'
+import { AppearanceMenu } from '@/admin-comparison/theme'
 import { isPlatformAdmin, relationID } from '@/site/access'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +27,7 @@ export default async function PlatformPage({
   searchParams: Promise<{
     user?: string
     site?: string
+    website?: string
     result?: string
     page?: string
     q?: string
@@ -70,17 +73,30 @@ export default async function PlatformPage({
   ])
   if ((userID && (!editUser || editUser.id === req.user?.id)) || (siteID && !editSite)) notFound()
   const root = adminRoot + '/platform'
+  const origin = sites.find(({ id }) => id === relationID(query.website))
+  const platformHref = (params: Record<string, string>, hash: string) => {
+    const scope = new URLSearchParams(params)
+    if (origin) scope.set('website', String(origin.id))
+    const queryString = scope.toString()
+    return root + (queryString ? '?' + queryString : '') + hash
+  }
   const membership = new Map(
     editUser?.tenants?.map(({ tenant, role }) => [relationID(tenant), role]),
   )
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-8">
-      <header>
-        <Link href={adminRoot} className="text-sm text-muted-foreground hover:underline">
-          CMS-overzicht
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Platformbeheer</h1>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <Link
+            href={origin ? siteHref(origin.id, '/settings') : adminRoot}
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            {origin ? 'Instellingen · ' + origin.name : 'CMS-overzicht'}
+          </Link>
+          <h1 className="text-2xl font-semibold tracking-tight">Platformbeheer</h1>
+        </div>
+        <AppearanceMenu />
       </header>
       {query.result && (
         <Alert variant={query.result === 'saved' ? 'default' : 'destructive'}>
@@ -110,7 +126,7 @@ export default async function PlatformPage({
                     <TableCell>
                       <Link
                         className="hover:underline"
-                        href={root + '?site=' + site.id + '#websites'}
+                        href={platformHref({ site: String(site.id) }, '#websites')}
                       >
                         {site.name}
                       </Link>
@@ -122,6 +138,7 @@ export default async function PlatformPage({
             </Table>
             <form action={savePlatform} className="border-t pt-4">
               <input type="hidden" name="kind" value="site" />
+              {origin && <input type="hidden" name="website" value={origin.id} />}
               <input type="hidden" name="id" value={editSite?.id ?? ''} />
               <FieldGroup key={editSite?.id ?? 'new'}>
                 <h2 className="text-sm font-semibold">
@@ -152,7 +169,7 @@ export default async function PlatformPage({
                     <Button
                       variant="outline"
                       nativeButton={false}
-                      render={<Link href={root + '#websites'} />}
+                      render={<Link href={platformHref({}, '#websites')} />}
                     >
                       Annuleren
                     </Button>
@@ -168,6 +185,7 @@ export default async function PlatformPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <form action={root} className="flex gap-2">
+              {origin && <input type="hidden" name="website" value={origin.id} />}
               <Input
                 type="search"
                 name="q"
@@ -194,8 +212,8 @@ export default async function PlatformPage({
                         className="hover:underline"
                         href={
                           user.id === req.user?.id
-                            ? adminRoot + '/account'
-                            : root + '?user=' + user.id + '#gebruikers'
+                            ? adminRoot + '/account' + (origin ? '?website=' + origin.id : '')
+                            : platformHref({ user: String(user.id) }, '#gebruikers')
                         }
                       >
                         {user.email}
@@ -218,14 +236,10 @@ export default async function PlatformPage({
                   nativeButton={false}
                   render={
                     <Link
-                      href={
-                        root +
-                        '?page=' +
-                        users.prevPage +
-                        '&q=' +
-                        encodeURIComponent(search) +
-                        '#gebruikers'
-                      }
+                      href={platformHref(
+                        { page: String(users.prevPage), q: search },
+                        '#gebruikers',
+                      )}
                     />
                   }
                 >
@@ -239,14 +253,10 @@ export default async function PlatformPage({
                   nativeButton={false}
                   render={
                     <Link
-                      href={
-                        root +
-                        '?page=' +
-                        users.nextPage +
-                        '&q=' +
-                        encodeURIComponent(search) +
-                        '#gebruikers'
-                      }
+                      href={platformHref(
+                        { page: String(users.nextPage), q: search },
+                        '#gebruikers',
+                      )}
                     />
                   }
                 >
@@ -256,6 +266,7 @@ export default async function PlatformPage({
             </div>
             <form action={savePlatform} className="border-t pt-4">
               <input type="hidden" name="kind" value="user" />
+              {origin && <input type="hidden" name="website" value={origin.id} />}
               <input type="hidden" name="id" value={editUser?.id ?? ''} />
               <FieldGroup key={editUser?.id ?? 'new'}>
                 <h2 className="text-sm font-semibold">
@@ -320,7 +331,7 @@ export default async function PlatformPage({
                     <Button
                       variant="outline"
                       nativeButton={false}
-                      render={<Link href={root + '#gebruikers'} />}
+                      render={<Link href={platformHref({}, '#gebruikers')} />}
                     >
                       Annuleren
                     </Button>

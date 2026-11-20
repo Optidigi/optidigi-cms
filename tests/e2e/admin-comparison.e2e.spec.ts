@@ -8,7 +8,7 @@ test('compares the native admin and shadcn editor using one Payload session', as
   context,
   page,
 }) => {
-  test.setTimeout(90_000)
+  test.setTimeout(120_000)
   const payload = await getPayload({ config, key: randomUUID() })
   const slug = 'compare-' + randomUUID()
   const email = slug + '@example.test'
@@ -56,11 +56,6 @@ test('compares the native admin and shadcn editor using one Payload session', as
     await stock.goto('/admin')
     await expect(stock.locator('html')).not.toHaveAttribute('data-admin-appearance', 'tweaked')
     await stock.close()
-
-    await page.getByRole('button', { name: 'Vraag AI' }).click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('button', { name: 'Vraag AI' })).toBeFocused()
 
     await context.clearCookies()
     await page.goto('/admin-shadcn')
@@ -116,55 +111,130 @@ test('compares the native admin and shadcn editor using one Payload session', as
     await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
     await expect(page).toHaveURL(new RegExp(root + '(/.*)?$'))
 
+    const requestHeaders = { Origin: new URL(baseURL!).origin, 'Content-Type': 'application/json' }
+    const assistant = (data: object) =>
+      context.request.post('/api/assistant', {
+        headers: requestHeaders,
+        data: { ...data, tenant: tenant.id },
+      })
+    await expect(
+      await assistant({
+        action: 'connect',
+        provider: 'openai',
+        model: 'gpt-6-luna',
+        apiKey: 'synthetic-fixture-key',
+      }),
+    ).toBeOK()
     await page.route('**/api/assistant', async (route) => {
       const input = route.request().postDataJSON()
+      if (input?.action !== 'chat-v2') return route.continue()
       expect(input.tenant).toBe(tenant.id)
-      if (input.action === 'status') {
-        return route.fulfill({
-          json: {
-            connected: true,
-            model: 'fixture-model',
-            settings: { provider: 'openai', model: 'fixture-model' },
-          },
+      expect(input.detail).toBe('detailed')
+      expect(input.effort).toBe('low')
+      expect(input.context).toEqual({ collection: 'pages', id: home.id })
+      const [user] = input.messages
+      expect(user.parts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'text', text: 'Werk deze pagina bij' }),
+          expect.objectContaining({ type: 'file', filename: 'brief.txt', mediaType: 'text/plain' }),
+        ]),
+      )
+      const reply = {
+        id: randomUUID(),
+        role: 'assistant',
+        parts: [{ type: 'text', text: 'Draft reply' }],
+      }
+      for (const message of [user, reply]) {
+        await payload.create({
+          collection: 'assistant-messages',
+          overrideAccess: true,
+          data: { thread: input.thread, messageId: message.id, message },
         })
       }
-      expect(input.detail).toBe('detailed')
-      expect(input.context).toEqual({ collection: 'pages', id: home.id })
+      const chunks = [
+        { type: 'start', messageId: reply.id },
+        { type: 'text-start', id: 'reply' },
+        { type: 'text-delta', id: 'reply', delta: 'Draft reply' },
+        { type: 'text-end', id: 'reply' },
+        { type: 'finish', finishReason: 'stop' },
+      ]
       return route.fulfill({
-        contentType: 'text/event-stream',
-        body: 'data: ' + JSON.stringify({ type: 'text', text: 'Draft reply' }) + '\n\n',
+        headers: { 'Content-Type': 'text/event-stream', 'x-vercel-ai-ui-message-stream': 'v1' },
+        body:
+          chunks.map((chunk) => 'data: ' + JSON.stringify(chunk) + '\n\n').join('') +
+          'data: [DONE]\n\n',
       })
     })
     await page.goto(root + '/settings/assistant')
-    await expect(page.getByLabel('Model-ID')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Modelverbinding', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Verbinding wijzigen' }).click()
+    await expect(page.getByLabel('Model-ID')).toHaveValue('gpt-6-luna')
     await expect(page.getByLabel('API-sleutel')).toHaveValue('')
     await page.goto(root + '/pages?id=' + home.id)
     await page.getByRole('button', { name: 'Vraag AI' }).click()
     const drawer = page.getByRole('dialog')
-    await drawer.getByRole('button', { name: 'fixture-model' }).click()
+    await drawer.getByRole('button', { name: 'gpt-6-luna' }).click()
     await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeHidden()
     await drawer.getByRole('button', { name: /Antwoordlengte/ }).press('Enter')
-    const detailed = page.getByRole('menuitemradio', { name: 'Uitgebreid' })
-    await expect(detailed).toBeVisible()
-    await detailed.press('Enter')
+    await page.getByRole('menuitemradio', { name: 'Uitgebreid' }).press('Enter')
     await expect(drawer.getByRole('button', { name: 'Antwoordlengte: Uitgebreid' })).toBeVisible()
+    await drawer.getByRole('button', { name: /Redeneerinspanning/ }).press('Enter')
+    await page.getByRole('menuitemradio', { name: 'Laag' }).press('Enter')
+    await expect(drawer.getByRole('button', { name: 'Redeneerinspanning: Laag' })).toBeVisible()
+    await drawer.getByLabel('Bestanden', { exact: true }).setInputFiles({
+      name: 'brief.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('Private fixture'),
+    })
+    await expect(drawer.getByText('brief.txt', { exact: true })).toBeVisible()
     await drawer.getByRole('textbox', { name: 'Bericht' }).fill('Werk deze pagina bij')
     await drawer.getByRole('button', { name: 'Versturen' }).click()
     await expect(drawer.getByText('Draft reply')).toBeVisible()
+    const settings = await (await assistant({ action: 'thread-list' })).json()
+    const thread = settings.threads[0].id
     await drawer.getByLabel('Open assistentpagina').click()
-    await expect(page).toHaveURL(root + '/assistant?document=' + home.id + '&locale=nl')
+    await expect(page).toHaveURL(
+      root + '/assistant?document=' + home.id + '&locale=nl&thread=' + thread,
+    )
     await expect(page.getByRole('heading', { name: 'AI-assistent' })).toBeVisible()
     await expect(page.getByText('Draft reply')).toBeVisible()
-    const followup = page.waitForRequest(
-      (request) =>
-        request.url().endsWith('/api/assistant') && request.postDataJSON()?.action === 'chat',
-    )
-    await page.getByRole('textbox', { name: 'Bericht' }).fill('Werk deze pagina verder bij')
-    await page.getByRole('button', { name: 'Versturen' }).click()
-    expect((await followup).postDataJSON().context).toEqual({ collection: 'pages', id: home.id })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.getByText('Draft reply')).toBeVisible()
+    await expect(
+      await assistant({ action: 'thread-update', thread, title: 'Conceptbrief' }),
+    ).toBeOK()
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('button', { name: 'Conceptbrief', exact: true })).toBeVisible()
+    await expect(await assistant({ action: 'thread-delete', thread })).toBeOK()
+    expect((await assistant({ action: 'thread-read', thread })).status()).toBe(404)
   } finally {
+    const { docs: threads } = await payload.find({
+      collection: 'assistant-threads',
+      where: { tenant: { equals: tenant.id } },
+      overrideAccess: true,
+      pagination: false,
+      depth: 0,
+    })
+    for (const { id } of threads) {
+      await payload.delete({
+        collection: 'assistant-uploads',
+        where: { thread: { equals: id } },
+        overrideAccess: true,
+      })
+      await payload.delete({
+        collection: 'assistant-messages',
+        where: { thread: { equals: id } },
+        overrideAccess: true,
+      })
+      await payload.delete({ collection: 'assistant-threads', id, overrideAccess: true })
+    }
+    await payload.delete({
+      collection: 'assistant-credentials',
+      where: { tenant: { equals: tenant.id } },
+      overrideAccess: true,
+    })
     await payload.delete({
       collection: 'pages',
       where: { tenant: { equals: tenant.id } },

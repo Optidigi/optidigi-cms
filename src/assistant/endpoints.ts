@@ -1,13 +1,37 @@
-import { APIError, z, type Endpoint, type PayloadRequest } from 'payload'
+import { convertToModelMessages } from 'ai'
+import { APIError, type Endpoint, type PayloadRequest } from 'payload'
+import { z } from 'zod'
 import { confirmDelete } from './approval'
-import { streamAssistant } from './chat'
+import { prepareModelHistory, prepareUserMessage } from './attachments'
+import { streamAssistant, streamThread } from './chat'
 import { encryptCredential } from './credentials'
-import { contextCollections, modelProviders, responseDetail, type Connection } from './protocol'
-import { compatibleURL } from './provider'
+import {
+  contextCollections,
+  modelProviders,
+  reasoningEfforts,
+  responseDetail,
+  type Connection,
+} from './protocol'
+import { compatibleURL, modelCapabilities } from './provider'
 import { assistantMemberships } from './scope'
+import {
+  assertNewMessage,
+  createThread,
+  deleteThread,
+  findThread,
+  holdThread,
+  initialThreadTitle,
+  listThreads,
+  readThread,
+  recentThreadMessages,
+  saveThreadMessage,
+  updateThread,
+} from './threads'
 
 const credentials = 'assistant-credentials'
 const tenant = z.number().check(z.int(), z.positive())
+const thread = tenant
+const contextSchema = z.optional(z.object({ collection: z.enum(contextCollections), id: tenant }))
 const action = z.discriminatedUnion('action', [
   z.object({ action: z.literal('status'), tenant }),
   z.object({ action: z.literal('disconnect'), tenant }),
@@ -24,7 +48,7 @@ const action = z.discriminatedUnion('action', [
     tenant,
     detail: z.optional(z.enum(responseDetail)),
     locale: z.optional(z.enum(['nl', 'en'])),
-    context: z.optional(z.object({ collection: z.enum(contextCollections), id: tenant })),
+    context: contextSchema,
     messages: z
       .array(
         z.object({
@@ -34,6 +58,33 @@ const action = z.discriminatedUnion('action', [
       )
       .check(z.minLength(1), z.maxLength(24)),
   }),
+  z.object({
+    action: z.literal('chat-v2'),
+    tenant,
+    thread,
+    detail: z.optional(z.enum(responseDetail)),
+    effort: z.optional(z.enum(reasoningEfforts)),
+    locale: z.optional(z.enum(['nl', 'en'])),
+    context: contextSchema,
+    messages: z.array(z.unknown()).min(1).max(2000),
+  }),
+  z.object({
+    action: z.literal('thread-list'),
+    tenant,
+    query: z.string().trim().max(120).optional(),
+    archived: z.boolean().optional(),
+    page: z.number().int().positive().max(1000).optional(),
+  }),
+  z.object({ action: z.literal('thread-create'), tenant }),
+  z.object({ action: z.literal('thread-read'), tenant, thread }),
+  z.object({
+    action: z.literal('thread-update'),
+    tenant,
+    thread,
+    title: z.string().trim().min(1).max(120).optional(),
+    archived: z.boolean().optional(),
+  }),
+  z.object({ action: z.literal('thread-delete'), tenant, thread }),
   z.object({
     action: z.literal('approve'),
     tenant,
@@ -83,6 +134,26 @@ async function handleAssistant(req: PayloadRequest) {
   const membership = assistantMemberships(req.user).find(({ id }) => id === input.tenant)
   if (!membership) return json({ error: 'You do not have access to this tenant.' }, 403)
   try {
+    switch (input.action) {
+      case 'thread-list':
+        return json(await listThreads(req, input.tenant, input))
+      case 'thread-create':
+        return json(await createThread(req, input.tenant), 201)
+      case 'thread-read':
+        return json(await readThread(req, input.tenant, input.thread))
+      case 'thread-update':
+        if (input.title === undefined && input.archived === undefined) {
+          return json({ error: 'Provide a title or archived state.' }, 400)
+        }
+        return json(
+          await updateThread(req, input.tenant, input.thread, {
+            ...(input.title !== undefined && { title: input.title }),
+            ...(input.archived !== undefined && { archived: input.archived }),
+          }),
+        )
+      case 'thread-delete':
+        return json(await deleteThread(req, input.tenant, input.thread))
+    }
     if (input.action === 'approve') {
       if (!membership.canManage)
         return json({ error: 'Only tenant admins can approve a delete.' }, 403)
@@ -104,7 +175,7 @@ async function handleAssistant(req: PayloadRequest) {
         provider: true,
         model: true,
         baseURL: true,
-        ciphertext: input.action === 'chat' ? true : undefined,
+        ciphertext: input.action === 'chat' || input.action === 'chat-v2' ? true : undefined,
       },
       where: { tenant: { equals: input.tenant } },
     })
@@ -115,7 +186,10 @@ async function handleAssistant(req: PayloadRequest) {
     if (input.action === 'status') {
       return json({
         connected: Boolean(connection),
-        ...(connection && { model: connection.model }),
+        ...(connection && {
+          model: connection.model,
+          capabilities: modelCapabilities(connection.provider, connection.model),
+        }),
         ...(connection && membership.canManage
           ? {
               settings: {
@@ -167,14 +241,13 @@ async function handleAssistant(req: PayloadRequest) {
       }
       return json({
         connected: true,
+        model: input.model,
+        capabilities: modelCapabilities(input.provider, input.model),
         settings: { provider: input.provider, model: input.model, baseURL },
       })
     }
     if (!connection?.ciphertext)
       return json({ error: 'Connect a model before using the assistant.' }, 409)
-    if (input.messages[0]?.role !== 'user' || input.messages.at(-1)?.role !== 'user') {
-      return json({ error: 'The conversation must begin and end with a user message.' }, 400)
-    }
     const context = input.context
     let document: { collection: string; id: number; title: string; homepage: boolean } | undefined
     if (context) {
@@ -198,20 +271,68 @@ async function handleAssistant(req: PayloadRequest) {
         title: ('title' in record ? record.title : record.name)?.slice(0, 200) ?? '',
       }
     }
-    return await streamAssistant({
+    const run = {
       document,
-      locale: input.locale ?? 'nl',
-      detail: input.detail ?? 'standard',
+      locale: input.locale ?? ('nl' as const),
+      detail: input.detail ?? ('standard' as const),
       canDelete: membership.canManage,
       connection: { ...connection, ciphertext: connection.ciphertext },
-      messages: input.messages,
       origin,
       req,
       tenant: input.tenant,
-    })
+    }
+
+    if (input.action !== 'chat-v2') {
+      if (input.messages[0]?.role !== 'user' || input.messages.at(-1)?.role !== 'user') {
+        return json({ error: 'The conversation must begin and end with a user message.' }, 400)
+      }
+      return await streamAssistant({ ...run, messages: input.messages })
+    }
+
+    const capabilities = modelCapabilities(connection.provider, connection.model)
+    if (input.effort && !capabilities.efforts.includes(input.effort)) {
+      return json({ error: 'This model does not support the requested reasoning effort.' }, 400)
+    }
+    await findThread(req, input.tenant, input.thread)
+    const release = holdThread(input.thread)
+    try {
+      const record = await findThread(req, input.tenant, input.thread)
+      if (record.archived)
+        throw new APIError('Reopen the conversation before sending a message.', 409)
+      const prepared = await prepareUserMessage(req, {
+        origin,
+        tenant: input.tenant,
+        thread: record.id,
+        input: input.messages.at(-1),
+        allowed: capabilities.attachmentTypes,
+      })
+      await assertNewMessage(req, record.id, prepared.stored.id)
+      const history = await recentThreadMessages(req, record.id)
+      const modelHistory = await prepareModelHistory(req, history, {
+        origin,
+        tenant: input.tenant,
+        thread: record.id,
+        allowed: capabilities.attachmentTypes,
+      })
+      const messages = await convertToModelMessages([...modelHistory, prepared.model])
+      await saveThreadMessage(
+        req,
+        record.id,
+        prepared.stored,
+        initialThreadTitle(record.title, history.length === 0, prepared.stored),
+      )
+      return streamThread(
+        { ...run, messages, effort: input.effort },
+        (message) => saveThreadMessage(req, record.id, message),
+        release,
+      )
+    } catch (error) {
+      release()
+      throw error
+    }
   } catch (error) {
     // Never return or log raw provider and connection errors, which can carry request data.
-    if (input.action === 'approve' && error instanceof APIError && error.status < 500) {
+    if (error instanceof APIError && error.status < 500 && error.isPublic) {
       return json({ error: error.message }, error.status)
     }
     return json({ error: 'The assistant could not complete the request.' }, 500)

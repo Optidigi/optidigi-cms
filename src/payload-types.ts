@@ -139,16 +139,17 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_3BA6E720".
+ * via the `definition` "LexicalNodes_9F6C2123".
  */
-export type LexicalNodes_3BA6E720 =
+export type LexicalNodes_9F6C2123 =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_3BA6E720>
+  | SerializedParagraphNode<LexicalNodes_9F6C2123>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedQuoteNode<LexicalNodes_3BA6E720>
+  | SerializedUploadNode<'assistant-uploads'>
+  | SerializedQuoteNode<LexicalNodes_9F6C2123>
   | SerializedRelationshipNode<
       | 'users'
       | 'tenants'
@@ -158,16 +159,18 @@ export type LexicalNodes_3BA6E720 =
       | 'site-settings'
       | 'assistant-credentials'
       | 'assistant-delete-receipts'
+      | 'assistant-threads'
+      | 'assistant-messages'
       | 'payload-kv'
       | 'payload-locked-documents'
       | 'payload-preferences'
       | 'payload-migrations'
     >
-  | SerializedAutoLinkNode<LexicalNodes_3BA6E720, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_3BA6E720, LexicalLinkFields>
-  | SerializedListNode<LexicalNodes_3BA6E720>
-  | SerializedListItemNode<LexicalNodes_3BA6E720>
-  | SerializedHeadingNode<LexicalNodes_3BA6E720>;
+  | SerializedAutoLinkNode<LexicalNodes_9F6C2123, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_9F6C2123, LexicalLinkFields>
+  | SerializedListNode<LexicalNodes_9F6C2123>
+  | SerializedListItemNode<LexicalNodes_9F6C2123>
+  | SerializedHeadingNode<LexicalNodes_9F6C2123>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -196,6 +199,9 @@ export interface Config {
     media: Media;
     'assistant-credentials': AssistantCredential;
     'assistant-delete-receipts': AssistantDeleteReceipt;
+    'assistant-threads': AssistantThread;
+    'assistant-messages': AssistantMessage;
+    'assistant-uploads': AssistantUpload;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -213,6 +219,9 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     'assistant-credentials': AssistantCredentialsSelect<false> | AssistantCredentialsSelect<true>;
     'assistant-delete-receipts': AssistantDeleteReceiptsSelect<false> | AssistantDeleteReceiptsSelect<true>;
+    'assistant-threads': AssistantThreadsSelect<false> | AssistantThreadsSelect<true>;
+    'assistant-messages': AssistantMessagesSelect<false> | AssistantMessagesSelect<true>;
+    'assistant-uploads': AssistantUploadsSelect<false> | AssistantUploadsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -343,7 +352,7 @@ export interface Page {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_3BA6E720> | null;
+  body?: LexicalRichText<LexicalNodes_9F6C2123> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -371,7 +380,7 @@ export interface Article {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_3BA6E720> | null;
+  body?: LexicalRichText<LexicalNodes_9F6C2123> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -399,7 +408,7 @@ export interface Project {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_3BA6E720> | null;
+  body?: LexicalRichText<LexicalNodes_9F6C2123> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -529,6 +538,97 @@ export interface AssistantDeleteReceipt {
   } | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-threads".
+ */
+export interface AssistantThread {
+  id: number;
+  owner?: (number | null) | User;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  archived?: boolean | null;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-messages".
+ */
+export interface AssistantMessage {
+  id: number;
+  thread: number | AssistantThread;
+  messageId: string;
+  message:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-uploads".
+ */
+export interface AssistantUpload {
+  id: number;
+  owner?: (number | null) | User;
+  tenant?: (number | null) | Tenant;
+  thread: number | AssistantThread;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  _stored?: boolean | null;
+  _transforms?: UploadTransforms;
+  original?: {
+    filename?: string | null;
+    url?: string | null;
+    mimeType?: string | null;
+    filesize?: number | null;
+    width?: number | null;
+    height?: number | null;
+    prefix?: string | null;
+    _objectKey?: string | null;
+    _stored?: boolean | null;
+  };
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -863,6 +963,70 @@ export interface AssistantDeleteReceiptsSelect<T extends boolean = true> {
   updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-threads_select".
+ */
+export interface AssistantThreadsSelect<T extends boolean = true> {
+  owner?: T;
+  tenant?: T;
+  title?: T;
+  archived?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-messages_select".
+ */
+export interface AssistantMessagesSelect<T extends boolean = true> {
+  thread?: T;
+  messageId?: T;
+  message?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-uploads_select".
+ */
+export interface AssistantUploadsSelect<T extends boolean = true> {
+  owner?: T;
+  tenant?: T;
+  thread?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  _stored?: T;
+  _transforms?: T;
+  original?:
+    | T
+    | {
+        filename?: T;
+        url?: T;
+        mimeType?: T;
+        filesize?: T;
+        width?: T;
+        height?: T;
+        prefix?: T;
+        _objectKey?: T;
+        _stored?: T;
+      };
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

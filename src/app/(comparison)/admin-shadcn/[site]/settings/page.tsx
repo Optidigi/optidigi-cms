@@ -1,81 +1,97 @@
 import Link from 'next/link'
-import { ArrowRight, Globe2, Shield, Sparkles, UserRound } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { adminRoot, currentSite } from '@/admin-comparison/data'
+import { ChevronRight, Globe2, Shield, Sparkles, UserRound } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { currentSite } from '@/admin-comparison/data'
+import { assistantSettingsHref, comparisonRoot, siteHref } from '@/admin-comparison/navigation'
 import { assistantMemberships } from '@/assistant/scope-shared'
 import { isPlatformAdmin } from '@/site/access'
 
-export default async function SettingsPage({ params }: { params: Promise<{ site: string }> }) {
+type SettingsLink = { title: string; description: string; href: string; Icon: LucideIcon }
+
+export default async function SettingsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ site: string }>
+  searchParams: Promise<{ locale?: string }>
+}) {
   const { selected, req } = await currentSite((await params).site)
-  const base = adminRoot + '/' + selected.id
+  const locale = (await searchParams).locale === 'en' ? 'en' : 'nl'
   const member = assistantMemberships(req.user).find(({ id }) => id === selected.id)
-  const rows = [
+  const websiteSettings = [
     {
-      title: 'Website',
-      description: 'Identiteit, contactgegevens, websitenavigatie en SEO per taal.',
-      href: base + '/site-settings',
+      title: 'Website-instellingen',
+      description: 'Identiteit, contactgegevens, navigatie en SEO per taal.',
+      href: siteHref(selected.id, '/site-settings', locale),
       Icon: Globe2,
     },
     ...(member
       ? [
           {
-            title: 'AI-assistent',
-            description: 'Bekijk de modelverbinding van deze website.',
-            href: base + '/settings/assistant',
+            title: 'Modelverbinding',
+            description: member.canManage
+              ? 'Verbind of wijzig het AI-model voor deze website.'
+              : 'Bekijk welk AI-model voor deze website is ingesteld.',
+            href: assistantSettingsHref(selected.id),
             Icon: Sparkles,
           },
         ]
       : []),
-    {
-      title: 'Mijn account',
-      description: 'Beheer je e-mailadres, wachtwoord en weergave.',
-      href: adminRoot + '/account',
-      Icon: UserRound,
-    },
-    ...(isPlatformAdmin(req.user)
-      ? [
-          {
-            title: 'Platformbeheer',
-            description: 'Beheer websites, gebruikers en lidmaatschappen.',
-            href: adminRoot + '/platform',
-            Icon: Shield,
-          },
-        ]
-      : []),
   ]
+  const account = {
+    title: 'Mijn account',
+    description: 'Beheer je e-mailadres, wachtwoord en weergave.',
+    href: comparisonRoot + '/account?website=' + selected.id,
+    Icon: UserRound,
+  }
+  const platform = {
+    title: 'Platformbeheer',
+    description: 'Beheer websites, gebruikers en lidmaatschappen.',
+    href: comparisonRoot + '/platform?website=' + selected.id,
+    Icon: Shield,
+  }
+
   return (
-    <section className="mx-auto w-full max-w-5xl space-y-5 p-4 sm:p-6">
-      <header>
+    <section className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
+      <header className="pb-2">
         <h1 className="text-2xl font-semibold tracking-tight">Instellingen</h1>
-        <Badge variant="secondary" className="mt-2">
-          {selected.name}
-        </Badge>
+        <p className="mt-1 text-sm text-muted-foreground">{selected.name}</p>
       </header>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {rows.map(({ title, description, href, Icon }) => (
-          <Card key={title}>
-            <CardHeader>
-              <CardTitle>
-                <Icon className="mr-2 inline size-4" />
-                {title}
-              </CardTitle>
-              <CardDescription>{description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                size="sm"
-                variant="outline"
-                nativeButton={false}
-                render={<Link href={href} />}
-              >
-                Open {title.toLowerCase()} <ArrowRight />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <SettingsGroup title="Deze website" items={websiteSettings} />
+      <SettingsGroup title="Persoonlijk" items={[account]} />
+      {isPlatformAdmin(req.user) && <SettingsGroup title="Platform" items={[platform]} />}
     </section>
+  )
+}
+
+function SettingsGroup({ title, items }: { title: string; items: SettingsLink[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2>{title}</h2>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-2">
+          {items.map(({ title: name, description, href, Icon }) => (
+            <li key={href}>
+              <Item variant="outline" render={<Link href={href} />}>
+                <ItemMedia variant="icon">
+                  <Icon />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>{name}</ItemTitle>
+                  <ItemDescription>{description}</ItemDescription>
+                </ItemContent>
+                <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
+              </Item>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   )
 }

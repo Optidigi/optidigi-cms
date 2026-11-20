@@ -1,3 +1,5 @@
+import type { UIMessage } from 'ai'
+
 export const modelProviders = ['anthropic', 'openai', 'openai-compatible'] as const
 export type ModelProvider = (typeof modelProviders)[number]
 
@@ -26,3 +28,20 @@ export const contextCollections = ['pages', 'articles', 'projects', 'site-settin
 
 export const responseDetail = ['brief', 'standard', 'detailed'] as const
 export type ResponseDetail = (typeof responseDetail)[number]
+export const reasoningEfforts = ['low', 'medium', 'high'] as const
+export type ReasoningEffort = (typeof reasoningEfforts)[number]
+
+export type AssistantThreadSummary = {
+  id: number
+  title: string
+  updatedAt: string
+  archived: boolean
+}
+
+export type AssistantUIMessage = UIMessage<
+  unknown,
+  {
+    approval: Approval
+    'draft-saved': Omit<Extract<AssistantEvent, { type: 'draft-saved' }>, 'type'>
+  }
+>

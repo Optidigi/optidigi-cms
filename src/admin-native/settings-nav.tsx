@@ -1,25 +1,27 @@
 'use client'
 
-import { Link, useAuth, useConfig, usePathname, useTranslation } from '@payloadcms/ui'
-import { Settings2 } from 'lucide-react'
+import { useTenantSelection } from '@payloadcms/plugin-multi-tenant/client'
+import { Link, useAuth, useTranslation } from '@payloadcms/ui'
+import { relationID } from '@/site/access'
+import { useTweakedAppearance } from './theme'
 
-export function NativeSettingsLink() {
+export function TweakedAssistantLink() {
+  return useTweakedAppearance() ? <AssistantShortcut /> : null
+}
+
+function AssistantShortcut() {
   const { user } = useAuth()
-  const { config } = useConfig()
   const { i18n } = useTranslation()
-  const pathname = usePathname()
-  const href = `${config.routes.admin}/settings`
+  const { options, selectedTenantID } = useTenantSelection()
 
   if (!user) return null
 
+  const tenant = relationID(
+    selectedTenantID ?? (options.length === 1 ? options[0].value : undefined),
+  )
   return (
-    <Link
-      href={href}
-      className="native-settings__nav-link"
-      aria-current={pathname === href ? 'page' : undefined}
-    >
-      <Settings2 size={14} aria-hidden="true" />
-      {i18n.language === 'en' ? 'Settings' : 'Instellingen'}
+    <Link href={tenant ? `/admin-shadcn/${tenant}/assistant` : '/admin-shadcn'} forceReload>
+      {i18n.language === 'en' ? 'Open AI assistant' : 'Open AI-assistent'}
     </Link>
   )
 }

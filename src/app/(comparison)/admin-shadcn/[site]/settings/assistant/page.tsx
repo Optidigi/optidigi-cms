@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ShadcnAssistantSettings } from '@/admin-comparison/assistant'
-import { adminRoot, currentSite } from '@/admin-comparison/data'
+import { currentSite } from '@/admin-comparison/data'
+import { siteHref } from '@/admin-comparison/navigation'
 
 export default async function AssistantSettingsPage({
   params,
@@ -12,8 +13,8 @@ export default async function AssistantSettingsPage({
     <section className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
       <header>
         <Link
-          href={adminRoot + '/' + selected.id + '/settings'}
-          className="text-sm text-muted-foreground hover:underline"
+          href={siteHref(selected.id, '/settings')}
+          className="text-sm text-muted-foreground hover:underline sm:hidden"
         >
           Instellingen
         </Link>

@@ -8,6 +8,7 @@ import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
 import { APIError, buildConfig, definePlugin, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
+import { AssistantMessages, AssistantThreads, AssistantUploads } from './assistant/collections'
 import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
 import { assistantEndpoints } from './assistant/endpoints'
 import { getAssistantTenantScope } from './assistant/scope'
@@ -77,21 +78,10 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: dirname },
-    components: {
-      actions: ['/admin-native/assistant#NativeAssistantAction'],
-      beforeLogin: ['/admin-native/theme#NativeThemeLoginIntro'],
-      afterNavLinks: [
-        '/admin-native/assistant#NativeAssistantLink',
-        '/admin-native/settings-nav#NativeSettingsLink',
-      ],
-      views: {
-        assistant: { Component: '/admin-native/view#NativeAssistantView', path: '/assistant', exact: true },
-        settings: { Component: '/admin-native/settings#NativeSettingsView', path: '/settings', exact: true },
-      },
-    },
+    components: { afterNavLinks: ['/admin-native/settings-nav#TweakedAssistantLink'] },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
-  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts].map(withCollectionLabels),
+  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts, AssistantThreads, AssistantMessages, AssistantUploads].map(withCollectionLabels),
   csrf: origin ? [origin] : [],
   editor: lexicalEditor(),
   endpoints: [...siteEndpoints, ...assistantEndpoints],
@@ -142,7 +132,6 @@ export default buildConfig({
             providers: [
               ...(config.admin?.components?.providers ?? []),
               '/admin-native/theme#NativeAdminTheme',
-              '/admin-native/assistant#NativeAssistantProvider',
             ],
           },
         },
@@ -158,6 +147,9 @@ export default buildConfig({
         tenants: { tools: noTools },
         'assistant-credentials': { tools: noTools },
         'assistant-delete-receipts': { tools: noTools },
+        'assistant-threads': { tools: noTools },
+        'assistant-messages': { tools: noTools },
+        'assistant-uploads': { tools: noTools },
       },
       tools: { checkSitePage },
     }),

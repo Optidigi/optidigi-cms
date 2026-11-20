@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 import { getPayload } from 'payload'
 import config from '../../src/payload.config.js'
 
-test('the themed native sign-in and settings use the stock Payload session', async ({
+test('the themed native tab styles Payload and links to the shared assistant', async ({
   context,
   page,
 }) => {
@@ -15,7 +15,7 @@ test('the themed native sign-in and settings use the stock Payload session', asy
   const tenant = await payload.create({
     collection: 'tenants',
     overrideAccess: true,
-    data: { slug, name: 'Themed settings fixture', siteOrigin: 'https://example.com' },
+    data: { slug, name: 'Themed admin fixture', siteOrigin: 'https://example.com' },
   })
 
   try {
@@ -27,15 +27,16 @@ test('the themed native sign-in and settings use the stock Payload session', asy
     })
 
     await page.goto('/admin-tweaked')
-    const intro = page.getByRole('heading', { name: /Inloggen bij Optidigi|Sign in to Optidigi/ })
-    await expect(intro).toBeVisible({ timeout: 30_000 })
+    await expect(page).toHaveURL(/\/admin\/login$/, { timeout: 30_000 })
+    await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('html')).toHaveAttribute('data-admin-appearance', 'tweaked')
     await page.reload()
-    await expect(intro).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('data-admin-appearance', 'tweaked')
+    await expect(page.locator('.native-theme-login-intro')).toHaveCount(0)
 
     const stock = await context.newPage()
     await stock.goto('/admin/login')
-    await expect(stock.locator('.native-theme-login-intro')).toBeHidden()
+    await expect(stock.locator('.native-theme-login-intro')).toHaveCount(0)
     await expect(stock.locator('html')).not.toHaveAttribute('data-admin-appearance', 'tweaked')
     const submit = page.locator('button[type="submit"]')
     const stockColor = await stock
@@ -47,30 +48,26 @@ test('the themed native sign-in and settings use the stock Payload session', asy
     await page.locator('input[name="password"]').fill(password)
     await submit.click()
     await expect(page).toHaveURL(/\/admin$/, { timeout: 30_000 })
-    const settingsLink = page.getByRole('link', { name: /^(Instellingen|Settings)$/ })
-    await expect(settingsLink).toBeVisible()
-    await settingsLink.click()
-
-    await expect(page).toHaveURL(/\/admin\/settings$/)
-    await expect(
-      page.getByRole('heading', { name: /Platformbeheer|Platform administration/ }),
-    ).toHaveCount(0)
-    await expect(page.locator('a[href="/admin/collections/site-settings"]').last()).toBeVisible()
-    await expect(page.locator('a[href="/admin/assistant?settings=model"]')).toBeVisible()
-    await expect(page.locator('a[href="/admin/account"]').last()).toBeVisible()
+    const assistantName = /^Open AI-assistent$|^Open AI assistant$/
+    const assistantLink = page.getByRole('link', { name: assistantName })
+    await expect(assistantLink).toHaveAttribute('href', `/admin-shadcn/${tenant.id}/assistant`)
+    await expect(page.locator('nav a[href="/admin/collections/site-settings"]')).toBeVisible()
+    await expect(page.locator('a[href="/admin/account"]')).toHaveCount(1)
 
     await stock.goto('/admin')
-    await expect(stock.getByRole('link', { name: /^(Instellingen|Settings)$/ })).toBeVisible()
+    await expect(stock.locator('nav a[href="/admin/collections/site-settings"]')).toBeVisible()
+    await expect(stock.getByRole('link', { name: assistantName })).toHaveCount(0)
     await expect(stock.locator('html')).not.toHaveAttribute('data-admin-appearance', 'tweaked')
     await stock.close()
 
-    await page
-      .getByRole('link', {
-        name: /Terug naar de standaardweergave|Return to the default appearance/,
-      })
-      .click()
-    await expect(page).toHaveURL(/\/admin$/)
+    await assistantLink.click()
+    await expect(page).toHaveURL(`/admin-shadcn/${tenant.id}/assistant`, { timeout: 30_000 })
+    await expect(page.getByRole('heading', { name: 'AI-assistent' })).toBeVisible()
+
+    await page.goto('/admin-tweaked?style=default')
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 30_000 })
     await expect(page.locator('html')).not.toHaveAttribute('data-admin-appearance', 'tweaked')
+    await expect(assistantLink).toHaveCount(0)
   } finally {
     await payload.delete({
       collection: 'users',

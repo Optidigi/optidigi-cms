@@ -128,5 +128,10 @@ export async function savePlatform(form: FormData) {
       success = true
     }
   } catch {}
-  redirect('/admin-shadcn/platform?result=' + (success ? 'saved' : 'failed'))
+  const website = relationID(form.get('website'))
+  redirect(
+    '/admin-shadcn/platform?result=' +
+      (success ? 'saved' : 'failed') +
+      (website ? '&website=' + website : ''),
+  )
 }

@@ -1,206 +1,484 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import type {
-  Approval,
-  AssistantEvent,
-  AssistantMessage,
-  Connection,
-  ModelProvider,
-  ResponseDetail,
-  contextCollections,
-} from './protocol'
+import { Chat, useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, type FileUIPart, type UIMessage } from 'ai'
+import { useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Approval, Connection, ResponseDetail, contextCollections } from './protocol'
 
-export type AssistantContext = {
-  collection: (typeof contextCollections)[number]
-  id: number
-}
+export type AssistantContext = { collection: (typeof contextCollections)[number]; id: number }
 export type AssistantTenant = { id: number; name: string; canManage: boolean }
-type ModelStatus = { connected: boolean; model?: string; settings?: Connection }
-type Turn = AssistantMessage & { id: string }
-type Result = Extract<AssistantEvent, { type: 'draft-saved' }>
+export type Thread = { id: number; title: string; updatedAt: string; archived: boolean }
+type DraftResult = { id: number; locale: 'nl' | 'en'; preview?: string | null }
+export type ChatMessage = UIMessage<unknown, { approval: Approval; 'draft-saved': DraftResult }>
+type Status = {
+  connected: boolean
+  model?: string
+  settings?: Connection
+  capabilities?: { efforts: string[]; attachmentTypes: string[] }
+}
+type ThreadPage = { threads: Thread[]; nextPage?: number | null }
+type Attachment = FileUIPart & { uploadID?: number }
 
-async function request(endpoint: string, tenant: number, data: object, signal: AbortSignal) {
+const endpoint = '/api/assistant'
+
+async function request<T>(tenant: number, data: object, signal?: AbortSignal): Promise<T> {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...data, tenant }),
     signal,
   })
-  if (!response.ok) {
-    const { error } = await response.json().catch(() => ({}))
-    throw new Error(typeof error === 'string' ? error : 'De assistent is niet beschikbaar.')
+  const result = await response.json().catch(() => null)
+  if (!response.ok || !result) {
+    throw new Error(
+      typeof result?.error === 'string' ? result.error : 'Het verzoek kon niet worden uitgevoerd.',
+    )
   }
-  return response
+  return result as T
 }
 
-async function readEvents(response: Response, receive: (event: AssistantEvent) => void) {
-  if (!response.body) throw new Error('Geen antwoord ontvangen.')
-  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
-  let pending = ''
-  try {
-    for (;;) {
-      const { value, done } = await reader.read()
-      if (done) break
-      pending += value
-      let end = pending.indexOf('\n\n')
-      while (end !== -1) {
-        const frame = pending.slice(0, end)
-        pending = pending.slice(end + 2)
-        if (frame.startsWith('data: ')) receive(JSON.parse(frame.slice(6)) as AssistantEvent)
-        end = pending.indexOf('\n\n')
-      }
-    }
-  } finally {
-    reader.releaseLock()
+export function threadHref(route: string, thread?: number) {
+  const [path, query] = route.split('?')
+  const params = new URLSearchParams(query)
+  if (thread) params.set('thread', String(thread))
+  else params.delete('thread')
+  return path + (params.size ? '?' + params : '')
+}
+
+function syncThreadURL(thread?: number) {
+  if (/^\/admin-shadcn\/\d+\/assistant\/?$/.test(window.location.pathname)) {
+    window.history.replaceState(
+      null,
+      '',
+      threadHref(window.location.pathname + window.location.search, thread),
+    )
   }
 }
 
 export function useAssistant({
-  endpoint,
   tenant,
   document,
   locale,
 }: {
-  endpoint: string
   tenant: AssistantTenant
   document?: AssistantContext
   locale: 'nl' | 'en'
 }) {
-  const [model, setModel] = useState<ModelStatus>()
-  const [turns, setTurns] = useState<Turn[]>([])
+  const tenantID = tenant.id
+  const queryThread = Number(useSearchParams().get('thread'))
+  const [model, setModel] = useState<Status>()
+  const [modelStatus, setModelStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [input, setInput] = useState('')
+  const [files, setFiles] = useState<Attachment[]>([])
   const [detail, setDetail] = useState<ResponseDetail>('standard')
+  const [effort, setEffort] = useState('default')
   const [approval, setApproval] = useState<Approval>()
-  const [result, setResult] = useState<Result>()
+  const [result, setResult] = useState<DraftResult>()
   const [notice, setNotice] = useState('')
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState<'chat' | 'settings' | 'approval'>()
-  const active = useRef<AbortController | null>(null)
-  const id = tenant.id
+  const [operationError, setOperationError] = useState('')
+  const [operation, setOperation] = useState<
+    'send' | 'upload' | 'settings' | 'approval' | 'thread'
+  >()
+  const operationRef = useRef<typeof operation>(undefined)
+  const [thread, setThread] = useState<Thread>()
+  const threadRef = useRef<Thread | undefined>(undefined)
+  const latestThreadRequest = useRef(0)
+  const [history, setHistory] = useState<Thread[]>([])
+  const [historyStatus, setHistoryStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [archived, setArchived] = useState(false)
+  const [nextPage, setNextPage] = useState<number | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const historyRevision = useRef(0)
+  const [chat] = useState(
+    () =>
+      new Chat<ChatMessage>({
+        id: 'optidigi-tenant-' + tenantID,
+        transport: new DefaultChatTransport({
+          api: endpoint,
+          prepareSendMessagesRequest: ({ body, messages }) => ({
+            body: { ...body, messages: messages.slice(-1) },
+          }),
+        }),
+        onData(part) {
+          if (part.type === 'data-approval') setApproval(part.data)
+          if (part.type === 'data-draft-saved') setResult(part.data)
+        },
+      }),
+  )
+  const session = useChat({ chat, throttle: 40 })
+  const { setMessages } = session
+  const streaming = session.status === 'submitted' || session.status === 'streaming'
+  const waitingForThread =
+    Number.isSafeInteger(queryThread) && queryThread > 0 && thread?.id !== queryThread
+  const busy = Boolean(operation) || streaming || waitingForThread
+
+  const loadHistory = useCallback(
+    async (page = 1, signal?: AbortSignal) => {
+      const revision = ++historyRevision.current
+      if (page === 1) {
+        setHistoryStatus('loading')
+        setLoadingMore(false)
+      } else setLoadingMore(true)
+      try {
+        const data = await request<ThreadPage>(
+          tenantID,
+          {
+            action: 'thread-list',
+            query: historyQuery.trim() || undefined,
+            archived,
+            page,
+          },
+          signal,
+        )
+        if (revision !== historyRevision.current || signal?.aborted) return
+        setHistory((previous) =>
+          page === 1
+            ? data.threads
+            : [
+                ...previous,
+                ...data.threads.filter((item) => !previous.some(({ id }) => id === item.id)),
+              ],
+        )
+        setNextPage(data.nextPage ?? null)
+        setHistoryStatus('ready')
+      } catch {
+        if (revision !== historyRevision.current || signal?.aborted) return
+        if (page === 1) setHistoryStatus('error')
+        else setOperationError('Meer gesprekken laden is mislukt.')
+      } finally {
+        if (revision === historyRevision.current && !signal?.aborted) setLoadingMore(false)
+      }
+    },
+    [tenantID, historyQuery, archived],
+  )
 
   useEffect(() => {
-    const status = new AbortController()
-    void request(endpoint, id, { action: 'status' }, status.signal)
-      .then((response) => response.json())
-      .then((value: ModelStatus) => setModel(value))
-      .catch(() => {
-        if (!status.signal.aborted) setError('De modelverbinding kon niet worden geladen.')
-      })
-    return () => {
-      status.abort()
-      active.current?.abort()
-    }
-  }, [endpoint, id])
-
-  async function run(
-    operation: NonNullable<typeof busy>,
-    work: (signal: AbortSignal) => Promise<void>,
-  ) {
-    if (active.current) return
     const controller = new AbortController()
-    active.current = controller
-    setBusy(operation)
-    setError('')
-    setNotice('')
-    try {
-      await work(controller.signal)
-    } catch (cause) {
-      if (!controller.signal.aborted)
-        setError(cause instanceof Error ? cause.message : 'Verzoek mislukt.')
-    } finally {
-      if (active.current === controller) {
-        active.current = null
-        setBusy(undefined)
-      }
+    const timer = window.setTimeout(() => void loadHistory(1, controller.signal), 180)
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
     }
+  }, [loadHistory])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void request<Status>(tenantID, { action: 'status' }, controller.signal)
+      .then((value) => {
+        if (controller.signal.aborted) return
+        setModel(value)
+        setModelStatus('ready')
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setModelStatus('error')
+      })
+    return () => controller.abort()
+  }, [tenantID])
+
+  function run(kind: NonNullable<typeof operation>, task: () => Promise<void>) {
+    if (operationRef.current || chat.status === 'submitted' || chat.status === 'streaming') return
+    operationRef.current = kind
+    setOperation(kind)
+    setNotice('')
+    setOperationError('')
+    void task()
+      .catch((error: unknown) => {
+        setOperationError(error instanceof Error ? error.message : 'Het verzoek is mislukt.')
+      })
+      .finally(() => {
+        operationRef.current = undefined
+        setOperation(undefined)
+      })
   }
 
-  function send() {
-    if (!model?.connected || approval || active.current || !input.trim()) return
-    const user: Turn = { id: crypto.randomUUID(), role: 'user', content: input.trim() }
-    const reply: Turn = { id: crypto.randomUUID(), role: 'assistant', content: '' }
-    const next = [...turns, user]
-    const recent = next.slice(-24)
-    setTurns(next)
-    setResult(undefined)
-    setInput('')
-    void run('chat', async (signal) => {
-      const response = await request(
-        endpoint,
-        id,
+  const resetConversation = useCallback(
+    (next?: Thread, messages: ChatMessage[] = []) => {
+      threadRef.current = next
+      setThread(next)
+      setMessages(messages)
+      chat.clearError()
+      setInput('')
+      setFiles([])
+      setApproval(undefined)
+      setResult(undefined)
+      setNotice('')
+    },
+    [chat, setMessages],
+  )
+
+  const openThread = useCallback(
+    async (id: number, signal?: AbortSignal) => {
+      if (
+        id === threadRef.current?.id ||
+        chat.status === 'submitted' ||
+        chat.status === 'streaming'
+      )
+        return
+      const sequence = ++latestThreadRequest.current
+      const data = await request<{ thread: Thread; messages: ChatMessage[] }>(
+        tenantID,
         {
-          action: 'chat',
-          messages: recent
-            .slice(recent.findIndex(({ role }) => role === 'user'))
-            .map(({ role, content }) => ({ role, content: content.slice(0, 6000) })),
-          context: document,
-          locale,
-          detail,
+          action: 'thread-read',
+          thread: id,
         },
         signal,
       )
-      await readEvents(response, (event) => {
-        if (event.type === 'text') {
-          reply.content += event.text
-          setTurns([...next, { ...reply }])
+      if (sequence !== latestThreadRequest.current || signal?.aborted) return
+      resetConversation(data.thread, data.messages)
+      syncThreadURL(id)
+    },
+    [chat, resetConversation, tenantID],
+  )
+
+  useEffect(() => {
+    if (
+      !Number.isSafeInteger(queryThread) ||
+      queryThread <= 0 ||
+      threadRef.current?.id === queryThread
+    )
+      return
+    const controller = new AbortController()
+    void openThread(queryThread, controller.signal).catch(() => {
+      if (!controller.signal.aborted) {
+        setOperationError('Dit gesprek is niet beschikbaar.')
+        syncThreadURL()
+      }
+    })
+    return () => controller.abort()
+  }, [openThread, queryThread])
+
+  async function ensureThread() {
+    if (threadRef.current) return threadRef.current
+    const { thread: created } = await request<{ thread: Thread }>(tenantID, {
+      action: 'thread-create',
+    })
+    threadRef.current = created
+    setThread(created)
+    syncThreadURL(created.id)
+    void loadHistory()
+    return created
+  }
+
+  function selectThread(id: number) {
+    run('thread', () => openThread(id))
+  }
+
+  function newThread() {
+    if (busy) return
+    latestThreadRequest.current += 1
+    resetConversation()
+    syncThreadURL()
+    setOperationError('')
+  }
+
+  function updateThread(id: number, changes: { title?: string; archived?: boolean } | 'delete') {
+    run('thread', async () => {
+      const result = await request<{ thread?: Thread }>(
+        tenantID,
+        changes === 'delete'
+          ? { action: 'thread-delete', thread: id }
+          : { action: 'thread-update', thread: id, ...changes },
+      )
+      if (threadRef.current?.id === id) {
+        if (changes === 'delete' || changes.archived) {
+          resetConversation()
+          syncThreadURL()
+        } else if (result.thread) {
+          threadRef.current = result.thread
+          setThread(result.thread)
         }
-        if (event.type === 'approval') setApproval(event.approval)
-        if (event.type === 'draft-saved') setResult(event)
-        if (event.type === 'error') setError(event.message)
-      })
+      }
+      void loadHistory()
     })
   }
 
-  async function connect(form: FormData, signal: AbortSignal) {
-    const response = await request(
-      endpoint,
-      id,
-      {
-        action: 'connect',
-        provider: form.get('provider') as ModelProvider,
-        model: form.get('model'),
-        apiKey: form.get('apiKey'),
-        baseURL: form.get('baseURL') || undefined,
-      },
-      signal,
+  function send() {
+    if (
+      busy ||
+      !model?.connected ||
+      approval ||
+      (!input.trim() && !files.length) ||
+      thread?.archived
     )
-    setModel(await response.json())
-    setNotice('Model verbonden.')
+      return
+    const text = input.trim()
+    const attachments = files
+    run('send', async () => {
+      const current = await ensureThread()
+      setInput('')
+      setFiles([])
+      setResult(undefined)
+      try {
+        await chat.sendMessage(
+          {
+            text,
+            files: attachments.map(({ uploadID: _uploadID, ...file }) => file),
+          },
+          {
+            body: {
+              action: 'chat-v2',
+              tenant: tenantID,
+              thread: current.id,
+              context: document,
+              locale,
+              detail,
+              effort: effort === 'default' ? undefined : effort,
+            },
+          },
+        )
+      } catch {
+        setOperationError('Het bericht kon niet worden verstuurd.')
+        setInput((value) => value || text)
+        setFiles((value) => (value.length ? value : attachments))
+      } finally {
+        if (chat.status === 'error') {
+          setInput((value) => value || text)
+          setFiles((value) => (value.length ? value : attachments))
+        }
+        void loadHistory()
+      }
+    })
+  }
+
+  function upload(selection: FileList | null) {
+    if (!selection?.length || !model?.connected || thread?.archived) return
+    const selected = Array.from(selection)
+    const types = model.capabilities?.attachmentTypes ?? []
+    if (selected.length + files.length > 3) {
+      setOperationError('Voeg maximaal drie bestanden toe.')
+      return
+    }
+    if (
+      selected.some(
+        (file) => !types.includes(file.type) || !file.size || file.size > 4 * 1024 * 1024,
+      )
+    ) {
+      setOperationError('Kies een ondersteund bestand van maximaal 4 MB.')
+      return
+    }
+    run('upload', async () => {
+      const current = await ensureThread()
+      for (const file of selected) {
+        const form = new FormData()
+        form.set('file', file)
+        form.set('_payload', JSON.stringify({ thread: current.id }))
+        const response = await fetch('/api/assistant-uploads', { method: 'POST', body: form })
+        const data = await response.json().catch(() => null)
+        if (!response.ok || !data?.doc?.url) throw new Error('Bestand uploaden is mislukt.')
+        const { id, filename, mimeType, url } = data.doc as {
+          id: number
+          filename: string
+          mimeType: string
+          url: string
+        }
+        setFiles((previous) => [
+          ...previous,
+          {
+            type: 'file',
+            url: new URL(url, window.location.origin).pathname,
+            filename,
+            mediaType: mimeType,
+            uploadID: id,
+          },
+        ])
+      }
+    })
+  }
+
+  function attachMedia(asset: FileUIPart) {
+    if (!model?.connected || thread?.archived || busy) return
+    if (!model.capabilities?.attachmentTypes.includes(asset.mediaType) || files.length >= 3) {
+      setOperationError('Dit bestand past niet bij het huidige model of de limiet is bereikt.')
+      return
+    }
+    if (!files.some(({ url }) => url === asset.url)) setFiles((previous) => [...previous, asset])
   }
 
   return {
     model,
-    turns,
+    modelStatus,
     input,
     setInput,
     detail,
     setDetail,
+    effort,
+    setEffort,
+    files,
+    messages: session.messages,
+    status: session.status,
+    busy,
+    operation,
+    streaming,
     approval,
     result,
     notice,
-    error,
-    busy,
+    history,
+    historyStatus,
+    historyQuery,
+    setHistoryQuery,
+    archived,
+    setArchived,
+    nextPage,
+    loadingMore,
+    thread,
+    selectThread,
+    newThread,
+    updateThread,
+    loadMore: () => {
+      if (nextPage && !loadingMore) void loadHistory(nextPage)
+    },
+    reloadHistory: () => void loadHistory(),
+    reloadThread: () => {
+      const id = threadRef.current?.id
+      if (!id) return
+      run('thread', async () => {
+        const saved = await request<{ thread: Thread; messages: ChatMessage[] }>(tenantID, {
+          action: 'thread-read',
+          thread: id,
+        })
+        threadRef.current = saved.thread
+        setThread(saved.thread)
+        setMessages(saved.messages)
+        chat.clearError()
+        setResult(undefined)
+      })
+    },
+    error:
+      operationError ||
+      (session.status === 'error'
+        ? 'Het antwoord is onderbroken. Controleer het gesprek voordat je opnieuw verstuurt.'
+        : ''),
     send,
-    stop: () => active.current?.abort(),
-    reset: () => {
-      if (active.current) return
-      setTurns([])
-      setInput('')
-      setApproval(undefined)
-      setResult(undefined)
-      setNotice('')
-      setError('')
+    upload,
+    attachMedia,
+    removeFile: (index: number) =>
+      setFiles((previous) => previous.filter((_, position) => position !== index)),
+    stop: () => {
+      void session.stop()
+      setNotice('Antwoord gestopt.')
     },
     connect: (form: FormData, onSaved: () => void) =>
-      run('settings', async (signal) => {
-        await connect(form, signal)
+      run('settings', async () => {
+        const value = await request<Status>(tenantID, {
+          action: 'connect',
+          provider: form.get('provider'),
+          model: form.get('model'),
+          apiKey: form.get('apiKey'),
+          baseURL: form.get('baseURL') || undefined,
+        })
+        setModel(await request<Status>(tenantID, { action: 'status' }).catch(() => value))
+        setModelStatus('ready')
+        setEffort('default')
+        setNotice('Model verbonden.')
         onSaved()
       }),
     disconnect: () =>
-      run('settings', async (signal) => {
-        await request(endpoint, id, { action: 'disconnect' }, signal)
+      run('settings', async () => {
+        await request(tenantID, { action: 'disconnect' })
         setModel({ connected: false })
+        setEffort('default')
         setNotice('Model losgekoppeld.')
       }),
     reject: () => {
@@ -209,8 +487,8 @@ export function useAssistant({
     },
     approve: () => {
       if (!approval || !tenant.canManage) return
-      void run('approval', async (signal) => {
-        await request(endpoint, id, { action: 'approve', token: approval.token }, signal)
+      run('approval', async () => {
+        await request(tenantID, { action: 'approve', token: approval.token })
         setApproval(undefined)
         setNotice('Document verwijderd.')
       })
