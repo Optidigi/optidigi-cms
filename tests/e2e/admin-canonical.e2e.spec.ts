@@ -379,7 +379,7 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await page.goto(root + '/pages?id=' + home.id)
     await page.getByRole('button', { name: 'Vraag AI' }).click()
     await drawer.getByRole('button', { name: 'Model kiezen' }).click()
-    await page.getByRole('textbox', { name: 'Zoek modellen' }).fill('Fast')
+    await page.getByRole('combobox', { name: 'Zoek modellen' }).fill('Fast')
     await page.getByRole('option', { name: 'Fast model', exact: true }).click()
     await expect(drawer.getByRole('button', { name: 'Model kiezen' })).toHaveText('Fast model')
     await drawer.getByRole('button', { name: /^Antwoordlengte:/ }).click()
