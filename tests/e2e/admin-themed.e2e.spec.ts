@@ -8,7 +8,7 @@ test('the themed native sign-in and settings use the stock Payload session', asy
   page,
 }) => {
   test.setTimeout(90_000)
-  const payload = await getPayload({ config })
+  const payload = await getPayload({ config, key: randomUUID() })
   const slug = 'themed-' + randomUUID()
   const email = slug + '@example.test'
   const password = randomUUID()

@@ -9,7 +9,7 @@ test('native Payload keeps assistant context when expanding the drawer and prote
   page,
 }) => {
   test.setTimeout(60_000)
-  const payload = await getPayload({ config })
+  const payload = await getPayload({ config, key: randomUUID() })
   const slug = 'native-admin-' + randomUUID()
   const email = slug + '@example.test'
   const editor = slug + '-editor@example.test'

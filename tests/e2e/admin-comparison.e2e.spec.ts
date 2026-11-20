@@ -9,7 +9,7 @@ test('compares the native admin and shadcn editor using one Payload session', as
   page,
 }) => {
   test.setTimeout(90_000)
-  const payload = await getPayload({ config })
+  const payload = await getPayload({ config, key: randomUUID() })
   const slug = 'compare-' + randomUUID()
   const email = slug + '@example.test'
   const password = randomUUID()
