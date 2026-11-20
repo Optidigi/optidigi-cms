@@ -3,75 +3,75 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
    CREATE TABLE "assistant_threads" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"owner_id" integer,
-  	"tenant_id" integer,
-  	"title" varchar NOT NULL,
-  	"archived" boolean DEFAULT false,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "owner_id" integer,
+    "tenant_id" integer,
+    "title" varchar NOT NULL,
+    "archived" boolean DEFAULT false,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
 
   CREATE TABLE "assistant_threads_rels" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"order" integer,
-  	"parent_id" integer NOT NULL,
-  	"path" varchar NOT NULL,
-  	"users_id" integer
+    "id" serial PRIMARY KEY NOT NULL,
+    "order" integer,
+    "parent_id" integer NOT NULL,
+    "path" varchar NOT NULL,
+    "users_id" integer
   );
 
   CREATE TABLE "assistant_messages" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"thread_id" integer NOT NULL,
-  	"message_id" varchar NOT NULL,
-  	"message" jsonb NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "thread_id" integer NOT NULL,
+    "message_id" varchar NOT NULL,
+    "message" jsonb NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
 
   CREATE TABLE "assistant_messages_rels" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"order" integer,
-  	"parent_id" integer NOT NULL,
-  	"path" varchar NOT NULL,
-  	"users_id" integer
+    "id" serial PRIMARY KEY NOT NULL,
+    "order" integer,
+    "parent_id" integer NOT NULL,
+    "path" varchar NOT NULL,
+    "users_id" integer
   );
 
   CREATE TABLE "assistant_uploads" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"owner_id" integer,
-  	"tenant_id" integer,
-  	"thread_id" integer NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"url" varchar,
-  	"thumbnail_u_r_l" varchar,
-  	"filename" varchar,
-  	"mime_type" varchar,
-  	"filesize" numeric,
-  	"width" numeric,
-  	"height" numeric,
-  	"_stored" boolean,
-  	"_transforms" jsonb,
-  	"original_filename" varchar,
-  	"original_url" varchar,
-  	"original_mime_type" varchar,
-  	"original_filesize" numeric,
-  	"original_width" numeric,
-  	"original_height" numeric,
-  	"original_prefix" varchar,
-  	"original__objectkey" varchar,
-  	"original__stored" boolean,
-  	"focal_x" numeric,
-  	"focal_y" numeric
+    "id" serial PRIMARY KEY NOT NULL,
+    "owner_id" integer,
+    "tenant_id" integer,
+    "thread_id" integer NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "url" varchar,
+    "thumbnail_u_r_l" varchar,
+    "filename" varchar,
+    "mime_type" varchar,
+    "filesize" numeric,
+    "width" numeric,
+    "height" numeric,
+    "_stored" boolean,
+    "_transforms" jsonb,
+    "original_filename" varchar,
+    "original_url" varchar,
+    "original_mime_type" varchar,
+    "original_filesize" numeric,
+    "original_width" numeric,
+    "original_height" numeric,
+    "original_prefix" varchar,
+    "original__objectkey" varchar,
+    "original__stored" boolean,
+    "focal_x" numeric,
+    "focal_y" numeric
   );
 
   CREATE TABLE "assistant_uploads_rels" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"order" integer,
-  	"parent_id" integer NOT NULL,
-  	"path" varchar NOT NULL,
-  	"users_id" integer
+    "id" serial PRIMARY KEY NOT NULL,
+    "order" integer,
+    "parent_id" integer NOT NULL,
+    "path" varchar NOT NULL,
+    "users_id" integer
   );
 
   ALTER TABLE "assistant_threads" ADD CONSTRAINT "assistant_threads_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
