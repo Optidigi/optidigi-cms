@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useHydrated } from '@/hooks/use-hydrated'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,13 +17,16 @@ import { useAdminTranslations, useInterfaceLanguage } from './i18n-context'
 const languages = { nl: 'Nederlands', en: 'English' } as const
 
 export function InterfaceLanguageMenu() {
+  const ready = useHydrated()
   const current = useInterfaceLanguage()
   const t = useAdminTranslations()
   const [pending, change] = useTransition()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button size="sm" variant="ghost" aria-label={t('Taal')} disabled={pending} />}
+        render={
+          <Button size="sm" variant="ghost" aria-label={t('Taal')} disabled={pending || !ready} />
+        }
       >
         {current.toUpperCase()}
       </DropdownMenuTrigger>

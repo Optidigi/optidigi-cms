@@ -115,6 +115,14 @@ import {
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sheet,
@@ -1373,20 +1381,31 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
             <>
               <Field>
                 <FieldLabel htmlFor="assistant-default-model">{t('Standaardmodel')}</FieldLabel>
-                <NativeSelect
+                <Select
                   name="defaultModel"
-                  id="assistant-default-model"
                   defaultValue={options?.defaultModel ?? connection.model}
+                  items={[
+                    { value: connection.model, label: connection.model },
+                    ...(options?.models ?? []).map(({ model, label }) => ({
+                      value: model,
+                      label: label ?? model,
+                    })),
+                  ]}
                 >
-                  <NativeSelectOption value={connection.model}>
-                    {connection.model}
-                  </NativeSelectOption>
-                  {options?.models.map(({ model, label }) => (
-                    <NativeSelectOption key={model} value={model}>
-                      {label ?? model}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                  <SelectTrigger id="assistant-default-model">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      <SelectItem value={connection.model}>{connection.model}</SelectItem>
+                      {options?.models.map(({ model, label }) => (
+                        <SelectItem key={model} value={model}>
+                          {label ?? model}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </Field>
               <Field>
                 <FieldLabel htmlFor="assistant-default-detail">{t('Antwoordlengte')}</FieldLabel>

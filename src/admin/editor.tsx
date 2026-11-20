@@ -3,6 +3,7 @@
 import { useAdminTranslations, useEditingGuard } from '@/admin/i18n-context'
 
 import Link from 'next/link'
+import { useHydrated } from '@/hooks/use-hydrated'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CircleAlert, ExternalLink, History, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState, useTransition } from 'react'
@@ -65,6 +66,7 @@ export function Editor({
   versions: { id: string; updatedAt: string }[]
   canDelete: boolean
 }) {
+  const ready = useHydrated()
   const t = useAdminTranslations()
 
   const { markDirty, canNavigate } = useEditingGuard()
@@ -157,7 +159,7 @@ export function Editor({
             <NativeSelect
               id="document-translation"
               value={locale}
-              disabled={pending}
+              disabled={pending || !ready}
               onChange={(event) => {
                 if (!canNavigate(t('Niet-opgeslagen wijzigingen verlaten?'))) return
                 const destination = new URL(window.location.href)
@@ -177,119 +179,125 @@ export function Editor({
               save(new FormData(event.currentTarget), button?.getAttribute('value') ?? 'draft')
             }}
           >
-            <FieldGroup key={document.updatedAt}>
-              {!isSettings ? (
-                <>
-                  <TextField id="title" label={t('Titel')} required value={document.title} />
-                  <Field>
-                    <FieldLabel htmlFor="slug">{t('URL-naam')}</FieldLabel>
-                    <Input
-                      id="slug"
-                      name="slug"
-                      required
-                      pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                      defaultValue={document.slug ?? ''}
-                      readOnly={homepage}
-                      maxLength={150}
-                    />
-                  </Field>
-                  <TextField
-                    id="heading"
-                    label={t('Paginakop')}
-                    value={document.heading}
-                    maxLength={200}
-                  />
-                  <TextField
-                    id="description"
-                    label={t('Intro')}
-                    value={document.description}
-                    multiline
-                    maxLength={1000}
-                  />
-                  <Field>
-                    <FieldLabel>{t('Inhoud')}</FieldLabel>
-                    {!document.body || editableBody(document.body) ? (
-                      <RichTextEditor
-                        value={document.body}
-                        onChange={(value) => {
-                          setBody(value)
-                          markDirty(true)
-                        }}
-                      />
-                    ) : (
-                      <FieldDescription>
-                        {t('Deze opmaak kan hier niet worden bewerkt en blijft bewaard.')}
-                      </FieldDescription>
-                    )}
-                  </Field>
-                </>
-              ) : (
-                <>
-                  <Tabs
-                    value={panel}
-                    onValueChange={(value) => {
-                      const url = new URL(window.location.href)
-                      if (value === 'website') url.searchParams.delete('panel')
-                      else url.searchParams.set('panel', String(value))
-                      window.history.pushState(null, '', url)
-                    }}
-                  >
-                    <TabsList variant="line" aria-label={t('Website-instellingen')}>
-                      <TabsTrigger value="website">{t('Algemeen')}</TabsTrigger>
-                      <TabsTrigger value="navigation" disabled={!document.id}>
-                        {t('Navigatie')}
-                      </TabsTrigger>
-                      <TabsTrigger value="seo" disabled={!document.id}>
-                        SEO
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent keepMounted value="website" className="space-y-4 pt-4">
-                      <TextField
-                        id="name"
-                        label={t('Websitenaam')}
-                        value={document.name}
+            <fieldset disabled={!ready} className="min-w-0">
+              <FieldGroup key={document.updatedAt}>
+                {!isSettings ? (
+                  <>
+                    <TextField id="title" label={t('Titel')} required value={document.title} />
+                    <Field>
+                      <FieldLabel htmlFor="slug">{t('URL-naam')}</FieldLabel>
+                      <Input
+                        id="slug"
+                        name="slug"
                         required
+                        pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                        defaultValue={document.slug ?? ''}
+                        readOnly={homepage}
+                        maxLength={150}
                       />
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <TextField
-                          id="contactEmail"
-                          label={t('Contactmail')}
-                          type="email"
-                          value={document.contactEmail}
+                    </Field>
+                    <TextField
+                      id="heading"
+                      label={t('Paginakop')}
+                      value={document.heading}
+                      maxLength={200}
+                    />
+                    <TextField
+                      id="description"
+                      label={t('Intro')}
+                      value={document.description}
+                      multiline
+                      maxLength={1000}
+                    />
+                    <Field>
+                      <FieldLabel>{t('Inhoud')}</FieldLabel>
+                      {!document.body || editableBody(document.body) ? (
+                        <RichTextEditor
+                          value={document.body}
+                          onChange={(value) => {
+                            setBody(value)
+                            markDirty(true)
+                          }}
                         />
-                        <TextField id="phone" label={t('Telefoonnummer')} value={document.phone} />
-                      </div>
-                    </TabsContent>
-                    <TabsContent keepMounted value="navigation" className="pt-4">
-                      <NavigationFields navigation={document.navigation} />
-                    </TabsContent>
-                    <TabsContent keepMounted value="seo" className="pt-4">
-                      {seoFields}
-                    </TabsContent>
-                  </Tabs>
-                </>
-              )}
-              {!isSettings && seoFields}
-              <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 border-t bg-card py-3">
-                <Button type="submit" value="draft" variant="outline" disabled={pending}>
-                  {t('Concept opslaan')}
-                </Button>
-                <Button type="submit" value="publish" disabled={pending}>
-                  {t('Publiceren')}
-                </Button>
-                {canDelete && document.id && !homepage && !isSettings && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={pending}
-                    onClick={() => setConfirmDelete(true)}
-                  >
-                    <Trash2 />
-                    {t('Verwijderen')}
-                  </Button>
+                      ) : (
+                        <FieldDescription>
+                          {t('Deze opmaak kan hier niet worden bewerkt en blijft bewaard.')}
+                        </FieldDescription>
+                      )}
+                    </Field>
+                  </>
+                ) : (
+                  <>
+                    <Tabs
+                      value={panel}
+                      onValueChange={(value) => {
+                        const url = new URL(window.location.href)
+                        if (value === 'website') url.searchParams.delete('panel')
+                        else url.searchParams.set('panel', String(value))
+                        window.history.pushState(null, '', url)
+                      }}
+                    >
+                      <TabsList variant="line" aria-label={t('Website-instellingen')}>
+                        <TabsTrigger value="website">{t('Algemeen')}</TabsTrigger>
+                        <TabsTrigger value="navigation" disabled={!document.id}>
+                          {t('Navigatie')}
+                        </TabsTrigger>
+                        <TabsTrigger value="seo" disabled={!document.id}>
+                          SEO
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent keepMounted value="website" className="space-y-4 pt-4">
+                        <TextField
+                          id="name"
+                          label={t('Websitenaam')}
+                          value={document.name}
+                          required
+                        />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <TextField
+                            id="contactEmail"
+                            label={t('Contactmail')}
+                            type="email"
+                            value={document.contactEmail}
+                          />
+                          <TextField
+                            id="phone"
+                            label={t('Telefoonnummer')}
+                            value={document.phone}
+                          />
+                        </div>
+                      </TabsContent>
+                      <TabsContent keepMounted value="navigation" className="pt-4">
+                        <NavigationFields navigation={document.navigation} />
+                      </TabsContent>
+                      <TabsContent keepMounted value="seo" className="pt-4">
+                        {seoFields}
+                      </TabsContent>
+                    </Tabs>
+                  </>
                 )}
-              </div>
-            </FieldGroup>
+                {!isSettings && seoFields}
+                <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap gap-2 border-t bg-card py-3 md:bottom-0">
+                  <Button type="submit" value="draft" variant="outline" disabled={pending}>
+                    {t('Concept opslaan')}
+                  </Button>
+                  <Button type="submit" value="publish" disabled={pending}>
+                    {t('Publiceren')}
+                  </Button>
+                  {canDelete && document.id && !homepage && !isSettings && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={pending}
+                      onClick={() => setConfirmDelete(true)}
+                    >
+                      <Trash2 />
+                      {t('Verwijderen')}
+                    </Button>
+                  )}
+                </div>
+              </FieldGroup>
+            </fieldset>
           </form>
           {confirmDelete && (
             <Alert variant="destructive">
