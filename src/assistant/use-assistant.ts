@@ -435,7 +435,7 @@ export function useAssistant({
       setSelectedModelID(id)
       setEffort('default')
     },
-    configureModels: (options: CatalogSettings) =>
+    configureModels: (options: CatalogSettings, onSaved?: () => void) =>
       run('settings', async () => {
         await request(tenantID, { action: 'configure-models', options })
         const status = await request<Status>(tenantID, { action: 'status' })
@@ -444,6 +444,7 @@ export function useAssistant({
         setSelectedModelID(undefined)
         setEffort('default')
         setNotice('Wijzigingen opgeslagen.')
+        onSaved?.()
       }),
     modelStatus,
     reloadModel: () => {

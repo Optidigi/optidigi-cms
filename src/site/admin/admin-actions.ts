@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isPlatformAdmin, relationID } from '../access'
-import type { PayloadRequest } from 'payload'
+import { ValidationError, type PayloadRequest } from 'payload'
 
 const password = z.string().min(12).max(256)
 const id = z.coerce.number().int().positive()
@@ -118,6 +118,20 @@ export async function savePlatform(req: PayloadRequest, form: FormData) {
       }
       success = true
     }
-  } catch {}
+  } catch (error) {
+    const field =
+      error instanceof z.ZodError
+        ? error.issues[0]?.path[0]
+        : error instanceof ValidationError
+          ? error.data.errors[0]?.path
+          : undefined
+    if (
+      form.get('fieldErrors') === 'true' &&
+      typeof field === 'string' &&
+      ['name', 'slug', 'siteOrigin', 'email', 'password'].includes(field)
+    ) {
+      return { field, message: 'Controleer dit veld en gebruik een unieke waarde waar nodig.' }
+    }
+  }
   return success
 }

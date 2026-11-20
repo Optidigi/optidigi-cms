@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { settingsHref } from './navigation'
 import { LogOut, Settings2, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,13 +15,24 @@ import {
 import { useAdminTranslations, useEditingGuard } from './i18n-context'
 import { signOutAdmin } from './session'
 
-export function AccountMenu({ website, platform }: { website?: number; platform?: boolean }) {
+export function AccountMenu({
+  website,
+  platform,
+  locale,
+}: {
+  website?: number
+  platform?: boolean
+  locale?: 'nl' | 'en'
+}) {
   const t = useAdminTranslations()
-  const { canNavigate } = useEditingGuard()
-  const suffix = website ? '?website=' + website : ''
-  function guard(event: { preventDefault: () => void }) {
-    if (!canNavigate(t('Je hebt niet-opgeslagen wijzigingen. Deze pagina toch verlaten?')))
-      event.preventDefault()
+  const { navigate, hasChanges } = useEditingGuard()
+  const router = useRouter()
+  const account = settingsHref('/admin/account', website, locale)
+  const platformRoute = settingsHref('/admin/platform', website, locale)
+  function guard(href: string, event: { preventDefault: () => void }) {
+    if (!hasChanges()) return
+    event.preventDefault()
+    navigate(() => router.push(href))
   }
   return (
     <DropdownMenu>
@@ -29,23 +42,24 @@ export function AccountMenu({ website, platform }: { website?: number; platform?
         <UserRound />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem render={<Link href={'/admin/account' + suffix} onNavigate={guard} />}>
+        <DropdownMenuItem
+          render={<Link href={account} onNavigate={(event) => guard(account, event)} />}
+        >
           <UserRound />
           {t('Mijn account')}
         </DropdownMenuItem>
         {platform && (
-          <DropdownMenuItem render={<Link href={'/admin/platform' + suffix} onNavigate={guard} />}>
+          <DropdownMenuItem
+            render={
+              <Link href={platformRoute} onNavigate={(event) => guard(platformRoute, event)} />
+            }
+          >
             <Settings2 />
             {t('Platformbeheer')}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={(event) => {
-            guard(event)
-            if (!event.defaultPrevented) void signOutAdmin()
-          }}
-        >
+        <DropdownMenuItem onClick={() => navigate(() => void signOutAdmin())}>
           <LogOut />
           {t('Uitloggen')}
         </DropdownMenuItem>

@@ -7,8 +7,9 @@ import { useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { DeleteConfirmation } from './delete-confirmation'
 import { deleteMedia } from './media-actions'
 
 export function MediaForm({
@@ -24,6 +25,7 @@ export function MediaForm({
 
   const router = useRouter()
   const [pending, setPending] = useState(false)
+  const [fileError, setFileError] = useState('')
   const [confirm, setConfirm] = useState(false)
   const [message, setMessage] = useState('')
   const [success, setSuccess] = useState(false)
@@ -46,10 +48,20 @@ export function MediaForm({
             const element = event.currentTarget
             const form = new FormData(element)
             const file = form.get('file')
-            if (file instanceof File && file.size > 8 * 1024 * 1024) {
-              setSuccess(false)
-              setMessage(t('Kies een afbeelding van maximaal 8 MB.'))
-              return
+            setFileError('')
+            if (file instanceof File && file.size) {
+              if (
+                !['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'].includes(
+                  file.type,
+                )
+              ) {
+                setFileError('Kies JPEG, PNG, WebP, AVIF of GIF.')
+                return
+              }
+              if (file.size > 8 * 1024 * 1024) {
+                setFileError('Kies een afbeelding van maximaal 8 MB.')
+                return
+              }
             }
             setPending(true)
             setMessage('')
@@ -95,10 +107,16 @@ export function MediaForm({
                 id="media-file"
                 name="file"
                 type="file"
+                aria-invalid={Boolean(fileError)}
+                aria-describedby={
+                  fileError ? 'media-file-error media-file-help' : 'media-file-help'
+                }
+                onChange={() => setFileError('')}
                 required={!media}
                 accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
               />
-              <FieldDescription>
+              {fileError && <FieldError id="media-file-error">{t(fileError)}</FieldError>}
+              <FieldDescription id="media-file-help">
                 {t('JPEG, PNG, WebP, AVIF of GIF. Maximaal 8 MB.')}
               </FieldDescription>
             </Field>
@@ -119,41 +137,30 @@ export function MediaForm({
             </div>
           </FieldGroup>
         </form>
-        {confirm && media && (
-          <Alert variant="destructive">
-            <AlertDescription>
-              {t('Wil je deze afbeelding definitief verwijderen?')}
-            </AlertDescription>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={() => setConfirm(false)}>
-                {t('Annuleren')}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={pending}
-                onClick={async () => {
-                  setPending(true)
-                  const form = new FormData()
-                  form.set('site', String(site))
-                  form.set('id', String(media.id))
-                  form.set('revision', media.updatedAt)
-                  try {
-                    if (await deleteMedia(form)) router.replace(base)
-                    else throw Error('Media delete failed')
-                  } catch {
-                    setSuccess(false)
-                    setMessage(t('Verwijderen is niet gelukt. Laad de afbeelding opnieuw.'))
-                  } finally {
-                    setPending(false)
-                    setConfirm(false)
-                  }
-                }}
-              >
-                {t('Verwijderen bevestigen')}
-              </Button>
-            </div>
-          </Alert>
+        {media && (
+          <DeleteConfirmation
+            open={confirm}
+            onOpenChange={setConfirm}
+            busy={pending}
+            description={t('Wil je deze afbeelding definitief verwijderen?')}
+            onConfirm={async () => {
+              setPending(true)
+              const form = new FormData()
+              form.set('site', String(site))
+              form.set('id', String(media.id))
+              form.set('revision', media.updatedAt)
+              try {
+                if (await deleteMedia(form)) router.replace(base)
+                else throw Error('Media delete failed')
+              } catch {
+                setSuccess(false)
+                setMessage(t('Verwijderen is niet gelukt. Laad de afbeelding opnieuw.'))
+              } finally {
+                setPending(false)
+                setConfirm(false)
+              }
+            }}
+          />
         )}
       </CardContent>
     </Card>

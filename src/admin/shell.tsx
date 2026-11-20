@@ -40,7 +40,7 @@ import { AdminHeader } from './header'
 import { SettingsNavigation } from './settings-navigation'
 import { AccountMenu } from './account-menu'
 import { ShadcnAssistantLauncher, ShadcnAssistantProvider } from './assistant'
-import { assistantSettingsHref, adminRoot, contentLinks, siteHref } from './navigation'
+import { adminRoot, contentLinks, siteHref } from './navigation'
 import type { AssistantContext, AssistantTenant } from '@/assistant/use-assistant'
 
 type Website = { id: number; name: string }
@@ -96,17 +96,34 @@ export function AdminShell({
       : siteHref(selected.id, '/assistant', locale)
   const settingsRoot = selected ? siteHref(selected.id, '/settings') : adminRoot
   const settings = selected ? siteHref(selected.id, '/settings', locale) : adminRoot + '/account'
-  const connection = selected && assistantSettingsHref(selected.id)
+  const connection = /\/settings\/assistant$/.test(pathname)
   const currentSection = [
     { slug: '', title: t('Overzicht') },
     ...contentLinks,
     { slug: 'assistant', title: t('AI-assistent') },
-    { slug: 'settings', title: pathname === connection ? t('Modelverbinding') : t('Instellingen') },
+    {
+      slug: 'settings',
+      title: connection
+        ? t(
+            query.get('panel') === 'models'
+              ? 'Modellen'
+              : query.get('panel') === 'defaults'
+                ? 'Assistentvoorkeuren'
+                : 'Modelverbinding',
+          )
+        : t(/\/members$/.test(pathname) ? 'Leden en rollen' : 'Instellingen'),
+    },
     { slug: 'site-settings', title: t('Website-instellingen') },
-    { slug: 'account', title: t('Mijn account') },
-    { slug: 'platform', title: t('Platformbeheer') },
+    {
+      slug: 'account',
+      title: t(pathname.endsWith('/preferences') ? 'Voorkeuren' : 'Mijn account'),
+    },
+    {
+      slug: 'platform',
+      title: t(query.get('group') === 'users' || query.has('user') ? 'Gebruikers' : 'Websites'),
+    },
   ].find(({ slug }) => slug === section)
-  const inSubsettings = section === 'site-settings' || pathname === connection
+  const inSubsettings = section === 'site-settings' || connection
   const workspaceLinks = [
     { href: base, title: t('Overzicht'), Icon: LayoutDashboard, active: !section },
     ...(assistant
@@ -161,8 +178,18 @@ export function AdminShell({
         </SidebarContent>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset className={assistant && section !== 'assistant' ? 'min-w-0 pb-20' : 'min-w-0'}>
+      <SidebarInset className="min-w-0 h-dvh overflow-hidden">
         <AdminHeader
+          mobileNavigation={
+            inSettings ? (
+              <SettingsNavigation
+                mode="mobile"
+                site={selected}
+                membership={assistant}
+                platform={platform}
+              />
+            ) : undefined
+          }
           breadcrumbs={
             <Breadcrumb className="min-w-0">
               <BreadcrumbList className="flex-nowrap">
@@ -188,24 +215,30 @@ export function AdminShell({
                 )}
                 <BreadcrumbItem className="min-w-0">
                   <BreadcrumbPage className="truncate">
-                    {currentSection?.title ?? 'Website'}
+                    {t(currentSection?.title ?? 'Website')}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           }
         >
-          <AccountMenu website={selected?.id} platform={platform} />
+          <AccountMenu website={selected?.id} platform={platform} locale={locale} />
         </AdminHeader>
-        {inSettings ? (
-          <div className="flex min-w-0 flex-1 flex-col lg:grid lg:grid-cols-[12rem_minmax(0,1fr)]">
-            <SettingsNavigation site={selected} membership={assistant} platform={platform} />
-            <div className="min-w-0">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          {inSettings ? (
+            <div className="flex min-w-0 flex-1 flex-col xl:grid xl:grid-cols-[12rem_minmax(0,1fr)]">
+              <SettingsNavigation site={selected} membership={assistant} platform={platform} />
+              <div className="min-w-0">{children}</div>
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+        {assistant && section !== 'assistant' && (
+          <div className="flex shrink-0 justify-end border-t bg-background px-4 pt-2 pb-[max(.5rem,env(safe-area-inset-bottom))]">
+            <ShadcnAssistantLauncher route={assistantRoute} />
           </div>
-        ) : (
-          children
         )}
-        {assistant && section !== 'assistant' && <ShadcnAssistantLauncher route={assistantRoute} />}
       </SidebarInset>
     </SidebarProvider>
   )
@@ -241,7 +274,8 @@ function NavigationGroup({ title, links }: { title: string; links: NavLink[] }) 
 
 function NavigationItem({ href, title, Icon, active }: NavLink) {
   const t = useAdminTranslations()
-  const { canNavigate } = useEditingGuard()
+  const { navigate, hasChanges } = useEditingGuard()
+  const router = useRouter()
   const { setOpenMobile } = useSidebar()
   return (
     <SidebarMenuItem>
@@ -253,11 +287,12 @@ function NavigationItem({ href, title, Icon, active }: NavLink) {
             href={href}
             aria-current={active ? 'page' : undefined}
             onNavigate={(event) => {
-              if (
-                !active &&
-                !canNavigate(t('Je hebt niet-opgeslagen wijzigingen. Deze pagina toch verlaten?'))
-              ) {
+              if (!active && hasChanges()) {
                 event.preventDefault()
+                navigate(() => {
+                  setOpenMobile(false)
+                  router.push(href)
+                })
                 return
               }
               setOpenMobile(false)
@@ -284,7 +319,7 @@ function WebsiteSwitcher({
   const t = useAdminTranslations()
 
   const router = useRouter()
-  const { canNavigate } = useEditingGuard()
+  const { navigate } = useEditingGuard()
   const { setOpenMobile } = useSidebar()
   return (
     <SidebarMenu>
@@ -308,14 +343,11 @@ function WebsiteSwitcher({
               value={String(selected.id)}
               onValueChange={(value) => {
                 const site = sites.find(({ id }) => String(id) === value)
-                if (
-                  !site ||
-                  site.id === selected.id ||
-                  !canNavigate(t('Je hebt niet-opgeslagen wijzigingen. Deze pagina toch verlaten?'))
-                )
-                  return
-                setOpenMobile(false)
-                router.push(siteHref(site.id, '', locale))
+                if (!site || site.id === selected.id) return
+                navigate(() => {
+                  setOpenMobile(false)
+                  router.push(siteHref(site.id, '', locale))
+                })
               }}
             >
               {sites.map((site) => (

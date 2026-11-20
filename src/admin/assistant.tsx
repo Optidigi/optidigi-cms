@@ -1,6 +1,6 @@
 'use client'
 
-import { useAdminTranslations } from '@/admin/i18n-context'
+import { useAdminTranslations, useEditingGuard } from '@/admin/i18n-context'
 
 import { getToolName, isToolUIPart, type FileUIPart } from 'ai'
 import {
@@ -24,8 +24,17 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Radio } from '@base-ui/react/radio'
-import { RadioGroup } from '@base-ui/react/radio-group'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
+import { useHydrated } from '@/hooks/use-hydrated'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Table,
@@ -216,14 +225,7 @@ export function ShadcnAssistantLauncher({ route }: { route: string }) {
   const state = useContext(AssistantState)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger
-        render={
-          <Button
-            size="lg"
-            className="fixed end-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 rounded-full px-5 shadow-lg aria-expanded:opacity-0 aria-expanded:pointer-events-none md:end-7 md:bottom-6"
-          />
-        }
-      >
+      <SheetTrigger render={<Button size="lg" className="rounded-full px-5" />}>
         <Sparkles data-icon="inline-start" />
         {t('Vraag AI')}
       </SheetTrigger>
@@ -319,22 +321,16 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
           onChange={(event) => chat.setHistoryQuery(event.target.value)}
         />
         <div className="flex gap-1">
-          <Button
+          <ToggleGroup
+            value={[chat.archived ? 'archived' : 'recent']}
             size="sm"
-            variant={chat.archived ? 'ghost' : 'secondary'}
-            aria-pressed={!chat.archived}
-            onClick={() => chat.setArchived(false)}
+            onValueChange={(values) => {
+              if (values.length) chat.setArchived(values[0] === 'archived')
+            }}
           >
-            Recent
-          </Button>
-          <Button
-            size="sm"
-            variant={chat.archived ? 'secondary' : 'ghost'}
-            aria-pressed={chat.archived}
-            onClick={() => chat.setArchived(true)}
-          >
-            {t('Archief')}
-          </Button>
+            <ToggleGroupItem value="recent">Recent</ToggleGroupItem>
+            <ToggleGroupItem value="archived">{t('Archief')}</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
       <ScrollArea className="min-h-0 flex-1">
@@ -508,6 +504,7 @@ function Chat({
   setIncludeContext,
   full,
 }: State & { full: boolean }) {
+  const ready = useHydrated()
   const t = useAdminTranslations()
 
   const connected = chat.model?.connected === true
@@ -534,6 +531,7 @@ function Chat({
                 variant="ghost"
                 className={full ? 'lg:hidden' : undefined}
                 aria-label={t('Gespreksgeschiedenis')}
+                disabled={!ready}
               />
             }
           >
@@ -846,7 +844,6 @@ function Chat({
 
 function ChatModelPicker({ chat }: { chat: AssistantController }) {
   const t = useAdminTranslations()
-  const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const label = chat.selectedModel?.label ?? chat.model?.model
   const models = chat.model?.models ?? []
@@ -857,17 +854,10 @@ function ChatModelPicker({ chat }: { chat: AssistantController }) {
       </span>
     )
   }
-  const matching = models.filter((model) =>
-    model.label.toLowerCase().includes(query.trim().toLowerCase()),
-  )
+  const unavailable = (model: (typeof models)[number]) =>
+    chat.files.some(({ mediaType }) => !model.capabilities.attachmentTypes.includes(mediaType))
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(value) => {
-        setOpen(value)
-        if (!value) setQuery('')
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={<InputGroupButton size="sm" disabled={chat.busy} aria-label={t('Model kiezen')} />}
       >
@@ -879,36 +869,38 @@ function ChatModelPicker({ chat }: { chat: AssistantController }) {
           <DialogTitle>{t('Model kiezen')}</DialogTitle>
           <DialogDescription>{t('Kies een model voor je volgende bericht.')}</DialogDescription>
         </DialogHeader>
-        <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label={t('Zoek modellen')}
-        />
-        <div className="grid max-h-72 gap-1 overflow-y-auto">
-          {matching.map((model) => (
-            <Button
-              key={model.id}
-              variant={model.id === chat.selectedModel?.id ? 'secondary' : 'ghost'}
-              className="justify-start"
-              disabled={chat.files.some(
-                ({ mediaType }) => !model.capabilities.attachmentTypes.includes(mediaType),
+        <Combobox
+          items={models}
+          value={chat.selectedModel ?? null}
+          itemToStringLabel={(model) => model.label}
+          isItemEqualToValue={(a, b) => a.id === b.id}
+          onValueChange={(model) => {
+            if (model && !unavailable(model)) {
+              chat.selectModel(model.id)
+              setOpen(false)
+            }
+          }}
+        >
+          <ComboboxInput aria-label={t('Zoek modellen')} placeholder={t('Zoek modellen')} />
+          <ComboboxContent>
+            <ComboboxEmpty>{t('Geen resultaten')}</ComboboxEmpty>
+            <ComboboxList>
+              {(model: (typeof models)[number]) => (
+                <ComboboxItem key={model.id} value={model} disabled={unavailable(model)}>
+                  <span className="min-w-0 flex-1 break-all">{model.label}</span>
+                  {model.id === chat.model?.defaultModelID && (
+                    <Badge variant="outline">{t('Standaard')}</Badge>
+                  )}
+                  {unavailable(model) && (
+                    <span className="text-xs text-muted-foreground">
+                      {t('Ondersteunt deze bijlage niet')}
+                    </span>
+                  )}
+                </ComboboxItem>
               )}
-              aria-pressed={model.id === chat.selectedModel?.id}
-              onClick={() => {
-                chat.selectModel(model.id)
-                setOpen(false)
-              }}
-            >
-              {model.label}
-              {model.id === chat.model?.defaultModelID && (
-                <Badge variant="outline">{t('Standaard')}</Badge>
-              )}
-            </Button>
-          ))}
-          {!matching.length && (
-            <p className="p-2 text-sm text-muted-foreground">{t('Geen resultaten')}</p>
-          )}
-        </div>
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>
       </DialogContent>
     </Dialog>
   )
@@ -946,7 +938,7 @@ function ChatOptions({ chat, efforts }: { chat: AssistantController; efforts: st
           disabled={chat.busy}
           render={<InputGroupButton type="button" size="sm" aria-label={name + ': ' + selected} />}
         >
-          <span className="hidden sm:inline">{short} · </span>
+          <span className="inline">{short} · </span>
           {selected}
           <ChevronDown />
         </DropdownMenuTrigger>
@@ -1276,6 +1268,7 @@ export function ShadcnAssistantSettings() {
 
   return (
     <Tabs
+      className="min-w-0"
       value={panel}
       onValueChange={(value) => {
         const url = new URL(window.location.href)
@@ -1284,11 +1277,22 @@ export function ShadcnAssistantSettings() {
         window.history.pushState(null, '', url)
       }}
     >
-      <TabsList variant="line" aria-label={t('AI-assistent')}>
-        <TabsTrigger value="connection">{t('Modelverbinding')}</TabsTrigger>
-        <TabsTrigger value="models">{t('Modellen')}</TabsTrigger>
-        {tenant.canManage && <TabsTrigger value="defaults">{t('Assistentvoorkeuren')}</TabsTrigger>}
-      </TabsList>
+      <div className="min-w-0 max-w-full overflow-x-auto pb-1">
+        <TabsList variant="line" aria-label={t('AI-assistent')}>
+          <TabsTrigger value="connection">{t('Verbinding')}</TabsTrigger>
+          <TabsTrigger value="models">{t('Modellen')}</TabsTrigger>
+          {tenant.canManage && <TabsTrigger value="defaults">{t('Standaardwaarden')}</TabsTrigger>}
+        </TabsList>
+      </div>
+      {panel !== 'connection' && (chat.error || chat.notice) && (
+        <Alert
+          role={chat.error ? 'alert' : 'status'}
+          variant={chat.error ? 'destructive' : 'default'}
+          className="mt-2 max-w-2xl"
+        >
+          <AlertDescription>{t(chat.error || chat.notice)}</AlertDescription>
+        </Alert>
+      )}
       {chat.modelStatus === 'loading' ? (
         <div aria-busy="true" className="grid max-w-2xl gap-3 pt-3">
           <Skeleton className="h-7 w-40" />
@@ -1308,11 +1312,11 @@ export function ShadcnAssistantSettings() {
           <TabsContent value="connection" className="pt-3">
             <ConnectionSettings {...state} />
           </TabsContent>
-          <TabsContent value="models" className="pt-3">
+          <TabsContent keepMounted value="models" className="pt-3">
             <CatalogSettings {...state} panel="models" />
           </TabsContent>
           {tenant.canManage && (
-            <TabsContent value="defaults" className="pt-3">
+            <TabsContent keepMounted value="defaults" className="pt-3">
               <CatalogSettings {...state} panel="defaults" />
             </TabsContent>
           )}
@@ -1324,20 +1328,43 @@ export function ShadcnAssistantSettings() {
 
 function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'defaults' }) {
   const t = useAdminTranslations()
+  const { markDirty } = useEditingGuard()
+  const scope = 'assistant-' + panel
+  useEffect(() => () => markDirty(false, scope), [markDirty, scope])
   const connection = chat.model?.settings
   const options = connection?.catalog
 
   if (!chat.model?.connected)
-    return <p className="text-sm text-muted-foreground">{t('Verbind een model om te beginnen.')}</p>
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>{t('Geen model verbonden')}</EmptyTitle>
+          <EmptyDescription>{t('Verbind een model om te beginnen.')}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
   if (!tenant.canManage || !connection)
     return (
-      <ul className="space-y-2 rounded-xl border bg-card p-4">
-        {chat.model.models?.map(({ id, label }) => (
-          <li key={id} className="text-sm">
-            {label}
-          </li>
-        ))}
-      </ul>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('Modellen')}</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {chat.model.models?.map(({ id, label }) => (
+              <TableRow key={id}>
+                <TableCell className="whitespace-normal break-all">{label}</TableCell>
+                <TableCell>
+                  {id === chat.model?.defaultModelID && <Badge>{t('Standaard')}</Badge>}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     )
   return (
     <Card>
@@ -1347,7 +1374,10 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
       <CardContent>
         <form
           className="space-y-4"
-          key={JSON.stringify(options)}
+          key={JSON.stringify(
+            panel === 'models' ? options?.models : [options?.defaultModel, options?.detail],
+          )}
+          onChange={() => markDirty(true, scope)}
           onSubmit={(event) => {
             event.preventDefault()
             const form = new FormData(event.currentTarget)
@@ -1363,14 +1393,17 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
               panel === 'defaults'
                 ? String(form.get('defaultModel') ?? '') || options?.defaultModel
                 : options?.defaultModel
-            chat.configureModels({
-              models,
-              defaultModel: models.some(({ model }) => model === preferred)
-                ? preferred
-                : connection.model,
-              detail:
-                panel === 'defaults' ? (form.get('detail') as ResponseDetail) : options?.detail,
-            })
+            chat.configureModels(
+              {
+                models,
+                defaultModel: models.some(({ model }) => model === preferred)
+                  ? preferred
+                  : connection.model,
+                detail:
+                  panel === 'defaults' ? (form.get('detail') as ResponseDetail) : options?.detail,
+              },
+              () => markDirty(false, scope),
+            )
           }}
         >
           {panel === 'models' ? (
@@ -1420,13 +1453,13 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
                   className="flex flex-wrap gap-2"
                 >
                   {Object.entries(responseLabels).map(([value, label]) => (
-                    <Radio.Root
+                    <FieldLabel
                       key={value}
-                      value={value}
-                      className="rounded-md border px-3 py-2 text-sm data-checked:border-primary data-checked:bg-muted"
+                      className="flex items-center gap-2 rounded-md border px-3 py-2 has-data-checked:border-primary"
                     >
+                      <RadioGroupItem value={value} />
                       {t(label)}
-                    </Radio.Root>
+                    </FieldLabel>
                   ))}
                 </RadioGroup>
               </Field>
@@ -1435,16 +1468,6 @@ function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'd
           <Button type="submit" disabled={chat.busy}>
             {t('Wijzigingen opslaan')}
           </Button>
-          {chat.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {t(chat.error)}
-            </p>
-          )}
-          {chat.notice && (
-            <p role="status" className="text-sm text-muted-foreground">
-              {t(chat.notice)}
-            </p>
-          )}
         </form>
       </CardContent>
     </Card>
@@ -1461,6 +1484,7 @@ function CatalogRows({
   preferred: string
 }) {
   const t = useAdminTranslations()
+  const { markDirty } = useEditingGuard()
   const [entries, setEntries] = useState(() => models.map((entry, id) => ({ ...entry, id })))
   const [editing, setEditing] = useState<{ id: number; model: string; label?: string }>()
   const [error, setError] = useState('')
@@ -1474,12 +1498,16 @@ function CatalogRows({
             <TableRow>
               <TableHead>{t('Modellen')}</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-20" />
+              <TableHead className="w-20">
+                <span className="sr-only">{t('Acties')}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell className="font-medium">{baseModel}</TableCell>
+              <TableCell className="whitespace-normal [overflow-wrap:anywhere] font-medium">
+                {baseModel}
+              </TableCell>
               <TableCell>
                 <Badge variant="secondary">
                   {t(baseModel === preferred ? 'Standaard' : 'Verbindingsmodel')}
@@ -1489,7 +1517,7 @@ function CatalogRows({
             </TableRow>
             {entries.map((entry) => (
               <TableRow key={entry.id}>
-                <TableCell>
+                <TableCell className="whitespace-normal [overflow-wrap:anywhere]">
                   <span className="block font-medium">{entry.label || entry.model}</span>
                   {entry.label && (
                     <span className="block text-xs text-muted-foreground">{entry.model}</span>
@@ -1499,31 +1527,41 @@ function CatalogRows({
                   {entry.model === preferred && <Badge variant="secondary">{t('Standaard')}</Badge>}
                 </TableCell>
                 <TableCell>
-                  <div className="flex">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t('Model bewerken')}
-                      onClick={() => {
-                        setError('')
-                        setEditing(entry)
-                      }}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t('Model verwijderen')}
-                      onClick={() =>
-                        setEntries((current) => current.filter(({ id }) => id !== entry.id))
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={t('Acties') + ' · ' + (entry.label || entry.model)}
+                        />
                       }
                     >
-                      <Trash2 />
-                    </Button>
-                  </div>
+                      <MoreHorizontal />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setError('')
+                          setEditing(entry)
+                        }}
+                      >
+                        <Pencil />
+                        {t('Model bewerken')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => {
+                          markDirty(true, 'assistant-models')
+                          setEntries((current) => current.filter(({ id }) => id !== entry.id))
+                        }}
+                      >
+                        <Trash2 />
+                        {t('Model verwijderen')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -1577,6 +1615,7 @@ function CatalogRows({
                   return
                 }
                 const label = String(form.get('label') ?? '').trim() || undefined
+                markDirty(true, 'assistant-models')
                 const next = { ...editing, model, label }
                 setEntries((current) =>
                   current.some(({ id }) => id === editing.id)
@@ -1630,7 +1669,9 @@ function ConnectionSettings({ chat, tenant }: State) {
     <div className="grid max-w-2xl gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>{t('Modelverbinding')}</CardTitle>
+          <CardTitle role="heading" aria-level={2}>
+            {t('Verbindingsstatus')}
+          </CardTitle>
           <CardDescription>
             {t('Deze verbinding geldt voor')} {tenant.name}.
           </CardDescription>
@@ -1689,15 +1730,15 @@ function ConnectionSettings({ chat, tenant }: State) {
               </Button>
             </div>
           )}
+          {tenant.canManage && chat.model && (!chat.model.connected || replacing) && (
+            <ModelConnection
+              key={connection?.provider + ':' + connection?.model}
+              chat={chat}
+              onSaved={() => setReplacing(false)}
+            />
+          )}
         </CardContent>
       </Card>
-      {tenant.canManage && chat.model && (!chat.model.connected || replacing) && (
-        <ModelConnection
-          key={connection?.provider + ':' + connection?.model}
-          chat={chat}
-          onSaved={() => setReplacing(false)}
-        />
-      )}
       <AlertDialog open={disconnecting} onOpenChange={setDisconnecting}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1725,79 +1766,72 @@ function ModelConnection({ chat, onSaved }: { chat: AssistantController; onSaved
   const values = chat.model?.settings
   const [provider, setProvider] = useState<ModelProvider>(values?.provider ?? 'openai')
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {chat.model?.connected ? t('Verbinding vervangen') : t('Model verbinden')}
-        </CardTitle>
-        <CardDescription>{t('Gebruik de API-sleutel van deze website.')}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            const form = event.currentTarget
-            chat.connect(new FormData(form), () => {
-              form.reset()
-              onSaved()
-            })
-          }}
-        >
-          <FieldGroup>
+    <div className="space-y-4 border-t pt-4">
+      <FieldDescription>{t('Gebruik de API-sleutel van deze website.')}</FieldDescription>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          const form = event.currentTarget
+          chat.connect(new FormData(form), () => {
+            form.reset()
+            onSaved()
+          })
+        }}
+      >
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={formId + '-provider'}>Provider</FieldLabel>
+            <NativeSelect
+              id={formId + '-provider'}
+              name="provider"
+              value={provider}
+              onChange={(event) => setProvider(event.target.value as ModelProvider)}
+            >
+              {Object.entries(providerLabels).map(([key, name]) => (
+                <NativeSelectOption key={key} value={key}>
+                  {name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={formId + '-model'}>{t('Model-ID')}</FieldLabel>
+            <Input
+              id={formId + '-model'}
+              name="model"
+              required
+              maxLength={150}
+              defaultValue={values?.model}
+            />
+          </Field>
+          {provider === 'openai-compatible' && (
             <Field>
-              <FieldLabel htmlFor={formId + '-provider'}>Provider</FieldLabel>
-              <NativeSelect
-                id={formId + '-provider'}
-                name="provider"
-                value={provider}
-                onChange={(event) => setProvider(event.target.value as ModelProvider)}
-              >
-                {Object.entries(providerLabels).map(([key, name]) => (
-                  <NativeSelectOption key={key} value={key}>
-                    {name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={formId + '-model'}>{t('Model-ID')}</FieldLabel>
+              <FieldLabel htmlFor={formId + '-url'}>{t('Provider-URL')}</FieldLabel>
               <Input
-                id={formId + '-model'}
-                name="model"
+                id={formId + '-url'}
+                name="baseURL"
+                type="url"
                 required
-                maxLength={150}
-                defaultValue={values?.model}
+                defaultValue={values?.baseURL ?? ''}
               />
             </Field>
-            {provider === 'openai-compatible' && (
-              <Field>
-                <FieldLabel htmlFor={formId + '-url'}>{t('Provider-URL')}</FieldLabel>
-                <Input
-                  id={formId + '-url'}
-                  name="baseURL"
-                  type="url"
-                  required
-                  defaultValue={values?.baseURL ?? ''}
-                />
-              </Field>
-            )}
-            <Field>
-              <FieldLabel htmlFor={formId + '-key'}>{t('API-sleutel')}</FieldLabel>
-              <Input
-                id={formId + '-key'}
-                name="apiKey"
-                type="password"
-                required
-                autoComplete="new-password"
-              />
-              <FieldDescription>{t('Sleutels worden versleuteld opgeslagen.')}</FieldDescription>
-            </Field>
-            <Button className="w-fit" type="submit" disabled={chat.busy}>
-              {t('Verbinding opslaan')}
-            </Button>
-          </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
+          )}
+          <Field>
+            <FieldLabel htmlFor={formId + '-key'}>{t('API-sleutel')}</FieldLabel>
+            <Input
+              id={formId + '-key'}
+              name="apiKey"
+              type="password"
+              required
+              autoComplete="new-password"
+            />
+            <FieldDescription>{t('Sleutels worden versleuteld opgeslagen.')}</FieldDescription>
+          </Field>
+          <Button className="w-fit" type="submit" disabled={chat.busy}>
+            {t('Verbinding opslaan')}
+          </Button>
+        </FieldGroup>
+      </form>
+    </div>
   )
 }

@@ -1,18 +1,23 @@
 'use client'
 
-import { RadioGroup } from '@base-ui/react/radio-group'
-import { Radio } from '@base-ui/react/radio'
-import { Switch } from '@base-ui/react/switch'
-import { Combobox } from '@base-ui/react/combobox'
-import { Check, ChevronDown, Monitor, Moon, Sun } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Switch } from '@/components/ui/switch'
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox'
+import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useId, useState, useTransition } from 'react'
+import { useEffect, useId, useState, useTransition } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FieldDescription, FieldLegend, FieldSet } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-import { useAdminTranslations } from './i18n-context'
+import { FieldDescription, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { useAdminTranslations, useEditingGuard } from './i18n-context'
 import { savePreferences } from './preference-actions'
 import type { Preferences } from './preferences'
 
@@ -35,6 +40,13 @@ export function PreferenceForm({
   const t = useAdminTranslations()
   const { setTheme } = useTheme()
   const [settings, setSettings] = useState(initial)
+  const { markDirty } = useEditingGuard()
+  useEffect(() => () => markDirty(false), [markDirty])
+  function edit(next: Preferences) {
+    markDirty(true)
+    setFeedback(undefined)
+    setSettings(next)
+  }
   const [feedback, setFeedback] = useState<'saved' | 'error'>()
   const [pending, run] = useTransition()
   const field = useId()
@@ -53,6 +65,7 @@ export function PreferenceForm({
           setTheme('system')
           setSettings({ language: 'nl', theme: 'system', website: null, sidebarOpen: true })
         } else if (savedTheme === value.theme) setTheme(value.theme)
+        markDirty(false)
         setFeedback('saved')
       } catch {
         setFeedback('error')
@@ -78,16 +91,13 @@ export function PreferenceForm({
             <RadioGroup
               aria-labelledby={field + '-theme'}
               value={settings.theme}
-              onValueChange={(theme) =>
-                setSettings({ ...settings, theme: theme as Preferences['theme'] })
-              }
+              onValueChange={(theme) => edit({ ...settings, theme: theme as Preferences['theme'] })}
               className="grid grid-cols-3 gap-2"
             >
               {themeOptions.map(({ id, label, Icon }) => (
-                <Radio.Root
+                <FieldLabel
                   key={id}
-                  value={id}
-                  className="group grid min-w-0 gap-2 rounded-lg border p-2 text-sm data-checked:border-primary data-checked:ring-1 data-checked:ring-primary focus-visible:outline-2 focus-visible:outline-ring"
+                  className="grid min-w-0 cursor-pointer gap-2 rounded-lg border p-2 has-data-checked:border-primary"
                 >
                   <span
                     aria-hidden
@@ -95,8 +105,11 @@ export function PreferenceForm({
                   >
                     <Icon className="size-4" />
                   </span>
-                  <span>{t(label)}</span>
-                </Radio.Root>
+                  <span className="flex items-center gap-2">
+                    <RadioGroupItem value={id} />
+                    {t(label)}
+                  </span>
+                </FieldLabel>
               ))}
             </RadioGroup>
           </FieldSet>
@@ -106,7 +119,7 @@ export function PreferenceForm({
               aria-labelledby={field + '-language'}
               value={settings.language}
               onValueChange={(language) =>
-                setSettings({ ...settings, language: language as Preferences['language'] })
+                edit({ ...settings, language: language as Preferences['language'] })
               }
               className="flex flex-wrap gap-2"
             >
@@ -114,77 +127,52 @@ export function PreferenceForm({
                 ['nl', 'Nederlands'],
                 ['en', 'English'],
               ].map(([value, label]) => (
-                <Radio.Root
+                <FieldLabel
                   key={value}
-                  value={value}
-                  className="flex min-h-9 items-center gap-2 rounded-md border px-3 text-sm data-checked:border-primary focus-visible:outline-2 focus-visible:outline-ring"
+                  className="flex min-h-9 items-center gap-2 rounded-md border px-3 has-data-checked:border-primary"
                 >
-                  <Radio.Indicator>
-                    <Check className="size-4" aria-hidden />
-                  </Radio.Indicator>
+                  <RadioGroupItem value={value} />
                   {label}
-                </Radio.Root>
+                </FieldLabel>
               ))}
             </RadioGroup>
           </FieldSet>
           <div className="flex items-center justify-between gap-3 border-t pt-4">
             <div>
-              <label htmlFor={field + '-sidebar'} className="text-sm font-medium">
+              <FieldLabel htmlFor={field + '-sidebar'} className="text-sm font-medium">
                 {t('Zijbalk uitgeklapt starten')}
-              </label>
+              </FieldLabel>
               <FieldDescription>{t('Geldt voor de desktopweergave.')}</FieldDescription>
             </div>
-            <Switch.Root
+            <Switch
               id={field + '-sidebar'}
               checked={settings.sidebarOpen}
-              onCheckedChange={(sidebarOpen) => setSettings({ ...settings, sidebarOpen })}
-              className="relative flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full bg-input p-0.5 data-checked:bg-primary focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              <Switch.Thumb className="size-4 rounded-full bg-background transition-transform data-checked:translate-x-4" />
-            </Switch.Root>
+              onCheckedChange={(sidebarOpen) => edit({ ...settings, sidebarOpen })}
+            />
           </div>
           <div className="space-y-2">
-            <label htmlFor={field + '-website'} className="text-sm font-medium">
+            <FieldLabel htmlFor={field + '-website'} className="text-sm font-medium">
               {t('Startwebsite')}
-            </label>
-            <Combobox.Root
+            </FieldLabel>
+            <Combobox
               items={siteOptions}
               value={selected}
               itemToStringLabel={(item) => item.name}
               isItemEqualToValue={(a, b) => a.id === b.id}
-              onValueChange={(value) => setSettings({ ...settings, website: value?.id ?? null })}
+              onValueChange={(value) => edit({ ...settings, website: value?.id ?? null })}
             >
-              <div className="relative">
-                <Combobox.Input id={field + '-website'} render={<Input className="pe-9" />} />
-                <Combobox.Trigger
-                  className="absolute inset-y-0 end-0 px-2"
-                  aria-label={t('Website kiezen')}
-                >
-                  <ChevronDown className="size-4" />
-                </Combobox.Trigger>
-              </div>
-              <Combobox.Portal>
-                <Combobox.Positioner sideOffset={5} className="z-50">
-                  <Combobox.Popup className="max-h-64 min-w-(--anchor-width) overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-                    <Combobox.Empty className="p-2 text-sm">{t('Geen resultaten')}</Combobox.Empty>
-                    <Combobox.List>
-                      {(item: (typeof siteOptions)[number]) => (
-                        <Combobox.Item
-                          key={item.id ?? 'last'}
-                          value={item}
-                          className="flex cursor-default items-center justify-between gap-2 rounded p-2 text-sm data-highlighted:bg-accent"
-                        >
-                          {item.name}
-                          <Combobox.ItemIndicator>
-                            <Check className="size-4" />
-                          </Combobox.ItemIndicator>
-                        </Combobox.Item>
-                      )}
-                    </Combobox.List>
-                  </Combobox.Popup>
-                </Combobox.Positioner>
-              </Combobox.Portal>
-            </Combobox.Root>
+              <ComboboxInput id={field + '-website'} className="w-full" />
+              <ComboboxContent>
+                <ComboboxEmpty>{t('Geen resultaten')}</ComboboxEmpty>
+                <ComboboxList>
+                  {(item: (typeof siteOptions)[number]) => (
+                    <ComboboxItem key={item.id ?? 'last'} value={item}>
+                      {item.name}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending}>

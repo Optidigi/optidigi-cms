@@ -3,6 +3,7 @@
 import { useAdminTranslations, useEditingGuard } from '@/admin/i18n-context'
 
 import Link from 'next/link'
+import { DeleteConfirmation } from './delete-confirmation'
 import { useHydrated } from '@/hooks/use-hydrated'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CircleAlert, ExternalLink, History, Plus, Trash2 } from 'lucide-react'
@@ -70,7 +71,7 @@ export function Editor({
   const ready = useHydrated()
   const t = useAdminTranslations()
 
-  const { markDirty, canNavigate } = useEditingGuard()
+  const { markDirty, navigate } = useEditingGuard()
   useEffect(() => () => markDirty(false), [markDirty])
   const router = useRouter()
   const [pending, run] = useTransition()
@@ -131,7 +132,9 @@ export function Editor({
   )
   return (
     <div
-      className={supportsPreview ? 'grid min-w-0 items-start gap-4 xl:grid-cols-2' : 'max-w-3xl'}
+      className={
+        supportsPreview ? 'grid min-w-0 items-start gap-4 @min-[40rem]:grid-cols-2' : 'max-w-3xl'
+      }
     >
       <Card className="min-w-0">
         <CardHeader className="flex-row items-center justify-between gap-3">
@@ -162,10 +165,9 @@ export function Editor({
               value={locale}
               disabled={pending || !ready}
               onChange={(event) => {
-                if (!canNavigate(t('Niet-opgeslagen wijzigingen verlaten?'))) return
                 const destination = new URL(window.location.href)
                 destination.searchParams.set('locale', event.target.value)
-                router.push(destination.pathname + destination.search)
+                navigate(() => router.push(destination.pathname + destination.search))
               }}
             >
               <NativeSelectOption value="nl">Nederlands</NativeSelectOption>
@@ -280,7 +282,7 @@ export function Editor({
                   </>
                 )}
                 {!isSettings && seoFields}
-                <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap gap-2 border-t bg-card py-3 md:bottom-0">
+                <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 border-t bg-card py-3 md:bottom-0">
                   <Button type="submit" value="draft" variant="outline" disabled={pending}>
                     {t('Concept opslaan')}
                   </Button>
@@ -302,26 +304,13 @@ export function Editor({
               </FieldGroup>
             </fieldset>
           </form>
-          {confirmDelete && (
-            <Alert variant="destructive">
-              <AlertDescription>
-                {t('Wil je dit document definitief verwijderen?')}
-              </AlertDescription>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
-                  {t('Annuleren')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={pending}
-                  onClick={() => save(new FormData(), 'delete')}
-                >
-                  {t('Verwijderen bevestigen')}
-                </Button>
-              </div>
-            </Alert>
-          )}
+          <DeleteConfirmation
+            open={confirmDelete}
+            onOpenChange={setConfirmDelete}
+            busy={pending}
+            description={t('Wil je dit document definitief verwijderen?')}
+            onConfirm={() => save(new FormData(), 'delete')}
+          />
           {versions.length > 0 && (
             <Collapsible className="border-t pt-3">
               <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>

@@ -4,6 +4,18 @@ export type InterfaceLanguage = 'nl' | 'en'
 export const interfaceLanguageCookie = 'payload-lng'
 
 const english: Record<string, string> = {
+  Paginering: 'Pagination',
+  Verbindingsstatus: 'Connection status',
+  'Controleer dit veld en gebruik een unieke waarde waar nodig.':
+    'Check this field and use a unique value where required.',
+  Linkadres: 'Link address',
+  'Voer een geldig linkadres in.': 'Enter a valid link address.',
+  'Kies JPEG, PNG, WebP, AVIF of GIF.': 'Choose JPEG, PNG, WebP, AVIF, or GIF.',
+  Integraties: 'Integrations',
+  Verbinding: 'Connection',
+  Standaardwaarden: 'Defaults',
+  Acties: 'Actions',
+  'Ondersteunt deze bijlage niet': 'Attachment unsupported',
   'Wijzigingen verwerpen': 'Discard changes',
   'Model bewerken': 'Edit model',
   'Voeg een model aan de huidige verbinding toe.': 'Add a model to the current connection.',

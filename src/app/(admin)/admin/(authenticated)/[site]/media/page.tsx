@@ -1,3 +1,4 @@
+import { CollectionPagination } from '@/admin/collection-pagination'
 import { PageContainer } from '@/admin/page-container'
 import { find } from '@/admin/data'
 import { adminTranslations } from '@/admin/i18n-server'
@@ -177,50 +178,22 @@ export default async function MediaPage({
               </Empty>
             </Card>
           )}
-          <div className="flex gap-2">
-            {results?.hasPrevPage && (
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={
-                  <Link
-                    href={
-                      base +
-                      '?q=' +
-                      encodeURIComponent(search) +
-                      '&sort=' +
-                      sort +
-                      '&page=' +
-                      results.prevPage
-                    }
-                  />
-                }
-              >
-                {t('Vorige')}
-              </Button>
-            )}
-            {results?.hasNextPage && (
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={
-                  <Link
-                    href={
-                      base +
-                      '?q=' +
-                      encodeURIComponent(search) +
-                      '&sort=' +
-                      sort +
-                      '&page=' +
-                      results.nextPage
-                    }
-                  />
-                }
-              >
-                {t('Volgende')}
-              </Button>
-            )}
-          </div>
+          <CollectionPagination
+            previous={
+              results?.prevPage
+                ? base +
+                  '?' +
+                  new URLSearchParams({ q: search, sort, page: String(results.prevPage) })
+                : undefined
+            }
+            next={
+              results?.nextPage
+                ? base +
+                  '?' +
+                  new URLSearchParams({ q: search, sort, page: String(results.nextPage) })
+                : undefined
+            }
+          />
         </>
       )}
     </PageContainer>

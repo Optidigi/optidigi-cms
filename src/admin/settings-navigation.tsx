@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Settings2 } from 'lucide-react'
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { SettingsLink } from './settings-link'
@@ -13,10 +14,12 @@ export function SettingsNavigation({
   site,
   membership,
   platform,
+  mode = 'rail',
 }: {
   site?: { id: number; name: string }
   membership?: { canManage: boolean }
   platform?: boolean
+  mode?: 'rail' | 'mobile'
 }) {
   const [open, setOpen] = useState(false)
   const t = useAdminTranslations()
@@ -63,7 +66,7 @@ export function SettingsNavigation({
               {
                 key: 'members',
                 label: t('Leden en rollen'),
-                href: siteHref(site.id, '/settings/members'),
+                href: siteHref(site.id, '/settings/members', locale),
               },
             ],
           },
@@ -72,7 +75,7 @@ export function SettingsNavigation({
     ...(site && membership
       ? [
           {
-            title: t('AI-assistent'),
+            title: t('Integraties'),
             links: [
               {
                 key: 'assistant',
@@ -110,38 +113,51 @@ export function SettingsNavigation({
   const links = (onNavigate?: () => void) => (
     <nav aria-label={t('Instellingen')} className="space-y-5">
       {groups.map(({ title, links }) => (
-        <div key={title} className="min-w-0">
-          <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">{title}</p>
-          {links.map(({ key, label, href }) => (
-            <SettingsLink
-              key={key}
-              href={href}
-              label={label}
-              active={current === key}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </div>
+        <SidebarGroup key={links[0].key} className="min-w-0 p-0">
+          <SidebarGroupLabel>{title}</SidebarGroupLabel>
+          <SidebarMenu>
+            {links.map(({ key, label, href }) => (
+              <SettingsLink
+                key={key}
+                href={href}
+                label={label}
+                active={current === key}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
       ))}
     </nav>
   )
+  if (mode === 'rail')
+    return <aside className="hidden border-e px-3 py-6 xl:block">{links()}</aside>
+
   return (
-    <>
-      <aside className="hidden border-e px-3 py-6 lg:block">{links()}</aside>
-      <div className="px-4 pt-3 lg:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger render={<Button variant="outline" size="sm" />}>
-            <Settings2 />
-            {t('Instellingen')}
-          </SheetTrigger>
-          <SheetContent side="left">
-            <SheetHeader>
-              <SheetTitle>{t('Instellingen')}</SheetTitle>
-            </SheetHeader>
-            <div className="overflow-y-auto p-4">{links(() => setOpen(false))}</div>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </>
+    <div className="xl:hidden">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger
+          render={<Button variant="ghost" size="icon-sm" aria-label={t('Instellingen')} />}
+        >
+          <Settings2 />
+        </SheetTrigger>
+        <SheetContent side="left">
+          <SheetHeader>
+            <SheetTitle>{t('Instellingen')}</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto space-y-4 p-4">
+            <SidebarMenu>
+              <SettingsLink
+                href={site ? siteHref(site.id, '', locale) : '/admin'}
+                label={t('CMS-overzicht')}
+                active={false}
+                onNavigate={() => setOpen(false)}
+              />
+            </SidebarMenu>
+            {links(() => setOpen(false))}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }

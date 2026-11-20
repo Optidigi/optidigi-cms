@@ -1,3 +1,4 @@
+import { CollectionPagination } from '@/admin/collection-pagination'
 import { SettingsWorkspace } from '@/admin/settings-workspace'
 import { PageContainer } from '@/admin/page-container'
 import { findVersions, find } from '@/admin/data'
@@ -175,8 +176,8 @@ export default async function SectionPage({
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t('Titel')}</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>{t('Gewijzigd')}</TableHead>
+                      <TableHead className="hidden sm:table-cell">Status</TableHead>
+                      <TableHead className="hidden sm:table-cell">{t('Gewijzigd')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -185,18 +186,28 @@ export default async function SectionPage({
                         <TableCell>
                           <Link
                             href={localized + '&id=' + doc.id}
-                            className="font-medium hover:underline"
+                            className="block whitespace-normal [overflow-wrap:anywhere] font-medium hover:underline"
                           >
                             {doc.title ||
                               (doc.slug === 'home' ? 'Homepage' : t('Naamloos document'))}
                           </Link>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 whitespace-normal text-xs text-muted-foreground sm:hidden">
+                            <Badge variant={doc._status === 'published' ? 'secondary' : 'outline'}>
+                              {doc._status === 'published' ? t('Gepubliceerd') : t('Concept')}
+                            </Badge>
+                            <time dateTime={doc.updatedAt}>
+                              {new Date(doc.updatedAt).toLocaleDateString(t('nl-NL'), {
+                                timeZone: 'Europe/Amsterdam',
+                              })}
+                            </time>
+                          </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge variant={doc._status === 'published' ? 'secondary' : 'outline'}>
                             {doc._status === 'published' ? t('Gepubliceerd') : t('Concept')}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           {new Date(doc.updatedAt).toLocaleDateString(t('nl-NL'), {
                             timeZone: 'Europe/Amsterdam',
                           })}
@@ -205,50 +216,32 @@ export default async function SectionPage({
                     ))}
                   </TableBody>
                 </Table>
-                {(list.hasPrevPage || list.hasNextPage) && (
-                  <div className="flex flex-wrap gap-2 border-t p-3">
-                    {list.hasPrevPage && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        nativeButton={false}
-                        render={
-                          <Link
-                            href={
-                              localized +
-                              '&' +
-                              new URLSearchParams({ q: search, sort, status }) +
-                              '&page=' +
-                              list.prevPage
-                            }
-                          />
-                        }
-                      >
-                        {t('Vorige')}
-                      </Button>
-                    )}
-                    {list.hasNextPage && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        nativeButton={false}
-                        render={
-                          <Link
-                            href={
-                              localized +
-                              '&' +
-                              new URLSearchParams({ q: search, sort, status }) +
-                              '&page=' +
-                              list.nextPage
-                            }
-                          />
-                        }
-                      >
-                        {t('Volgende')}
-                      </Button>
-                    )}
-                  </div>
-                )}
+                <CollectionPagination
+                  previous={
+                    list.prevPage
+                      ? localized +
+                        '&' +
+                        new URLSearchParams({
+                          q: search,
+                          sort,
+                          status,
+                          page: String(list.prevPage),
+                        })
+                      : undefined
+                  }
+                  next={
+                    list.nextPage
+                      ? localized +
+                        '&' +
+                        new URLSearchParams({
+                          q: search,
+                          sort,
+                          status,
+                          page: String(list.nextPage),
+                        })
+                      : undefined
+                  }
+                />
               </CardContent>
             </Card>
           ) : (

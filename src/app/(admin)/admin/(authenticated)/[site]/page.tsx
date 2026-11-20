@@ -120,7 +120,7 @@ export default async function SitePage({
               <CardHeader>
                 <CardDescription className="flex items-center gap-2">
                   <Icon className="size-4 shrink-0" />
-                  {title}
+                  {t(title)}
                 </CardDescription>
                 <CardTitle className="text-2xl tabular-nums">{totalDocs}</CardTitle>
               </CardHeader>
@@ -146,7 +146,7 @@ export default async function SitePage({
                     <ItemContent className="min-w-0">
                       <ItemTitle className="min-w-0 break-all">{title}</ItemTitle>
                       <ItemDescription>
-                        {section} ·{' '}
+                        {t(section)} ·{' '}
                         <time dateTime={updatedAt}>{dateFormat.format(new Date(updatedAt))}</time>
                       </ItemDescription>
                     </ItemContent>

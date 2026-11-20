@@ -58,6 +58,18 @@ test('editor publishes localized content and uses the shared assistant in the ca
       overrideAccess: true,
       data: { tenant: tenant.id, name: 'Website fixture', _status: 'published' },
     })
+    const longTitle = 'Fixture' + 'LongTitle'.repeat(14)
+    await payload.create({
+      collection: 'articles',
+      overrideAccess: true,
+      locale: 'nl',
+      data: {
+        tenant: tenant.id,
+        title: longTitle,
+        slug: 'audit-long-article',
+        _status: 'published',
+      },
+    })
     await context.route('https://example.com/**', (route) => route.fulfill({ body: '' }))
     for (const retired of ['/admin-tweaked', '/admin-shadcn']) {
       expect((await page.goto(retired))?.status()).toBe(404)
@@ -92,6 +104,11 @@ test('editor publishes localized content and uses the shared assistant in the ca
     expect(restrictedRoster.status()).toBe(403)
     await page.goto(root + '/settings?locale=en')
     await expect(page).toHaveURL(root + '/site-settings?locale=en')
+    const settingsNav = page.getByRole('navigation', { name: 'Instellingen' })
+    await settingsNav.getByRole('link', { name: 'Leden en rollen' }).click()
+    await expect(page).toHaveURL(root + '/settings/members?locale=en')
+    await settingsNav.getByRole('link', { name: 'Website-instellingen' }).click()
+    await expect(page.getByLabel('Documentvertaling')).toHaveValue('en')
     await page.getByRole('tab', { name: 'SEO', exact: true }).click()
     await page.getByRole('tab', { name: 'Algemeen' }).click()
     await page.locator('main').evaluate((node) => node.setAttribute('data-qa-persistent', 'shell'))
@@ -109,6 +126,11 @@ test('editor publishes localized content and uses the shared assistant in the ca
       .click()
     await page.getByRole('button', { name: 'Wijzigingen verwerpen' }).click()
     await expect(page.locator('main')).toHaveAttribute('data-qa-persistent', 'shell')
+    await page.getByRole('radio', { name: 'Donker', exact: true }).click()
+    await settingsNav.getByRole('link', { name: 'Website-instellingen' }).click()
+    await expect(page.getByRole('alertdialog')).toBeVisible()
+    await page.getByRole('button', { name: 'Annuleren', exact: true }).click()
+    await expect(page.getByRole('radio', { name: 'Donker', exact: true })).toBeChecked()
     await page.getByRole('radio', { name: 'English', exact: true }).click()
     await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
@@ -116,6 +138,28 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeChecked()
     await page.getByRole('button', { name: 'Reset to defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(root + '/articles')
+    await expect(page.getByRole('link', { name: longTitle, exact: true })).toBeVisible()
+    await expect(
+      page.locator('[data-slot="badge"]:visible').filter({ hasText: /^Gepubliceerd$/ }),
+    ).toBeVisible()
+    expect(
+      await page.evaluate(() => window.document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(390)
+    await page.goto(root + '/media?new=1')
+    await page.getByLabel('Alternatieve tekst').fill('Invalid file fixture')
+    await page.getByLabel('Afbeelding', { exact: true }).setInputFiles({
+      name: 'unsupported.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('fixture'),
+    })
+    await page.getByRole('button', { name: 'Uploaden' }).click()
+    await expect(page.getByLabel('Afbeelding', { exact: true })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    await expect(page.getByText('Kies JPEG, PNG, WebP, AVIF of GIF.')).toBeVisible()
     const document = root + '/pages?id=' + home.id
     expect((await page.goto(document))?.status()).toBe(200)
     await expect(page.getByRole('textbox', { name: 'Paginakop' })).toHaveValue('Live')
@@ -132,6 +176,11 @@ test('editor publishes localized content and uses the shared assistant in the ca
     expect(
       await page.evaluate(() => window.document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(390)
+
+    await page.getByLabel('Document translation').selectOption('en')
+    await expect(page.getByRole('alertdialog')).toBeVisible()
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(page.getByLabel('Document translation')).toHaveValue('nl')
 
     page.once('dialog', (dialog) => dialog.accept())
     await page.goto(root + '/settings/assistant', { waitUntil: 'domcontentloaded' })
@@ -241,10 +290,20 @@ test('editor publishes localized content and uses the shared assistant in the ca
     finishStatus()
     await expect(page.getByRole('cell', { name: 'gpt-6-luna' })).toBeVisible()
     await page.unroute('**/api/assistant')
-    await page.getByRole('tab', { name: 'Modelverbinding' }).click()
+    await page.getByRole('tab', { name: 'Verbinding', exact: true }).click()
     await page.getByRole('button', { name: 'Verbinding wijzigen' }).click()
     await expect(page.getByLabel('Model-ID')).toHaveValue('gpt-6-luna')
     await expect(page.getByLabel('API-sleutel')).toHaveValue('')
+    const apiKey = page.getByLabel('API-sleutel')
+    await apiKey.scrollIntoViewIfNeeded()
+    const [keyBounds, launcherBounds] = await Promise.all([
+      apiKey.boundingBox(),
+      page.getByRole('button', { name: 'Vraag AI' }).boundingBox(),
+    ])
+    expect(keyBounds).not.toBeNull()
+    expect(launcherBounds).not.toBeNull()
+    expect(keyBounds!.y + keyBounds!.height).toBeLessThanOrEqual(launcherBounds!.y)
+
     await page.goto(root + '/pages?id=' + home.id)
     await page.getByRole('button', { name: 'Vraag AI' }).click()
     const drawer = page.getByRole('dialog')
@@ -256,6 +315,20 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await page.getByLabel('Model-ID', { exact: true }).fill('gpt-5-mini')
     await page.getByLabel('Weergavenaam').fill('Fast model')
     await page.getByRole('button', { name: 'Toepassen', exact: true }).click()
+    await page.setViewportSize({ width: 320, height: 844 })
+    await page.getByRole('tab', { name: 'Standaardwaarden', exact: true }).click()
+    expect(
+      await page.evaluate(() => window.document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(320)
+    await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText(
+      'Assistentvoorkeuren',
+    )
+    await page.getByRole('tab', { name: 'Modellen', exact: true }).click()
+    await expect(
+      page.getByRole('cell', { name: 'Fast model gpt-5-mini', exact: true }),
+    ).toBeVisible()
+    await page.setViewportSize({ width: 390, height: 844 })
+
     await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
     await expect(page.getByText('Wijzigingen opgeslagen.', { exact: true })).toBeVisible()
     const catalog = await (await assistant({ action: 'status' })).json()
@@ -307,7 +380,7 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await page.getByRole('button', { name: 'Vraag AI' }).click()
     await drawer.getByRole('button', { name: 'Model kiezen' }).click()
     await page.getByRole('textbox', { name: 'Zoek modellen' }).fill('Fast')
-    await page.getByRole('button', { name: 'Fast model', exact: true }).click()
+    await page.getByRole('option', { name: 'Fast model', exact: true }).click()
     await expect(drawer.getByRole('button', { name: 'Model kiezen' })).toHaveText('Fast model')
     await drawer.getByRole('button', { name: /^Antwoordlengte:/ }).click()
     await page.getByRole('menuitemradio', { name: 'Uitgebreid', exact: true }).click()
@@ -337,6 +410,7 @@ test('editor publishes localized content and uses the shared assistant in the ca
     ).toBeOK()
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: 'Gespreksgeschiedenis' }).click()
+    await expect(page.getByRole('dialog', { name: 'Gespreksgeschiedenis' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Conceptbrief', exact: true })).toBeVisible()
     await expect(await assistant({ action: 'thread-delete', thread })).toBeOK()
     expect((await assistant({ action: 'thread-read', thread })).status()).toBe(404)
@@ -368,6 +442,11 @@ test('editor publishes localized content and uses the shared assistant in the ca
     })
     await payload.delete({
       collection: 'pages',
+      where: { tenant: { equals: tenant.id } },
+      overrideAccess: true,
+    })
+    await payload.delete({
+      collection: 'articles',
       where: { tenant: { equals: tenant.id } },
       overrideAccess: true,
     })

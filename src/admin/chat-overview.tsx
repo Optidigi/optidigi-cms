@@ -1,6 +1,8 @@
 'use client'
 
 import { ArrowUpRight, FileText, ListChecks, MessageCircle, PenLine } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { useAdminTranslations } from './i18n-context'
 
 const suggestions = [
@@ -21,32 +23,33 @@ export function ChatOverview({
   const t = useAdminTranslations()
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-1 py-8 sm:py-14">
-      <div className="flex flex-col items-start gap-3">
-        <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-          <MessageCircle className="size-5" aria-hidden />
-        </span>
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          {t('Hoe kan ik helpen?')}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {t('Vraag iets over je website of maak samen een concept.')}
-        </p>
-      </div>
+      <Empty className="items-start border-0 p-0 text-start">
+        <EmptyHeader className="items-start">
+          <EmptyMedia variant="icon">
+            <MessageCircle aria-hidden />
+          </EmptyMedia>
+          <EmptyTitle>{t('Hoe kan ik helpen?')}</EmptyTitle>
+          <EmptyDescription>
+            {t('Vraag iets over je website of maak samen een concept.')}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
       {enabled && (
         <div className="grid gap-2 sm:grid-cols-2">
           {suggestions
             .filter((_, index) => contextual || index !== 1)
             .map(({ icon: Icon, text }) => (
-              <button
+              <Button
+                variant="outline"
                 key={text}
                 type="button"
                 onClick={() => onSelect(t(text))}
-                className="flex min-h-16 items-center gap-3 rounded-xl border bg-card p-3 text-start text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                className="h-auto min-h-12 justify-start whitespace-normal px-3 py-2 text-start"
               >
                 <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span className="flex-1">{t(text)}</span>
                 <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              </button>
+              </Button>
             ))}
         </div>
       )}
