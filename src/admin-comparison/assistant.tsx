@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -335,10 +336,12 @@ function Chat({ chat, tenant }: { chat: AssistantController; tenant: AssistantTe
                     <ChevronDown />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    {connected && <DropdownMenuLabel>Verbonden model</DropdownMenuLabel>}
-                    <DropdownMenuItem onClick={() => setSettings(!settings)}>
-                      <Settings2 /> {connected ? 'Modelverbinding beheren' : 'Model verbinden'}
-                    </DropdownMenuItem>
+                    <DropdownMenuGroup>
+                      {connected && <DropdownMenuLabel>Verbonden model</DropdownMenuLabel>}
+                      <DropdownMenuItem onClick={() => setSettings(!settings)}>
+                        <Settings2 /> {connected ? 'Modelverbinding beheren' : 'Model verbinden'}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
@@ -354,11 +357,11 @@ function Chat({ chat, tenant }: { chat: AssistantController; tenant: AssistantTe
                     <ChevronDown />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuLabel>Antwoordlengte</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
                       value={chat.detail}
                       onValueChange={(value) => chat.setDetail(value as ResponseDetail)}
                     >
+                      <DropdownMenuLabel>Antwoordlengte</DropdownMenuLabel>
                       {Object.entries(responseLabels).map(([value, label]) => (
                         <DropdownMenuRadioItem key={value} value={value} closeOnClick>
                           {label}

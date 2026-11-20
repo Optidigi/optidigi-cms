@@ -82,8 +82,15 @@ test('compares the native admin and shadcn editor using one Payload session', as
       const input = route.request().postDataJSON()
       expect(input.tenant).toBe(tenant.id)
       if (input.action === 'status') {
-        return route.fulfill({ json: { connected: true, model: 'fixture-model' } })
+        return route.fulfill({
+          json: {
+            connected: true,
+            model: 'fixture-model',
+            settings: { provider: 'openai', model: 'fixture-model' },
+          },
+        })
       }
+      expect(input.detail).toBe('detailed')
       expect(input.context).toEqual({ collection: 'pages', id: home.id })
       return route.fulfill({
         contentType: 'text/event-stream',
@@ -93,6 +100,12 @@ test('compares the native admin and shadcn editor using one Payload session', as
     await page.reload()
     await page.getByRole('button', { name: 'Vraag AI' }).click()
     const drawer = page.getByRole('dialog')
+    await drawer.getByRole('button', { name: 'fixture-model' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await drawer.getByRole('button', { name: /Antwoordlengte/ }).click()
+    await page.getByRole('menuitemradio', { name: 'Uitgebreid' }).click()
+    await expect(drawer.getByRole('button', { name: 'Antwoordlengte: Uitgebreid' })).toBeVisible()
     await drawer.getByRole('textbox', { name: 'Bericht' }).fill('Werk deze pagina bij')
     await drawer.getByRole('button', { name: 'Versturen' }).click()
     await expect(drawer.getByText('Draft reply')).toBeVisible()
