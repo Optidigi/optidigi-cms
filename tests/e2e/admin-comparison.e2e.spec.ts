@@ -64,7 +64,7 @@ test('compares the native admin and shadcn editor using one Payload session', as
 
     expect((await page.goto('/admin-shadcn/' + other.id + '/pages'))?.status()).toBe(404)
     const root = '/admin-shadcn/' + tenant.id
-    await page.goto(root + '/pages?id=' + home.id)
+    expect((await page.goto(root + '/pages?id=' + home.id))?.status()).toBe(200)
     await page.getByRole('textbox', { name: 'Paginakop' }).fill('Draft from shadcn')
     await page.getByRole('button', { name: 'Concept opslaan' }).click()
     await expect(page.getByText('Concept opgeslagen.', { exact: true })).toBeVisible()
