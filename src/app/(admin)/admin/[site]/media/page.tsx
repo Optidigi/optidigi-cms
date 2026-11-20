@@ -1,3 +1,4 @@
+import { PageContainer } from '@/admin/page-container'
 import { find } from '@/admin/data'
 import { adminTranslations } from '@/admin/i18n-server'
 import Link from 'next/link'
@@ -10,7 +11,7 @@ import { isPlatformAdmin, relationID } from '@/site/access'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
+import { CollectionToolbar } from '@/admin/collection-toolbar'
 
 function imagePath(value?: string | null) {
   if (!value) return undefined
@@ -27,7 +28,7 @@ export default async function MediaPage({
   searchParams,
 }: {
   params: Promise<{ site: string }>
-  searchParams: Promise<{ id?: string; new?: string; page?: string; q?: string }>
+  searchParams: Promise<{ id?: string; new?: string; page?: string; q?: string; sort?: string }>
 }) {
   const t = await adminTranslations()
 
@@ -37,6 +38,8 @@ export default async function MediaPage({
   if (query.id && !id) notFound()
   const base = adminRoot + '/' + selected.id + '/media'
   const search = typeof query.q === 'string' ? query.q.trim().slice(0, 150) : ''
+
+  const sort = query.sort === 'name' || query.sort === 'oldest' ? query.sort : 'recent'
   const editing = Boolean(id || query.new === '1')
   const where = { tenant: { equals: selected.id } }
   const options = {
@@ -44,8 +47,7 @@ export default async function MediaPage({
     depth: 0 as const,
   }
   const media = id
-    ? (await find({ ...options, limit: 1, where: { ...where, id: { equals: id } } }))
-        .docs[0]
+    ? (await find({ ...options, limit: 1, where: { ...where, id: { equals: id } } })).docs[0]
     : undefined
   if (id && !media) notFound()
   const results = !editing
@@ -53,7 +55,7 @@ export default async function MediaPage({
         ...options,
         page: relationID(query.page) ?? 1,
         limit: 20,
-        sort: '-updatedAt',
+        sort: sort === 'name' ? 'filename' : sort === 'oldest' ? 'updatedAt' : '-updatedAt',
         where: {
           ...where,
           ...(search
@@ -72,26 +74,25 @@ export default async function MediaPage({
   const url = imagePath(media?.url)
 
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          {editing && (
-            <Link href={base} className="text-sm text-muted-foreground hover:underline">
-              Media
-            </Link>
-          )}
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {media?.filename || (editing ? t('Nieuwe afbeelding') : 'Media')}
-          </h1>
-          <p className="text-sm text-muted-foreground">{selected.name}</p>
-        </div>
-        {!editing && (
+    <PageContainer
+      title={media?.filename || (editing ? t('Nieuwe afbeelding') : 'Media')}
+      description={selected.name}
+      breadcrumb={
+        editing && (
+          <Link href={base} className="text-sm text-muted-foreground hover:underline">
+            Media
+          </Link>
+        )
+      }
+      action={
+        !editing && (
           <Button nativeButton={false} render={<Link href={base + '?new=1'} />}>
             <Plus />
             {t('Afbeelding toevoegen')}
           </Button>
-        )}
-      </header>
+        )
+      }
+    >
       {editing ? (
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <MediaForm
@@ -127,19 +128,12 @@ export default async function MediaPage({
         </div>
       ) : (
         <>
-          <form action={base} className="flex gap-2">
-            <Input
-              type="search"
-              name="q"
-              aria-label={t('Zoek afbeelding')}
-              placeholder={t('Zoek op bestandsnaam of alternatieve tekst')}
-              defaultValue={search}
-              maxLength={150}
-            />
-            <Button type="submit" variant="outline">
-              {t('Zoeken')}
-            </Button>
-          </form>
+          <CollectionToolbar
+            action={base}
+            search={search}
+            sort={sort}
+            placeholder={t('Zoek op bestandsnaam of alternatieve tekst')}
+          />
           {results?.docs.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {results.docs.map((item) => {
@@ -190,7 +184,15 @@ export default async function MediaPage({
                 nativeButton={false}
                 render={
                   <Link
-                    href={base + '?q=' + encodeURIComponent(search) + '&page=' + results.prevPage}
+                    href={
+                      base +
+                      '?q=' +
+                      encodeURIComponent(search) +
+                      '&sort=' +
+                      sort +
+                      '&page=' +
+                      results.prevPage
+                    }
                   />
                 }
               >
@@ -203,7 +205,15 @@ export default async function MediaPage({
                 nativeButton={false}
                 render={
                   <Link
-                    href={base + '?q=' + encodeURIComponent(search) + '&page=' + results.nextPage}
+                    href={
+                      base +
+                      '?q=' +
+                      encodeURIComponent(search) +
+                      '&sort=' +
+                      sort +
+                      '&page=' +
+                      results.nextPage
+                    }
                   />
                 }
               >
@@ -213,6 +223,6 @@ export default async function MediaPage({
           </div>
         </>
       )}
-    </section>
+    </PageContainer>
   )
 }

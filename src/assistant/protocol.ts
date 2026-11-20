@@ -39,7 +39,7 @@ export type AssistantThreadSummary = {
 }
 
 export type AssistantUIMessage = UIMessage<
-  unknown,
+  { model?: string },
   {
     approval: Approval
     'draft-saved': Omit<Extract<AssistantEvent, { type: 'draft-saved' }>, 'type'>

@@ -18,5 +18,11 @@ export async function savePlatform(form: FormData) {
   const response = await adminHTTP('cms-admin/platform', { method: 'POST', body: form })
   const success = response.ok && (await response.json()) === true
   const website = relationID(form.get('website'))
-  redirect('/admin/platform?result=' + (success ? 'saved' : 'failed') + (website ? '&website=' + website : ''))
+  const group = form.get('kind') === 'user' ? '&group=users' : ''
+  redirect(
+    '/admin/platform?result=' +
+      (success ? 'saved' : 'failed') +
+      group +
+      (website ? '&website=' + website : ''),
+  )
 }

@@ -19,10 +19,12 @@ import {
   Settings2,
   Sparkles,
   Square,
+  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   createContext,
   useContext,
@@ -69,11 +71,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -126,6 +124,7 @@ import {
 } from '@/assistant/use-assistant'
 import type { ModelProvider, ResponseDetail } from '@/assistant/protocol'
 import { assistantSettingsHref } from './navigation'
+import { ChatOverview } from './chat-overview'
 
 const responseLabels: Record<ResponseDetail, string> = {
   brief: 'Kort',
@@ -250,7 +249,7 @@ export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
       {full && (
         <aside
           aria-label={t('Gesprekken')}
-          className="hidden h-full w-64 shrink-0 border-e bg-sidebar/40 lg:flex"
+          className="hidden h-full w-64 shrink-0 border-e bg-muted/35 lg:flex"
         >
           <ThreadHistory chat={state.chat} />
         </aside>
@@ -264,6 +263,10 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
   const t = useAdminTranslations()
 
   const titleID = useId()
+  const dates = new Intl.DateTimeFormat(t('nl-NL'), {
+    dateStyle: 'medium',
+    timeZone: 'Europe/Amsterdam',
+  })
   const [rename, setRename] = useState<Thread>()
   const [remove, setRemove] = useState<Thread>()
   return (
@@ -328,50 +331,59 @@ function ThreadHistory({ chat, onSelect }: { chat: AssistantController; onSelect
             </p>
           )}
           {chat.historyStatus === 'ready' &&
-            chat.history.map((thread) => (
-              <div key={thread.id} className="flex min-w-0 items-center gap-1">
-                <Button
-                  size="sm"
-                  className="min-w-0 flex-1 justify-start"
-                  disabled={chat.busy}
-                  variant={chat.thread?.id === thread.id ? 'secondary' : 'ghost'}
-                  aria-current={chat.thread?.id === thread.id ? 'true' : undefined}
-                  onClick={() => {
-                    chat.selectThread(thread.id)
-                    onSelect?.()
-                  }}
-                >
-                  <span className="truncate">{thread.title}</span>
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={t('Opties voor ') + thread.title}
-                      />
-                    }
+            chat.history.map((thread, index) => (
+              <div key={thread.id}>
+                {(index === 0 ||
+                  dates.format(new Date(thread.updatedAt)) !==
+                    dates.format(new Date(chat.history[index - 1].updatedAt))) && (
+                  <p className="px-2 pb-1 pt-3 text-xs font-medium text-muted-foreground">
+                    {dates.format(new Date(thread.updatedAt))}
+                  </p>
+                )}
+                <div className="flex min-w-0 items-center gap-1">
+                  <Button
+                    size="sm"
+                    className="min-w-0 flex-1 justify-start"
                     disabled={chat.busy}
+                    variant={chat.thread?.id === thread.id ? 'secondary' : 'ghost'}
+                    aria-current={chat.thread?.id === thread.id ? 'true' : undefined}
+                    onClick={() => {
+                      chat.selectThread(thread.id)
+                      onSelect?.()
+                    }}
                   >
-                    <MoreHorizontal />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setRename(thread)}>
-                      <Pencil />
-                      {t('Naam wijzigen')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => chat.updateThread(thread.id, { archived: !thread.archived })}
+                    <span className="truncate">{thread.title}</span>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={t('Opties voor ') + thread.title}
+                        />
+                      }
+                      disabled={chat.busy}
                     >
-                      <Archive /> {thread.archived ? t('Uit archief halen') : t('Archiveren')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onClick={() => setRemove(thread)}>
-                      <Trash2 />
-                      {t('Verwijderen')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <MoreHorizontal />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setRename(thread)}>
+                        <Pencil />
+                        {t('Naam wijzigen')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => chat.updateThread(thread.id, { archived: !thread.archived })}
+                      >
+                        <Archive /> {thread.archived ? t('Uit archief halen') : t('Archiveren')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive" onClick={() => setRemove(thread)}>
+                        <Trash2 />
+                        {t('Verwijderen')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             ))}
           {chat.nextPage && chat.historyStatus === 'ready' && (
@@ -462,7 +474,6 @@ function Chat({
   chat,
   tenant,
   document,
-  locale,
   includeContext,
   setIncludeContext,
   full,
@@ -473,8 +484,8 @@ function Chat({
   const [historyOpen, setHistoryOpen] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
   const upload = useRef<HTMLInputElement>(null)
-  const allowedTypes = chat.model?.capabilities?.attachmentTypes ?? []
-  const efforts = chat.model?.capabilities?.efforts ?? []
+  const allowedTypes = chat.capabilities?.attachmentTypes ?? []
+  const efforts = chat.capabilities?.efforts ?? []
   const composerAvailable = connected && !chat.thread?.archived
   const statusText =
     t(chat.notice) || (chat.modelStatus === 'loading' ? t('Modelverbinding laden…') : '')
@@ -512,9 +523,7 @@ function Chat({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        <Badge variant="secondary" className="max-w-40 truncate">
-          {tenant.name}
-        </Badge>
+        <span className="min-w-0 truncate text-sm font-medium">{chat.thread?.title ?? ''}</span>
         {document && (
           <Button
             size="sm"
@@ -527,9 +536,7 @@ function Chat({
             <FileText /> {includeContext ? t('Documentcontext actief') : t('Documentcontext uit')}
           </Button>
         )}
-        <span className="ms-auto text-xs text-muted-foreground">
-          {locale === 'en' ? 'EN' : 'NL'}
-        </span>
+        <div className="flex-1" />
         <Button
           size="sm"
           variant="ghost"
@@ -550,17 +557,11 @@ function Chat({
                   <Skeleton className="h-20 w-full" />
                 )}
                 {!chat.messages.length && chat.operation !== 'thread' && (
-                  <Empty className="my-auto">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <Sparkles />
-                      </EmptyMedia>
-                      <EmptyTitle>{t('Waar kan ik mee helpen?')}</EmptyTitle>
-                      <EmptyDescription>
-                        {t('Vraag iets over je website of maak samen een concept.')}
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
+                  <ChatOverview
+                    contextual={Boolean(document && includeContext)}
+                    enabled={composerAvailable && !chat.busy}
+                    onSelect={chat.setInput}
+                  />
                 )}
                 {chat.messages.map((message) => (
                   <MessageScrollerItem
@@ -627,7 +628,7 @@ function Chat({
           </MessageScroller>
         </MessageScrollerProvider>
       </div>
-      <footer className="mx-auto w-full max-w-3xl space-y-2 px-4 pb-4 pt-2">
+      <footer className="mx-auto w-full max-w-2xl space-y-2 px-4 pb-4 pt-2 sm:px-6">
         {statusText && (
           <p role="status" className="text-sm text-muted-foreground">
             {statusText}
@@ -650,6 +651,11 @@ function Chat({
               )}
             </AlertDescription>
           </Alert>
+        )}
+        {chat.canRetry && (
+          <Button size="sm" variant="outline" type="button" onClick={chat.retry}>
+            {t('Opnieuw proberen zonder CMS-acties')}
+          </Button>
         )}
         {chat.modelStatus === 'error' && (
           <p className="text-sm text-destructive">
@@ -687,7 +693,7 @@ function Chat({
             chat.send()
           }}
         >
-          <InputGroup className="rounded-xl">
+          <InputGroup className="rounded-2xl bg-background shadow-sm">
             {chat.files.length > 0 && (
               <InputGroupAddon align="block-start" className="flex-wrap">
                 {chat.files.map((file, index) => (
@@ -703,6 +709,12 @@ function Chat({
             <InputGroupTextarea
               aria-label={t('Bericht')}
               value={chat.input}
+              onPaste={(event) => {
+                if (event.clipboardData.files.length) {
+                  event.preventDefault()
+                  chat.upload(event.clipboardData.files)
+                }
+              }}
               rows={2}
               maxLength={6000}
               disabled={!composerAvailable}
@@ -751,49 +763,8 @@ function Chat({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {chat.model?.model &&
-                (tenant.canManage ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={<InputGroupButton size="sm" className="max-w-[12rem]" />}
-                      disabled={chat.busy}
-                    >
-                      <span className="truncate">{chat.model.model}</span>
-                      <ChevronDown />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuGroup>
-                        <DropdownMenuLabel>{t('Verbonden model')}</DropdownMenuLabel>
-                        <DropdownMenuItem render={<Link href={assistantSettingsHref(tenant.id)} />}>
-                          <Settings2 />
-                          {t('Modelverbinding beheren')}
-                        </DropdownMenuItem>
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Badge className="max-w-40 truncate" variant="secondary">
-                    {chat.model.model}
-                  </Badge>
-                ))}
-              {connected && efforts.length > 0 && (
-                <OptionMenu
-                  label={t('Redeneerinspanning')}
-                  value={chat.effort}
-                  options={['default', ...efforts].map((key) => [key, t(effortLabels[key] ?? key)])}
-                  onChange={chat.setEffort}
-                  disabled={chat.busy}
-                />
-              )}
-              {connected && (
-                <OptionMenu
-                  label={t('Antwoordlengte')}
-                  value={chat.detail}
-                  options={Object.entries(responseLabels).map(([key, label]) => [key, t(label)])}
-                  onChange={(value) => chat.setDetail(value as ResponseDetail)}
-                  disabled={chat.busy}
-                />
-              )}
+              {chat.model?.model && <ChatModelPicker chat={chat} />}
+              {connected && <ChatOptions chat={chat} efforts={efforts} />}
               <InputGroupButton
                 size="icon-sm"
                 variant="default"
@@ -829,41 +800,127 @@ function Chat({
   )
 }
 
-function OptionMenu({
-  label,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string
-  value: string
-  options: [string, string][]
-  onChange: (value: string) => void
-  disabled: boolean
-}) {
-  const selected = options.find(([key]) => key === value)?.[1] ?? label
+function ChatModelPicker({ chat }: { chat: AssistantController }) {
+  const t = useAdminTranslations()
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const label = chat.selectedModel?.label ?? chat.model?.model
+  const models = chat.model?.models ?? []
+  if (models.length < 2) {
+    return (
+      <span className="max-w-40 truncate px-1.5 text-xs text-muted-foreground" title={label}>
+        {label}
+      </span>
+    )
+  }
+  const matching = models.filter((model) =>
+    model.label.toLowerCase().includes(query.trim().toLowerCase()),
+  )
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label={label + ': ' + selected}
-        render={<InputGroupButton size="sm" />}
-        disabled={disabled}
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value)
+        if (!value) setQuery('')
+      }}
+    >
+      <DialogTrigger
+        render={<InputGroupButton size="sm" disabled={chat.busy} aria-label={t('Model kiezen')} />}
       >
-        {selected}
+        <span className="max-w-32 truncate">{label}</span>
         <ChevronDown />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-          <DropdownMenuLabel>{label}</DropdownMenuLabel>
-          {options.map(([key, name]) => (
-            <DropdownMenuRadioItem key={key} value={key} closeOnClick>
-              {name}
-            </DropdownMenuRadioItem>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('Model kiezen')}</DialogTitle>
+          <DialogDescription>{t('Kies een model voor je volgende bericht.')}</DialogDescription>
+        </DialogHeader>
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label={t('Zoek modellen')}
+        />
+        <div className="grid max-h-72 gap-1 overflow-y-auto">
+          {matching.map((model) => (
+            <Button
+              key={model.id}
+              variant={model.id === chat.selectedModel?.id ? 'secondary' : 'ghost'}
+              className="justify-start"
+              disabled={chat.files.some(
+                ({ mediaType }) => !model.capabilities.attachmentTypes.includes(mediaType),
+              )}
+              aria-pressed={model.id === chat.selectedModel?.id}
+              onClick={() => {
+                chat.selectModel(model.id)
+                setOpen(false)
+              }}
+            >
+              {model.label}
+              {model.id === chat.model?.defaultModelID && (
+                <Badge variant="outline">{t('Standaard')}</Badge>
+              )}
+            </Button>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {!matching.length && (
+            <p className="p-2 text-sm text-muted-foreground">{t('Geen resultaten')}</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ChatOptions({ chat, efforts }: { chat: AssistantController; efforts: string[] }) {
+  const t = useAdminTranslations()
+  const field = useId()
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={
+          <InputGroupButton size="sm" disabled={chat.busy} aria-label={t('Antwoordopties')} />
+        }
+      >
+        <SlidersHorizontal />
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{t('Antwoordopties')}</DialogTitle>
+          <DialogDescription>{t('Pas het volgende antwoord aan.')}</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor={field + '-detail'}>{t('Antwoordlengte')}</FieldLabel>
+            <NativeSelect
+              id={field + '-detail'}
+              value={chat.detail}
+              onChange={(event) => chat.setDetail(event.target.value as ResponseDetail)}
+            >
+              {Object.entries(responseLabels).map(([value, label]) => (
+                <NativeSelectOption key={value} value={value}>
+                  {t(label)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </Field>
+          {efforts.length > 0 && (
+            <Field>
+              <FieldLabel htmlFor={field + '-effort'}>{t('Redeneerinspanning')}</FieldLabel>
+              <NativeSelect
+                id={field + '-effort'}
+                value={chat.effort}
+                onChange={(event) => chat.setEffort(event.target.value)}
+              >
+                {['default', ...efforts].map((value) => (
+                  <NativeSelectOption key={value} value={value}>
+                    {t(effortLabels[value] ?? value)}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </Field>
+          )}
+        </FieldGroup>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -885,7 +942,18 @@ function AttachmentCard({
   return (
     <Attachment size="sm" state="done" className="w-fit max-w-full">
       <AttachmentMedia>
-        <FileText />
+        {href && file.mediaType.startsWith('image/') ? (
+          <Image
+            alt=""
+            src={href}
+            unoptimized
+            width={32}
+            height={32}
+            className="size-8 rounded object-cover"
+          />
+        ) : (
+          <FileText />
+        )}
       </AttachmentMedia>
       <AttachmentContent>
         <AttachmentTitle>
@@ -966,6 +1034,9 @@ function ChatTurn({ message, tenant }: { message: ChatMessage; tenant: number })
             ? [<DraftLink key={index} tenant={tenant} result={part.data} />]
             : [],
         )}
+        {!user && message.metadata?.model && (
+          <span className="text-xs text-muted-foreground">{message.metadata.model}</span>
+        )}
         {!user && text && (
           <Button
             size="icon-sm"
@@ -1005,9 +1076,7 @@ function DraftLink({
           nativeButton={false}
           render={
             <Link
-              href={
-                '/admin/' + tenant + '/pages?id=' + result.id + '&locale=' + result.locale
-              }
+              href={'/admin/' + tenant + '/pages?id=' + result.id + '&locale=' + result.locale}
             />
           }
         >
@@ -1144,7 +1213,11 @@ function MediaPicker({
   )
 }
 
-export function ShadcnAssistantSettings() {
+export function ShadcnAssistantSettings({
+  panel = 'connection',
+}: {
+  panel?: 'connection' | 'models' | 'defaults'
+}) {
   const t = useAdminTranslations()
 
   const state = useContext(AssistantState)
@@ -1156,7 +1229,185 @@ export function ShadcnAssistantSettings() {
         </AlertDescription>
       </Alert>
     )
+  if (panel !== 'connection') return <CatalogSettings {...state} panel={panel} />
   return <ConnectionSettings {...state} />
+}
+
+function CatalogSettings({ chat, tenant, panel }: State & { panel: 'models' | 'defaults' }) {
+  const t = useAdminTranslations()
+  const connection = chat.model?.settings
+  const options = connection?.catalog
+
+  if (!chat.model?.connected)
+    return <p className="text-sm text-muted-foreground">{t('Verbind een model om te beginnen.')}</p>
+  if (!tenant.canManage || !connection)
+    return (
+      <ul className="space-y-2 rounded-xl border bg-card p-4">
+        {chat.model.models?.map(({ id, label }) => (
+          <li key={id} className="text-sm">
+            {label}
+          </li>
+        ))}
+      </ul>
+    )
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t(panel === 'models' ? 'Modellen' : 'Assistentvoorkeuren')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form
+          className="space-y-4"
+          key={JSON.stringify(options)}
+          onSubmit={(event) => {
+            event.preventDefault()
+            const form = new FormData(event.currentTarget)
+            const labels = form.getAll('modelLabel')
+            const models =
+              panel === 'models'
+                ? form.getAll('modelID').map((model, index) => ({
+                    model: String(model).trim(),
+                    label: String(labels[index] ?? '').trim() || undefined,
+                  }))
+                : (options?.models ?? [])
+            const preferred =
+              panel === 'defaults'
+                ? String(form.get('defaultModel') ?? '') || options?.defaultModel
+                : options?.defaultModel
+            chat.configureModels({
+              models,
+              defaultModel: models.some(({ model }) => model === preferred)
+                ? preferred
+                : connection.model,
+              detail:
+                panel === 'defaults' ? (form.get('detail') as ResponseDetail) : options?.detail,
+            })
+          }}
+        >
+          {panel === 'models' ? (
+            <CatalogRows
+              key={JSON.stringify(options?.models)}
+              baseModel={connection.model}
+              models={options?.models ?? []}
+            />
+          ) : (
+            <>
+              <Field>
+                <FieldLabel htmlFor="assistant-default-model">{t('Standaardmodel')}</FieldLabel>
+                <NativeSelect
+                  name="defaultModel"
+                  id="assistant-default-model"
+                  defaultValue={options?.defaultModel ?? connection.model}
+                >
+                  <NativeSelectOption value={connection.model}>
+                    {connection.model}
+                  </NativeSelectOption>
+                  {options?.models.map(({ model, label }) => (
+                    <NativeSelectOption key={model} value={model}>
+                      {label ?? model}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="assistant-default-detail">{t('Antwoordlengte')}</FieldLabel>
+                <NativeSelect
+                  name="detail"
+                  id="assistant-default-detail"
+                  defaultValue={options?.detail ?? 'standard'}
+                >
+                  {Object.entries(responseLabels).map(([value, label]) => (
+                    <NativeSelectOption key={value} value={value}>
+                      {t(label)}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </>
+          )}
+          <Button type="submit" disabled={chat.busy}>
+            {t('Wijzigingen opslaan')}
+          </Button>
+          {chat.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {t(chat.error)}
+            </p>
+          )}
+          {chat.notice && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t(chat.notice)}
+            </p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+function CatalogRows({
+  baseModel,
+  models,
+}: {
+  baseModel: string
+  models: { model: string; label?: string }[]
+}) {
+  const t = useAdminTranslations()
+  const [entries, setEntries] = useState(() => models.map((entry, id) => ({ ...entry, id })))
+  const nextID = useRef(entries.length)
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+        <span className="font-medium">{baseModel}</span>
+        <Badge variant="secondary">{t('Verbindingsmodel')}</Badge>
+      </div>
+      {entries.map(({ id, model, label }) => (
+        <div
+          key={id}
+          className="grid items-end gap-2 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto]"
+        >
+          <Field>
+            <FieldLabel htmlFor={'model-' + id}>{t('Model-ID')}</FieldLabel>
+            <Input
+              id={'model-' + id}
+              name="modelID"
+              defaultValue={model}
+              required
+              maxLength={150}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={'model-label-' + id}>{t('Weergavenaam')}</FieldLabel>
+            <Input
+              id={'model-label-' + id}
+              name="modelLabel"
+              defaultValue={label}
+              maxLength={150}
+            />
+          </Field>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label={t('Model verwijderen')}
+            onClick={() => setEntries((current) => current.filter((entry) => entry.id !== id))}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        disabled={entries.length >= 15}
+        onClick={() => {
+          const id = nextID.current++
+          setEntries((current) => [...current, { id, model: '' }])
+        }}
+      >
+        <Plus />
+        {t('Model toevoegen')}
+      </Button>
+    </div>
+  )
 }
 
 function ConnectionSettings({ chat, tenant }: State) {
@@ -1209,6 +1460,14 @@ function ConnectionSettings({ chat, tenant }: State) {
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => setReplacing(!replacing)}>
                 {t('Verbinding wijzigen')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={chat.testConnection}
+                disabled={chat.busy}
+              >
+                {t('Verbinding testen')}
               </Button>
               <Button
                 size="sm"

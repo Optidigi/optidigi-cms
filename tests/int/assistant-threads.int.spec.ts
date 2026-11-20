@@ -179,10 +179,30 @@ it('keeps durable UI messages and files private to the conversation owner and te
       })
     ).status,
   ).toBe(200)
+  expect(
+    (
+      await assistant(owner, 'configure-models', {
+        options: { models: [{ model: 'gpt-5-mini', label: 'Fast' }], defaultModel: 'gpt-5-mini' },
+      })
+    ).status,
+  ).toBe(200)
+  const catalog = await (await assistant(owner, 'status')).json()
+  const chosen = catalog.models.find(({ label }: { label: string }) => label === 'Fast')
+  expect(catalog.defaultModelID).toBe(chosen.id)
+  expect(
+    (
+      await assistant(owner, 'chat-v2', {
+        thread,
+        modelID: 'a'.repeat(64),
+        messages: [],
+      })
+    ).status,
+  ).toBe(400)
   const userMessage = (id: string, part: object) => ({ id, role: 'user', parts: [part] })
   const response = await assistant(owner, 'chat-v2', {
     thread,
     effort: 'medium',
+    modelID: chosen.id,
     messages: [
       {
         id: 'forged',
@@ -209,7 +229,12 @@ it('keeps durable UI messages and files private to the conversation owner and te
       mediaType: 'text/plain',
       filename: doc.filename,
     }),
-    { id: expect.any(String), role: 'assistant', parts: [{ type: 'text', text: 'Stored reply' }] },
+    {
+      id: expect.any(String),
+      role: 'assistant',
+      metadata: { model: 'gpt-5-mini' },
+      parts: [{ type: 'text', text: 'Stored reply' }],
+    },
   ])
 
   expect(
@@ -220,6 +245,32 @@ it('keeps durable UI messages and files private to the conversation owner and te
       })
     ).status,
   ).toBe(409)
+  expect(
+    (
+      await assistant(owner, 'chat-v2', {
+        thread,
+        retryMessageID: 'turn-one',
+        messages: [],
+      })
+    ).status,
+  ).toBe(409)
+  const unanswered = userMessage('retry-turn', { type: 'text', text: 'Please try once more.' })
+  await payload.create({
+    collection: 'assistant-messages',
+    overrideAccess: true,
+    data: { thread, messageId: 'retry-turn', message: unanswered },
+  })
+  const retry = await assistant(owner, 'chat-v2', {
+    thread,
+    retryMessageID: 'retry-turn',
+    messages: [],
+  })
+  expect(retry.status).toBe(200)
+  expect(await retry.text()).toContain('Stored reply')
+  expect(providerPrompts.at(-1)).toContain('This retry has no CMS tools')
+  const retried = await (await assistant(owner, 'thread-read', { thread })).json()
+  expect(retried.messages.filter(({ id }: { id: string }) => id === 'retry-turn')).toHaveLength(1)
+
   expect(
     (await assistant(owner, 'thread-update', { thread, title: 'Renamed', archived: true })).status,
   ).toBe(200)

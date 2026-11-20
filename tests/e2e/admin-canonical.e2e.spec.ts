@@ -74,6 +74,15 @@ test('editor publishes localized content and uses the shared assistant in the ca
     }
     expect((await page.goto('/admin/' + other.id + '/pages'))?.status()).toBe(404)
     expect((await page.goto('/admin/platform'))?.status()).toBe(404)
+    expect((await page.goto(root + '/settings/members'))?.status()).toBe(200)
+    await expect(page.getByRole('cell', { name: email })).toBeVisible()
+    const restrictedRoster = await context.request.get(
+      '/api/cms-admin/site-members?site=' + other.id,
+      {
+        headers: { Origin: new URL(baseURL!).origin },
+      },
+    )
+    expect(restrictedRoster.status()).toBe(403)
     const document = root + '/pages?id=' + home.id
     expect((await page.goto(document))?.status()).toBe(200)
     await expect(page.getByRole('textbox', { name: 'Paginakop' })).toHaveValue('Live')
@@ -160,10 +169,32 @@ test('editor publishes localized content and uses the shared assistant in the ca
         apiKey: 'synthetic-fixture-key',
       }),
     ).toBeOK()
+    await page.goto(root + '/settings/assistant')
+    await expect(page.getByRole('heading', { name: 'Modelverbinding', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Verbinding wijzigen' }).click()
+    await expect(page.getByLabel('Model-ID')).toHaveValue('gpt-6-luna')
+    await expect(page.getByLabel('API-sleutel')).toHaveValue('')
+    await page.goto(root + '/pages?id=' + home.id)
+    await page.getByRole('button', { name: 'Vraag AI' }).click()
+    const drawer = page.getByRole('dialog')
+    await expect(drawer.getByText('gpt-6-luna', { exact: true })).toBeVisible()
+    await expect(drawer.getByRole('button', { name: 'gpt-6-luna', exact: true })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await page.goto(root + '/settings/assistant?panel=models')
+    await page.getByRole('button', { name: 'Model toevoegen' }).click()
+    await page.getByLabel('Model-ID', { exact: true }).fill('gpt-5-mini')
+    await page.getByLabel('Weergavenaam').fill('Fast model')
+    await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
+    await expect(page.getByText('Wijzigingen opgeslagen.', { exact: true })).toBeVisible()
+    const catalog = await (await assistant({ action: 'status' })).json()
+    const chosenModelID = catalog.models.find(
+      ({ label }: { label: string }) => label === 'Fast model',
+    ).id
     await page.route('**/api/assistant', async (route) => {
       const input = route.request().postDataJSON()
       if (input?.action !== 'chat-v2') return route.continue()
       expect(input.tenant).toBe(tenant.id)
+      expect(input.modelID).toBe(chosenModelID)
       expect(input.detail).toBe('detailed')
       expect(input.effort).toBe('low')
       expect(input.context).toEqual({ collection: 'pages', id: home.id })
@@ -200,24 +231,16 @@ test('editor publishes localized content and uses the shared assistant in the ca
           'data: [DONE]\n\n',
       })
     })
-    await page.goto(root + '/settings/assistant')
-    await expect(page.getByRole('heading', { name: 'Modelverbinding', exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Verbinding wijzigen' }).click()
-    await expect(page.getByLabel('Model-ID')).toHaveValue('gpt-6-luna')
-    await expect(page.getByLabel('API-sleutel')).toHaveValue('')
     await page.goto(root + '/pages?id=' + home.id)
     await page.getByRole('button', { name: 'Vraag AI' }).click()
-    const drawer = page.getByRole('dialog')
-    await drawer.getByRole('button', { name: 'gpt-6-luna' }).click()
-    await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeVisible()
+    await drawer.getByRole('button', { name: 'Model kiezen' }).click()
+    await page.getByRole('textbox', { name: 'Zoek modellen' }).fill('Fast')
+    await page.getByRole('button', { name: 'Fast model', exact: true }).click()
+    await expect(drawer.getByRole('button', { name: 'Model kiezen' })).toHaveText('Fast model')
+    await drawer.getByRole('button', { name: 'Antwoordopties' }).click()
+    await page.getByLabel('Antwoordlengte', { exact: true }).selectOption('detailed')
+    await page.getByLabel('Redeneerinspanning', { exact: true }).selectOption('low')
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('menuitem', { name: 'Modelverbinding beheren' })).toBeHidden()
-    await drawer.getByRole('button', { name: /Antwoordlengte/ }).press('Enter')
-    await page.getByRole('menuitemradio', { name: 'Uitgebreid' }).press('Enter')
-    await expect(drawer.getByRole('button', { name: 'Antwoordlengte: Uitgebreid' })).toBeVisible()
-    await drawer.getByRole('button', { name: /Redeneerinspanning/ }).press('Enter')
-    await page.getByRole('menuitemradio', { name: 'Laag' }).press('Enter')
-    await expect(drawer.getByRole('button', { name: 'Redeneerinspanning: Laag' })).toBeVisible()
     await drawer.getByLabel('Bestanden', { exact: true }).setInputFiles({
       name: 'brief.txt',
       mimeType: 'text/plain',

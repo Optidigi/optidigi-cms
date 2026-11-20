@@ -509,6 +509,15 @@ export interface AssistantCredential {
   provider: 'anthropic' | 'openai' | 'openai-compatible';
   model: string;
   baseURL?: string | null;
+  catalog?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   ciphertext: string;
   createdBy?: {
     relationTo: 'users';
@@ -947,6 +956,7 @@ export interface AssistantCredentialsSelect<T extends boolean = true> {
   provider?: T;
   model?: T;
   baseURL?: T;
+  catalog?: T;
   ciphertext?: T;
   createdBy?: T;
   updatedBy?: T;

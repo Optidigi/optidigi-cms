@@ -1,3 +1,5 @@
+import { SettingsWorkspace } from '@/admin/settings-workspace'
+import { PageContainer } from '@/admin/page-container'
 import { findVersions, find } from '@/admin/data'
 import { adminTranslations } from '@/admin/i18n-server'
 import Link from 'next/link'
@@ -15,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
+import { CollectionToolbar } from '@/admin/collection-toolbar'
 import {
   adminRoot,
   currentSite,
@@ -32,7 +34,16 @@ export default async function SectionPage({
   searchParams,
 }: {
   params: Promise<{ site: string; section: string }>
-  searchParams: Promise<{ locale?: string; id?: string; page?: string; new?: string; q?: string }>
+  searchParams: Promise<{
+    locale?: string
+    id?: string
+    page?: string
+    new?: string
+    q?: string
+    panel?: string
+    sort?: string
+    status?: string
+  }>
 }) {
   const t = await adminTranslations()
 
@@ -48,12 +59,13 @@ export default async function SectionPage({
   const id = relationID(query.id)
   if (query.id && !id) notFound()
   const document =
-    isSettings || id
-      ? await findEditorialDocument(selected.id, locale, section, id)
-      : undefined
+    isSettings || id ? await findEditorialDocument(selected.id, locale, section, id) : undefined
   if (id && !document) notFound()
   const editing = Boolean(document || query.new === '1' || isSettings)
   const search = typeof query.q === 'string' ? query.q.trim().slice(0, 150) : ''
+
+  const sort = query.sort === 'name' || query.sort === 'oldest' ? query.sort : 'recent'
+  const status = query.status === 'draft' || query.status === 'published' ? query.status : ''
   const options = {
     locale,
     depth: 0 as const,
@@ -70,10 +82,11 @@ export default async function SectionPage({
           draft: true,
           limit: 20,
           page: pageNumber,
-          sort: '-updatedAt',
+          sort: sort === 'name' ? 'title' : sort === 'oldest' ? 'updatedAt' : '-updatedAt',
           where: {
             tenant: { equals: selected.id },
             ...(search ? { title: { contains: search } } : {}),
+            ...(status ? { _status: { equals: status } } : {}),
           },
           select: { slug: true, title: true, _status: true, updatedAt: true },
         })
@@ -83,13 +96,12 @@ export default async function SectionPage({
     document && supportedPreview ? previewURL(selected.id, section, document.id, locale) : null,
     document
       ? findVersions({
-            ...options,
-            collection: section,
-            where: { parent: { equals: document.id } },
-            limit: 6,
-            sort: '-updatedAt',
-          })
-          .then(({ docs }) => docs.map(({ id, updatedAt }) => ({ id, updatedAt })))
+          ...options,
+          collection: section,
+          where: { parent: { equals: document.id } },
+          limit: 6,
+          sort: '-updatedAt',
+        }).then(({ docs }) => docs.map(({ id, updatedAt }) => ({ id, updatedAt })))
       : [],
   ])
   const canDelete =
@@ -105,19 +117,53 @@ export default async function SectionPage({
       : t(editorialSections[section])
     : t(editorialSections[section])
 
+  if (isSettings) {
+    const settingsPanel =
+      document && (query.panel === 'navigation' || query.panel === 'seo') ? query.panel : 'website'
+    return (
+      <SettingsWorkspace
+        site={selected}
+        current={settingsPanel}
+        locale={locale}
+        title={t(
+          settingsPanel === 'navigation'
+            ? 'Navigatie'
+            : settingsPanel === 'seo'
+              ? 'SEO'
+              : 'Website-instellingen',
+        )}
+      >
+        <Editor
+          key={locale + settingsPanel + (document?.id ?? 'new')}
+          document={document ?? {}}
+          {...{ locale, section, versions, preview, canDelete, settingsPanel }}
+          site={selected.id}
+        />
+      </SettingsWorkspace>
+    )
+  }
+
   return (
-    <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-5 px-4 py-6 sm:px-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          {editing && !isSettings && (
-            <Link href={localized} className="text-sm text-muted-foreground hover:underline">
-              {t(editorialSections[section])}
-            </Link>
-          )}
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">{selected.name}</p>
-        </div>
-      </header>
+    <PageContainer
+      title={title}
+      description={selected.name}
+      breadcrumb={
+        editing &&
+        !isSettings && (
+          <Link href={localized} className="text-sm text-muted-foreground hover:underline">
+            {t(editorialSections[section])}
+          </Link>
+        )
+      }
+      action={
+        !editing && (
+          <Button nativeButton={false} render={<Link href={localized + '&new=1'} />}>
+            <Plus />
+            {t('Nieuw document')}
+          </Button>
+        )
+      }
+    >
       {editing ? (
         <Editor
           key={section + locale + (document?.id ?? 'new')}
@@ -127,26 +173,14 @@ export default async function SectionPage({
         />
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <form action={root} className="flex items-center gap-2">
-              <input type="hidden" name="locale" value={locale} />
-              <Input
-                type="search"
-                name="q"
-                aria-label={t('Zoek op titel')}
-                placeholder={t('Zoek op titel')}
-                defaultValue={search}
-                maxLength={150}
-              />
-              <Button variant="outline" type="submit">
-                {t('Zoeken')}
-              </Button>
-            </form>
-            <Button nativeButton={false} render={<Link href={localized + '&new=1'} />}>
-              <Plus />
-              {t('Nieuw document')}
-            </Button>
-          </div>
+          <CollectionToolbar
+            action={root}
+            locale={locale}
+            search={search}
+            sort={sort}
+            status={status}
+            placeholder={t('Zoek op titel')}
+          />
           {list?.docs.length ? (
             <Card className="py-0">
               <CardContent className="px-0">
@@ -195,8 +229,8 @@ export default async function SectionPage({
                           <Link
                             href={
                               localized +
-                              '&q=' +
-                              encodeURIComponent(search) +
+                              '&' +
+                              new URLSearchParams({ q: search, sort, status }) +
                               '&page=' +
                               list.prevPage
                             }
@@ -215,8 +249,8 @@ export default async function SectionPage({
                           <Link
                             href={
                               localized +
-                              '&q=' +
-                              encodeURIComponent(search) +
+                              '&' +
+                              new URLSearchParams({ q: search, sort, status }) +
                               '&page=' +
                               list.nextPage
                             }
@@ -238,7 +272,7 @@ export default async function SectionPage({
                     <FileText />
                   </EmptyMedia>
                   <EmptyTitle>
-                    {search ? t('Geen resultaten') : t('Nog geen documenten')}
+                    {search || status ? t('Geen resultaten') : t('Nog geen documenten')}
                   </EmptyTitle>
                   {search && <EmptyDescription>{t('Probeer een andere titel.')}</EmptyDescription>}
                 </EmptyHeader>
@@ -247,6 +281,6 @@ export default async function SectionPage({
           )}
         </>
       )}
-    </section>
+    </PageContainer>
   )
 }

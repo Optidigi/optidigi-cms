@@ -4,22 +4,12 @@ import { useAdminTranslations, useEditingGuard } from '@/admin/i18n-context'
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import {
-  ChevronsUpDown,
-  Globe2,
-  LayoutDashboard,
-  Plug,
-  Settings2,
-  Shield,
-  Sparkles,
-  UserRound,
-} from 'lucide-react'
+import { ChevronsUpDown, Globe2, LayoutDashboard, Settings2, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -47,6 +37,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { AdminHeader } from './header'
+import { AccountMenu } from './account-menu'
 import { ShadcnAssistantLauncher, ShadcnAssistantProvider } from './assistant'
 import { assistantSettingsHref, adminRoot, contentLinks, siteHref } from './navigation'
 import type { AssistantContext, AssistantTenant } from '@/assistant/use-assistant'
@@ -63,7 +54,7 @@ export function AdminShell({
   children,
 }: {
   sites: Website[]
-  selected: Website
+  selected?: Website
   assistant?: AssistantTenant
   platform?: boolean
   sidebarOpen?: boolean
@@ -73,8 +64,11 @@ export function AdminShell({
 
   const pathname = usePathname()
   const query = useSearchParams()
-  const base = siteHref(selected.id)
-  const section = pathname.slice(base.length).split('/')[1] ?? ''
+  const base = selected ? siteHref(selected.id) : adminRoot
+  const section =
+    pathname
+      .slice(pathname === base || pathname.startsWith(base + '/') ? base.length : adminRoot.length)
+      .split('/')[1] ?? ''
   const onDocument = Number(query.get(section === 'assistant' ? 'document' : 'id'))
   const candidate = section === 'assistant' ? (query.get('collection') ?? 'pages') : section
   const collection =
@@ -89,23 +83,27 @@ export function AdminShell({
       ? { collection, id: onDocument }
       : undefined
   const locale = query.get('locale') === 'en' ? 'en' : 'nl'
-  const assistantRoute = document
-    ? base +
-      '/assistant?document=' +
-      document.id +
-      '&locale=' +
-      locale +
-      (document.collection === 'pages' ? '' : '&collection=' + document.collection)
-    : siteHref(selected.id, '/assistant', locale)
-  const settingsRoot = siteHref(selected.id, '/settings')
-  const settings = siteHref(selected.id, '/settings', locale)
-  const connection = assistantSettingsHref(selected.id)
+  const assistantRoute = !selected
+    ? adminRoot
+    : document
+      ? base +
+        '/assistant?document=' +
+        document.id +
+        '&locale=' +
+        locale +
+        (document.collection === 'pages' ? '' : '&collection=' + document.collection)
+      : siteHref(selected.id, '/assistant', locale)
+  const settingsRoot = selected ? siteHref(selected.id, '/settings') : adminRoot
+  const settings = selected ? siteHref(selected.id, '/settings', locale) : adminRoot + '/account'
+  const connection = selected && assistantSettingsHref(selected.id)
   const currentSection = [
     { slug: '', title: t('Overzicht') },
     ...contentLinks,
     { slug: 'assistant', title: t('AI-assistent') },
     { slug: 'settings', title: pathname === connection ? t('Modelverbinding') : t('Instellingen') },
     { slug: 'site-settings', title: t('Website-instellingen') },
+    { slug: 'account', title: t('Mijn account') },
+    { slug: 'platform', title: t('Platformbeheer') },
   ].find(({ slug }) => slug === section)
   const inSubsettings = section === 'site-settings' || pathname === connection
   const workspaceLinks = [
@@ -126,73 +124,51 @@ export function AdminShell({
       href: settings,
       title: t('Instellingen'),
       Icon: Settings2,
-      active: pathname === settingsRoot,
+      active: pathname.startsWith(settingsRoot + '/') || pathname === settingsRoot,
     },
-    {
-      href: siteHref(selected.id, '/site-settings', locale),
-      title: t('Website-instellingen'),
-      Icon: Globe2,
-      active: section === 'site-settings',
-    },
-    ...(assistant
-      ? [
-          {
-            href: connection,
-            title: t('Modelverbinding'),
-            Icon: Plug,
-            active: pathname === connection,
-          },
-        ]
-      : []),
   ]
-
   const shell = (
     <SidebarProvider defaultOpen={sidebarOpen}>
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
-          <WebsiteSwitcher sites={sites} selected={selected} locale={locale} />
+          {selected ? (
+            <WebsiteSwitcher sites={sites} selected={selected} locale={locale} />
+          ) : (
+            <Link href={adminRoot} className="px-2 py-3 text-sm font-semibold">
+              Optidigi CMS
+            </Link>
+          )}
         </SidebarHeader>
         <SidebarContent className="overflow-x-hidden">
           <nav aria-label="CMS" className="flex flex-col">
             <NavigationGroup title={t('Werkruimte')} links={workspaceLinks} />
             <NavigationGroup
               title={t('Inhoud')}
-              links={contentLinks.map(({ slug, ...link }) => ({
-                ...link,
-                href: siteHref(selected.id, '/' + slug, locale),
-                active: section === slug,
-              }))}
+              links={
+                selected
+                  ? contentLinks.map(({ slug, ...link }) => ({
+                      ...link,
+                      href: siteHref(selected.id, '/' + slug, locale),
+                      active: section === slug,
+                    }))
+                  : []
+              }
             />
             <NavigationGroup title={t('Beheer')} links={settingsLinks} />
           </nav>
         </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <NavigationItem
-              href={adminRoot + '/account?website=' + selected.id}
-              title={t('Mijn account')}
-              Icon={UserRound}
-            />
-            {platform && (
-              <NavigationItem
-                href={adminRoot + '/platform?website=' + selected.id}
-                title={t('Platformbeheer')}
-                Icon={Shield}
-              />
-            )}
-          </SidebarMenu>
-        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       <SidebarInset className="min-w-0">
-        <AdminHeader breadcrumbs={
+        <AdminHeader
+          breadcrumbs={
             <Breadcrumb className="min-w-0">
               <BreadcrumbList className="flex-nowrap">
                 {section && (
                   <>
                     <BreadcrumbItem className="hidden min-w-0 sm:inline-flex">
                       <BreadcrumbLink className="max-w-40 truncate" render={<Link href={base} />}>
-                        {selected.name}
+                        {selected?.name ?? 'Optidigi CMS'}
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden sm:list-item" />
@@ -215,8 +191,12 @@ export function AdminShell({
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
-        }>
-          {assistant && section !== 'assistant' && <ShadcnAssistantLauncher route={assistantRoute} />}
+          }
+        >
+          {assistant && section !== 'assistant' && (
+            <ShadcnAssistantLauncher route={assistantRoute} />
+          )}
+          <AccountMenu website={selected?.id} platform={platform} />
         </AdminHeader>
         {children}
       </SidebarInset>
@@ -224,7 +204,7 @@ export function AdminShell({
   )
   return assistant ? (
     <ShadcnAssistantProvider
-      key={selected.id}
+      key={assistant.id}
       tenant={assistant}
       document={document}
       locale={locale}
@@ -240,7 +220,9 @@ function NavigationGroup({ title, links }: { title: string; links: NavLink[] }) 
   const t = useAdminTranslations()
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="group-data-[collapsible=icon]:pointer-events-none">{t(title)}</SidebarGroupLabel>
+      <SidebarGroupLabel className="group-data-[collapsible=icon]:pointer-events-none">
+        {t(title)}
+      </SidebarGroupLabel>
       <SidebarMenu>
         {links.map((link) => (
           <NavigationItem key={link.href} {...link} />

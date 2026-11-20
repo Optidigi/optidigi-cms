@@ -1,5 +1,6 @@
 import * as migration_20261119_171717_initial_schema from './20261119_171717_initial_schema';
 import * as migration_20261120_171819_assistant_chat from './20261120_171819_assistant_chat';
+import * as migration_20261120_194003_assistant_model_catalog from './20261120_194003_assistant_model_catalog';
 
 export const migrations = [
   {
@@ -10,6 +11,11 @@ export const migrations = [
   {
     up: migration_20261120_171819_assistant_chat.up,
     down: migration_20261120_171819_assistant_chat.down,
-    name: '20261120_171819_assistant_chat'
+    name: '20261120_171819_assistant_chat',
+  },
+  {
+    up: migration_20261120_194003_assistant_model_catalog.up,
+    down: migration_20261120_194003_assistant_model_catalog.down,
+    name: '20261120_194003_assistant_model_catalog'
   },
 ];

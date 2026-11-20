@@ -1,21 +1,37 @@
 'use client'
 
 import { Chat, useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, type FileUIPart, type UIMessage } from 'ai'
+import { DefaultChatTransport, type FileUIPart } from 'ai'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Approval, Connection, ResponseDetail, contextCollections } from './protocol'
+import type {
+  AssistantUIMessage,
+  Approval,
+  Connection,
+  ResponseDetail,
+  contextCollections,
+} from './protocol'
 
 export type AssistantContext = { collection: (typeof contextCollections)[number]; id: number }
 export type AssistantTenant = { id: number; name: string; canManage: boolean }
 export type Thread = { id: number; title: string; updatedAt: string; archived: boolean }
 type DraftResult = { id: number; locale: 'nl' | 'en'; preview?: string | null }
-export type ChatMessage = UIMessage<unknown, { approval: Approval; 'draft-saved': DraftResult }>
+export type ChatMessage = AssistantUIMessage
+type Capabilities = { efforts: string[]; attachmentTypes: string[] }
+type CatalogSettings = {
+  models: { model: string; label?: string }[]
+  defaultModel?: string
+  detail?: ResponseDetail
+}
+export type AssistantModel = { id: string; label: string; capabilities: Capabilities }
 type Status = {
   connected: boolean
   model?: string
-  settings?: Connection
-  capabilities?: { efforts: string[]; attachmentTypes: string[] }
+  settings?: Connection & { catalog?: CatalogSettings }
+  capabilities?: Capabilities
+  models?: AssistantModel[]
+  defaultModelID?: string
+  defaultDetail?: ResponseDetail
 }
 type ThreadPage = { threads: Thread[]; nextPage?: number | null }
 type Attachment = FileUIPart & { uploadID?: number }
@@ -68,6 +84,11 @@ export function useAssistant({
   const tenantID = tenant.id
   const queryThread = Number(useSearchParams().get('thread'))
   const [model, setModel] = useState<Status>()
+  const [selectedModelID, setSelectedModelID] = useState<string>()
+  const selectedModel =
+    model?.models?.find(({ id }) => id === selectedModelID) ??
+    model?.models?.find(({ id }) => id === model.defaultModelID)
+  const capabilities = selectedModel?.capabilities ?? model?.capabilities
   const [modelStatus, setModelStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [input, setInput] = useState('')
   const [files, setFiles] = useState<Attachment[]>([])
@@ -169,6 +190,7 @@ export function useAssistant({
       .then((value) => {
         if (controller.signal.aborted) return
         setModel(value)
+        setDetail(value.defaultDetail ?? 'standard')
         setModelStatus('ready')
       })
       .catch(() => {
@@ -321,6 +343,7 @@ export function useAssistant({
               action: 'chat-v2',
               tenant: tenantID,
               thread: current.id,
+              modelID: selectedModel?.id,
               context: document,
               locale,
               detail,
@@ -345,7 +368,7 @@ export function useAssistant({
   function upload(selection: FileList | null) {
     if (!selection?.length || !model?.connected || thread?.archived) return
     const selected = Array.from(selection)
-    const types = model.capabilities?.attachmentTypes ?? []
+    const types = capabilities?.attachmentTypes ?? []
     if (selected.length + files.length > 3) {
       setOperationError('Voeg maximaal drie bestanden toe.')
       return
@@ -389,7 +412,7 @@ export function useAssistant({
 
   function attachMedia(asset: FileUIPart) {
     if (!model?.connected || thread?.archived || busy) return
-    if (!model.capabilities?.attachmentTypes.includes(asset.mediaType) || files.length >= 3) {
+    if (!capabilities?.attachmentTypes.includes(asset.mediaType) || files.length >= 3) {
       setOperationError('Dit bestand past niet bij het huidige model of de limiet is bereikt.')
       return
     }
@@ -398,6 +421,29 @@ export function useAssistant({
 
   return {
     model,
+    selectedModel,
+    capabilities,
+    selectModel: (id: string) => {
+      const next = model?.models?.find((entry) => entry.id === id)
+      if (
+        !next ||
+        busy ||
+        files.some(({ mediaType }) => !next.capabilities.attachmentTypes.includes(mediaType))
+      )
+        return
+      setSelectedModelID(id)
+      setEffort('default')
+    },
+    configureModels: (options: CatalogSettings) =>
+      run('settings', async () => {
+        await request(tenantID, { action: 'configure-models', options })
+        const status = await request<Status>(tenantID, { action: 'status' })
+        setModel(status)
+        setDetail(status.defaultDetail ?? 'standard')
+        setSelectedModelID(undefined)
+        setEffort('default')
+        setNotice('Wijzigingen opgeslagen.')
+      }),
     modelStatus,
     input,
     setInput,
@@ -450,6 +496,45 @@ export function useAssistant({
       (session.status === 'error'
         ? 'Het antwoord is onderbroken. Controleer het gesprek voordat je opnieuw verstuurt.'
         : ''),
+    canRetry: Boolean(
+      thread &&
+      !thread.archived &&
+      model?.connected &&
+      !approval &&
+      !busy &&
+      session.messages.at(-1)?.role === 'user',
+    ),
+    retry: () => {
+      const last = session.messages.at(-1)
+      if (
+        !thread ||
+        thread.archived ||
+        !model?.connected ||
+        approval ||
+        busy ||
+        last?.role !== 'user'
+      )
+        return
+      run('send', async () => {
+        await chat.sendMessage(undefined, {
+          body: {
+            action: 'chat-v2',
+            tenant: tenantID,
+            thread: thread.id,
+            modelID: selectedModel?.id,
+            retryMessageID: last.id,
+            locale,
+            detail,
+            effort: effort === 'default' ? undefined : effort,
+          },
+        })
+        if (chat.status !== 'error') {
+          setInput('')
+          setFiles([])
+          void loadHistory()
+        }
+      })
+    },
     send,
     upload,
     attachMedia,
@@ -473,6 +558,11 @@ export function useAssistant({
         setEffort('default')
         setNotice('Model verbonden.')
         onSaved()
+      }),
+    testConnection: () =>
+      run('settings', async () => {
+        await request(tenantID, { action: 'test-connection' })
+        setNotice('De verbinding werkt.')
       }),
     disconnect: () =>
       run('settings', async () => {

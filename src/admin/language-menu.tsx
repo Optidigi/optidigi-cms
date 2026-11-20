@@ -1,6 +1,5 @@
 'use client'
 
-import { Globe2 } from 'lucide-react'
 import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,7 +24,6 @@ export function InterfaceLanguageMenu() {
       <DropdownMenuTrigger
         render={<Button size="sm" variant="ghost" aria-label={t('Taal')} disabled={pending} />}
       >
-        <Globe2 aria-hidden="true" /> <span className="hidden sm:inline">{t('Taal')}</span>{' '}
         {current.toUpperCase()}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

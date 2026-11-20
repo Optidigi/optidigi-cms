@@ -1,3 +1,4 @@
+import { SettingsWorkspace } from '@/admin/settings-workspace'
 import { adminTranslations } from '@/admin/i18n-server'
 import Link from 'next/link'
 import { ChevronRight, Globe2, Shield, Sparkles, UserRound } from 'lucide-react'
@@ -57,15 +58,11 @@ export default async function SettingsPage({
   }
 
   return (
-    <section className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
-      <header className="pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('Instellingen')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{selected.name}</p>
-      </header>
+    <SettingsWorkspace site={selected} current="overview" title={t('Instellingen')}>
       <SettingsGroup title={t('Deze website')} items={websiteSettings} />
       <SettingsGroup title={t('Persoonlijk')} items={[account]} />
       {isPlatformAdmin(req.user) && <SettingsGroup title={t('Platform')} items={[platform]} />}
-    </section>
+    </SettingsWorkspace>
   )
 }
 

@@ -1,3 +1,4 @@
+import { PageContainer } from '@/admin/page-container'
 import { find } from '@/admin/data'
 import { adminTranslations } from '@/admin/i18n-server'
 import Link from 'next/link'
@@ -84,12 +85,10 @@ export default async function SitePage({
   })
 
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="break-words text-2xl font-semibold tracking-tight">{selected.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('Websiteoverzicht')}</p>
-        </div>
+    <PageContainer
+      title={selected.name}
+      description={t('Websiteoverzicht')}
+      action={
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={selected.siteOrigin}
@@ -108,7 +107,8 @@ export default async function SitePage({
             {t('Nieuwe pagina')}
           </Link>
         </div>
-      </header>
+      }
+    >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {content.map(({ slug, title, totalDocs, Icon }) => (
           <Link
@@ -167,6 +167,6 @@ export default async function SitePage({
           )}
         </CardContent>
       </Card>
-    </section>
+    </PageContainer>
   )
 }

@@ -19,6 +19,7 @@ export const AssistantCredentials: CollectionConfig = {
     { name: 'provider', type: 'select', options: [...modelProviders], required: true },
     { name: 'model', type: 'text', required: true },
     { name: 'baseURL', type: 'text' },
+    { name: 'catalog', type: 'json' },
     { name: 'ciphertext', type: 'text', required: true, access: { read: () => false } },
   ],
 }

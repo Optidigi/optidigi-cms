@@ -55,6 +55,7 @@ export function Editor({
   preview,
   versions,
   canDelete,
+  settingsPanel,
 }: {
   document: Document
   site: number
@@ -63,6 +64,7 @@ export function Editor({
   preview: string | null
   versions: { id: string; updatedAt: string }[]
   canDelete: boolean
+  settingsPanel?: 'website' | 'navigation' | 'seo'
 }) {
   const t = useAdminTranslations()
 
@@ -136,12 +138,17 @@ export function Editor({
           )}
           <Field className="max-w-xs">
             <FieldLabel htmlFor="document-translation">{t('Documentvertaling')}</FieldLabel>
-            <NativeSelect id="document-translation" value={locale} disabled={pending} onChange={(event) => {
-              if (!canNavigate(t('Niet-opgeslagen wijzigingen verlaten?'))) return
-              const destination = new URL(window.location.href)
-              destination.searchParams.set('locale', event.target.value)
-              router.push(destination.pathname + destination.search)
-            }}>
+            <NativeSelect
+              id="document-translation"
+              value={locale}
+              disabled={pending}
+              onChange={(event) => {
+                if (!canNavigate(t('Niet-opgeslagen wijzigingen verlaten?'))) return
+                const destination = new URL(window.location.href)
+                destination.searchParams.set('locale', event.target.value)
+                router.push(destination.pathname + destination.search)
+              }}
+            >
               <NativeSelectOption value="nl">Nederlands</NativeSelectOption>
               <NativeSelectOption value="en">English</NativeSelectOption>
             </NativeSelect>
@@ -202,32 +209,41 @@ export function Editor({
                 </>
               ) : (
                 <>
-                  <TextField id="name" label={t('Websitenaam')} value={document.name} required />
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField
-                      id="contactEmail"
-                      label={t('Contactmail')}
-                      type="email"
-                      value={document.contactEmail}
-                    />
-                    <TextField id="phone" label={t('Telefoonnummer')} value={document.phone} />
+                  <div
+                    className="space-y-4"
+                    hidden={Boolean(settingsPanel && settingsPanel !== 'website')}
+                  >
+                    <TextField id="name" label={t('Websitenaam')} value={document.name} required />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <TextField
+                        id="contactEmail"
+                        label={t('Contactmail')}
+                        type="email"
+                        value={document.contactEmail}
+                      />
+                      <TextField id="phone" label={t('Telefoonnummer')} value={document.phone} />
+                    </div>
                   </div>
-                  <NavigationFields navigation={document.navigation} />
+                  <div hidden={Boolean(settingsPanel && settingsPanel !== 'navigation')}>
+                    <NavigationFields navigation={document.navigation} />
+                  </div>
                 </>
               )}
-              <TextField
-                id="seoTitle"
-                label={t('SEO-titel')}
-                value={document.seo?.title}
-                maxLength={200}
-              />
-              <TextField
-                id="seoDescription"
-                label={t('SEO-beschrijving')}
-                value={document.seo?.description}
-                multiline
-                maxLength={500}
-              />
+              <div className="space-y-4" hidden={Boolean(settingsPanel && settingsPanel !== 'seo')}>
+                <TextField
+                  id="seoTitle"
+                  label={t('SEO-titel')}
+                  value={document.seo?.title}
+                  maxLength={200}
+                />
+                <TextField
+                  id="seoDescription"
+                  label={t('SEO-beschrijving')}
+                  value={document.seo?.description}
+                  multiline
+                  maxLength={500}
+                />
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" value="draft" variant="outline" disabled={pending}>
                   {t('Concept opslaan')}

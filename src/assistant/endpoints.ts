@@ -1,10 +1,10 @@
-import { convertToModelMessages } from 'ai'
+import { convertToModelMessages, generateText } from 'ai'
 import { APIError, type Endpoint, type PayloadRequest } from 'payload'
 import { z } from 'zod'
 import { confirmDelete } from './approval'
 import { prepareModelHistory, prepareUserMessage } from './attachments'
 import { streamAssistant, streamThread } from './chat'
-import { encryptCredential } from './credentials'
+import { decryptCredential, encryptCredential } from './credentials'
 import {
   contextCollections,
   modelProviders,
@@ -12,7 +12,8 @@ import {
   responseDetail,
   type Connection,
 } from './protocol'
-import { compatibleURL, modelCapabilities } from './provider'
+import { catalogOptions, resolveCatalog } from './model-catalog'
+import { compatibleURL, modelCapabilities, providerModel } from './provider'
 import { assistantMemberships } from './scope'
 import {
   assertNewMessage,
@@ -35,6 +36,8 @@ const contextSchema = z.optional(z.object({ collection: z.enum(contextCollection
 const action = z.discriminatedUnion('action', [
   z.object({ action: z.literal('status'), tenant }),
   z.object({ action: z.literal('disconnect'), tenant }),
+  z.object({ action: z.literal('test-connection'), tenant }),
+  z.object({ action: z.literal('configure-models'), tenant, options: catalogOptions }),
   z.object({
     action: z.literal('connect'),
     tenant,
@@ -61,12 +64,17 @@ const action = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('chat-v2'),
     tenant,
+    modelID: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    retryMessageID: z.string().min(1).max(150).optional(),
     thread,
     detail: z.optional(z.enum(responseDetail)),
     effort: z.optional(z.enum(reasoningEfforts)),
     locale: z.optional(z.enum(['nl', 'en'])),
     context: contextSchema,
-    messages: z.array(z.unknown()).min(1).max(2000),
+    messages: z.array(z.unknown()).max(2000),
   }),
   z.object({
     action: z.literal('thread-list'),
@@ -159,7 +167,11 @@ async function handleAssistant(req: PayloadRequest) {
         return json({ error: 'Only tenant admins can approve a delete.' }, 403)
       return json(await confirmDelete(req, input.tenant, input.token))
     }
-    const needsManagement = input.action === 'connect' || input.action === 'disconnect'
+    const needsManagement =
+      input.action === 'connect' ||
+      input.action === 'disconnect' ||
+      input.action === 'configure-models' ||
+      input.action === 'test-connection'
     if (needsManagement && !membership.canManage) {
       return json({ error: 'Only tenant admins can manage the model connection.' }, 403)
     }
@@ -175,31 +187,85 @@ async function handleAssistant(req: PayloadRequest) {
         provider: true,
         model: true,
         baseURL: true,
-        ciphertext: input.action === 'chat' || input.action === 'chat-v2' ? true : undefined,
+        catalog: true,
+        ciphertext:
+          input.action === 'chat' ||
+          input.action === 'chat-v2' ||
+          input.action === 'test-connection'
+            ? true
+            : undefined,
       },
       where: { tenant: { equals: input.tenant } },
     })
     const connection = current.docs[0] as
-      | (Connection & { id: number; ciphertext?: string })
+      | (Connection & { id: number; ciphertext?: string; catalog?: unknown })
       | undefined
 
+    const catalog = connection && resolveCatalog(input.tenant, connection, connection.catalog)
     if (input.action === 'status') {
       return json({
         connected: Boolean(connection),
-        ...(connection && {
-          model: connection.model,
-          capabilities: modelCapabilities(connection.provider, connection.model),
+        ...(catalog && {
+          model: catalog.fallback.model,
+          capabilities: catalog.fallback.capabilities,
+          models: catalog.models.map(({ id, label, capabilities }) => ({
+            id,
+            label,
+            capabilities,
+          })),
+          defaultModelID: catalog.fallback.id,
+          defaultDetail: catalog.detail,
         }),
-        ...(connection && membership.canManage
-          ? {
-              settings: {
-                provider: connection.provider,
-                model: connection.model,
-                baseURL: connection.baseURL,
-              },
-            }
-          : {}),
+        ...(connection &&
+          membership.canManage && {
+            settings: {
+              provider: connection.provider,
+              model: connection.model,
+              baseURL: connection.baseURL,
+              catalog: catalog?.options,
+            },
+          }),
       })
+    }
+    if (input.action === 'configure-models') {
+      if (!connection) return json({ error: 'Connect a provider before adding models.' }, 409)
+      const options = input.options
+      if (
+        options.models.some(({ model }) => model === connection.model) ||
+        (options.defaultModel &&
+          options.defaultModel !== connection.model &&
+          !options.models.some(({ model }) => model === options.defaultModel))
+      )
+        return json({ error: 'Select a default from the models configured for this tenant.' }, 400)
+      await req.payload.update({
+        collection: credentials,
+        id: connection.id,
+        overrideAccess: true,
+        data: { catalog: options },
+      })
+      return json({ ok: true })
+    }
+    if (input.action === 'test-connection') {
+      if (!connection?.ciphertext || !catalog)
+        return json({ error: 'Connect a model before testing.' }, 409)
+      try {
+        const key = await decryptCredential(connection.ciphertext, input.tenant)
+        await generateText({
+          model: providerModel(
+            connection.provider,
+            catalog.fallback.model,
+            key,
+            connection.baseURL,
+          ),
+          prompt: 'Reply with OK.',
+          maxOutputTokens: 64,
+          maxRetries: 0,
+          abortSignal: AbortSignal.timeout(15_000),
+        })
+        return json({ ok: true })
+      } catch {
+        return json({ error: 'The model connection test failed.' }, 502)
+      }
     }
     if (input.action === 'disconnect') {
       if (connection)
@@ -229,7 +295,12 @@ async function handleAssistant(req: PayloadRequest) {
         await req.payload.update({
           collection: credentials,
           id: connection.id,
-          data,
+          data: {
+            ...data,
+            ...(connection.provider !== data.provider || (connection.baseURL ?? null) !== baseURL
+              ? { catalog: null }
+              : {}),
+          },
           overrideAccess: true,
         })
       } else {
@@ -248,6 +319,9 @@ async function handleAssistant(req: PayloadRequest) {
     }
     if (!connection?.ciphertext)
       return json({ error: 'Connect a model before using the assistant.' }, 409)
+    const modelID = input.action === 'chat-v2' ? input.modelID : undefined
+    const selected = modelID ? catalog?.models.find(({ id }) => id === modelID) : catalog?.fallback
+    if (!selected) return json({ error: 'The selected model is unavailable for this tenant.' }, 400)
     const context = input.context
     let document: { collection: string; id: number; title: string; homepage: boolean } | undefined
     if (context) {
@@ -274,9 +348,13 @@ async function handleAssistant(req: PayloadRequest) {
     const run = {
       document,
       locale: input.locale ?? ('nl' as const),
-      detail: input.detail ?? ('standard' as const),
+      detail: input.detail ?? catalog?.detail ?? ('standard' as const),
       canDelete: membership.canManage,
-      connection: { ...connection, ciphertext: connection.ciphertext },
+      connection: {
+        ...connection,
+        model: input.action === 'chat-v2' ? selected.model : connection.model,
+        ciphertext: connection.ciphertext,
+      },
       origin,
       req,
       tenant: input.tenant,
@@ -289,7 +367,7 @@ async function handleAssistant(req: PayloadRequest) {
       return await streamAssistant({ ...run, messages: input.messages })
     }
 
-    const capabilities = modelCapabilities(connection.provider, connection.model)
+    const { capabilities } = selected
     if (input.effort && !capabilities.efforts.includes(input.effort)) {
       return json({ error: 'This model does not support the requested reasoning effort.' }, 400)
     }
@@ -299,6 +377,32 @@ async function handleAssistant(req: PayloadRequest) {
       const record = await findThread(req, input.tenant, input.thread)
       if (record.archived)
         throw new APIError('Reopen the conversation before sending a message.', 409)
+      const history = await recentThreadMessages(req, record.id)
+      if (input.retryMessageID) {
+        const last = history.at(-1)
+        if (last?.role !== 'user' || last.id !== input.retryMessageID) {
+          throw new APIError('Only the latest unanswered message can be retried.', 409)
+        }
+        const previous = await prepareModelHistory(req, history.slice(0, -1), {
+          origin,
+          tenant: input.tenant,
+          thread: record.id,
+          allowed: capabilities.attachmentTypes,
+        })
+        const retry = await prepareUserMessage(req, {
+          origin,
+          tenant: input.tenant,
+          thread: record.id,
+          allowed: capabilities.attachmentTypes,
+          input: last,
+        })
+        const messages = await convertToModelMessages([...previous, retry.model])
+        return streamThread(
+          { ...run, messages, effort: input.effort, withoutTools: true },
+          (message) => saveThreadMessage(req, record.id, message),
+          release,
+        )
+      }
       const prepared = await prepareUserMessage(req, {
         origin,
         tenant: input.tenant,
@@ -307,7 +411,6 @@ async function handleAssistant(req: PayloadRequest) {
         allowed: capabilities.attachmentTypes,
       })
       await assertNewMessage(req, record.id, prepared.stored.id)
-      const history = await recentThreadMessages(req, record.id)
       const modelHistory = await prepareModelHistory(req, history, {
         origin,
         tenant: input.tenant,

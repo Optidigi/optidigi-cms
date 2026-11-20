@@ -39,6 +39,7 @@ const streamError = 'The assistant could not finish. Check the model settings an
 
 type RunOptions = {
   canDelete: boolean
+  withoutTools?: boolean
   connection: Connection & { ciphertext: string }
   document?: { collection: string; id: number; title: string; homepage: boolean }
   locale: 'nl' | 'en'
@@ -53,6 +54,7 @@ type RunOptions = {
 async function startRun(
   {
     canDelete,
+    withoutTools,
     connection,
     document,
     locale,
@@ -68,6 +70,23 @@ async function startRun(
 ) {
   const apiKey = await decryptCredential(connection.ciphertext, tenant)
   const model = providerModel(connection.provider, connection.model, apiKey, connection.baseURL)
+  if (withoutTools) {
+    return {
+      result: streamText({
+        model,
+        messages,
+        abortSignal,
+        maxRetries: 0,
+        maxOutputTokens: 3500,
+        providerOptions: modelReasoningOptions(connection.provider, effort),
+        system:
+          'Answer in ' +
+          (locale === 'nl' ? 'Dutch' : 'English') +
+          '. This retry has no CMS tools. Do not claim you read or changed any CMS content.',
+      }),
+      close: async () => {},
+    }
+  }
   const local = 'http://127.0.0.1:' + (process.env.PORT || 3000)
   const client = await createMCPClient({
     transport: {
@@ -280,6 +299,8 @@ export function streamThread(
         toUIMessageStream({
           stream: run.result.fullStream,
           sendReasoning: false,
+          messageMetadata: ({ part }) =>
+            part.type === 'start' ? { model: options.connection.model } : undefined,
           onError: () => streamError,
         }),
       )
@@ -297,7 +318,12 @@ export function streamThread(
           }
         }
         if (parts.length) {
-          await finish({ id: responseMessage.id, role: 'assistant', parts })
+          await finish({
+            id: responseMessage.id,
+            role: 'assistant',
+            metadata: { model: options.connection.model },
+            parts,
+          })
         }
       } finally {
         await run?.close()
