@@ -17,6 +17,8 @@ export default async function PreferencesPage() {
   const initial = saved ?? {
     language,
     theme: 'system' as const,
+    preset: 'optidigi' as const,
+    density: 'comfortable' as const,
     sidebarOpen: jar.get('sidebar_state')?.value !== 'false',
     website: null,
   }

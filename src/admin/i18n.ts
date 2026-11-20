@@ -4,6 +4,19 @@ export type InterfaceLanguage = 'nl' | 'en'
 export const interfaceLanguageCookie = 'payload-lng'
 
 const english: Record<string, string> = {
+  'Vul een geldig e-mailadres in.': 'Enter a valid email address.',
+  'Vul je wachtwoord in.': 'Enter your password.',
+  Stijlvoorkeur: 'Appearance preset',
+  Neutraal: 'Neutral',
+  Bos: 'Forest',
+  Tabeldichtheid: 'Table density',
+  'Past de rijafstand in collectietabellen aan.': 'Adjusts row spacing in collection tables.',
+  Comfortabel: 'Comfortable',
+  'Inloggen is tijdelijk niet beschikbaar. Probeer het opnieuw.':
+    'Sign-in is temporarily unavailable. Try again.',
+  'Concept voor de assistent': 'Assistant draft',
+  'Vraag iets over dit document…': 'Ask about this document…',
+  'Vraag iets aan de assistent…': 'Ask the assistant…',
   Paginering: 'Pagination',
   Verbindingsstatus: 'Connection status',
   'Controleer dit veld en gebruik een unieke waarde waar nodig.':

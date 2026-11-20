@@ -3,14 +3,14 @@
 import { settingsHref } from './navigation'
 import { relationID } from '@/site/access'
 import { adminHTTP } from './http'
-import { signOutAdmin } from './session'
+import { signOutAfterAccountChange } from './session'
 
 export async function saveAccount(_status: string, form: FormData): Promise<string> {
   const response = await adminHTTP('cms-admin/account', { method: 'POST', body: form })
   if (!response.ok) return 'Open de accountpagina opnieuw.'
   const message: string = await response.json()
   if (message) return message
-  await signOutAdmin()
+  await signOutAfterAccountChange()
   return ''
 }
 

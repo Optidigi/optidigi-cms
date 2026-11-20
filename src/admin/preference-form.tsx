@@ -1,6 +1,8 @@
 'use client'
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Switch } from '@/components/ui/switch'
 import {
   Combobox,
@@ -63,7 +65,14 @@ export function PreferenceForm({
         if (!(await savePreferences(value))) throw new Error('Preference update failed')
         if (!value) {
           setTheme('system')
-          setSettings({ language: 'nl', theme: 'system', website: null, sidebarOpen: true })
+          setSettings({
+            language: 'nl',
+            theme: 'system',
+            website: null,
+            sidebarOpen: true,
+            preset: 'optidigi',
+            density: 'comfortable',
+          })
         } else if (savedTheme === value.theme) setTheme(value.theme)
         markDirty(false)
         setFeedback('saved')
@@ -76,7 +85,9 @@ export function PreferenceForm({
   return (
     <Card className="max-w-3xl">
       <CardHeader>
-        <CardTitle>{t('Weergave en werkruimte')}</CardTitle>
+        <CardTitle role="heading" aria-level={2}>
+          {t('Weergave')}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form
@@ -113,6 +124,44 @@ export function PreferenceForm({
               ))}
             </RadioGroup>
           </FieldSet>
+          <FieldSet>
+            <FieldLegend id={field + '-preset'}>{t('Stijlvoorkeur')}</FieldLegend>
+            <RadioGroup
+              aria-labelledby={field + '-preset'}
+              value={settings.preset}
+              onValueChange={(preset) =>
+                edit({ ...settings, preset: preset as Preferences['preset'] })
+              }
+              className="grid grid-cols-3 gap-2"
+            >
+              {(
+                [
+                  ['optidigi', 'Optidigi'],
+                  ['neutral', 'Neutraal'],
+                  ['forest', 'Bos'],
+                ] as const
+              ).map(([preset, label]) => (
+                <FieldLabel
+                  key={preset}
+                  className="grid min-w-0 cursor-pointer gap-2 rounded-lg border p-2 has-data-checked:border-primary"
+                >
+                  <span
+                    data-preset={preset}
+                    className="grid h-11 place-items-center rounded-md border bg-muted"
+                    aria-hidden
+                  >
+                    <span className="h-5 w-8 rounded-md bg-primary" />
+                  </span>
+                  <span className="flex min-w-0 flex-wrap items-center gap-1">
+                    <RadioGroupItem value={preset} />
+                    {t(label)}
+                  </span>
+                </FieldLabel>
+              ))}
+            </RadioGroup>
+          </FieldSet>
+          <Separator />
+          <h2 className="text-base font-medium">{t('Werkruimte')}</h2>
           <FieldSet>
             <FieldLegend id={field + '-language'}>{t('Interfacetaal')}</FieldLegend>
             <RadioGroup
@@ -174,6 +223,24 @@ export function PreferenceForm({
               </ComboboxContent>
             </Combobox>
           </div>
+          <FieldSet>
+            <FieldLegend id={field + '-density'}>{t('Tabeldichtheid')}</FieldLegend>
+            <FieldDescription>{t('Past de rijafstand in collectietabellen aan.')}</FieldDescription>
+            <ToggleGroup
+              aria-labelledby={field + '-density'}
+              value={[settings.density]}
+              variant="outline"
+              size="sm"
+              spacing={0}
+              onValueChange={(value) => {
+                if (value[0] === 'comfortable' || value[0] === 'compact')
+                  edit({ ...settings, density: value[0] })
+              }}
+            >
+              <ToggleGroupItem value="comfortable">{t('Comfortabel')}</ToggleGroupItem>
+              <ToggleGroupItem value="compact">{t('Compact')}</ToggleGroupItem>
+            </ToggleGroup>
+          </FieldSet>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending}>
               {t('Wijzigingen opslaan')}

@@ -82,6 +82,21 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await expect(page.locator('html')).toHaveClass(/(?:^| )dark(?: |$)/)
     await page.reload()
     await expect(page.locator('html')).toHaveClass(/(?:^| )dark(?: |$)/)
+    await expect(page.getByRole('link', { name: 'Wachtwoord vergeten?' })).toHaveAttribute(
+      'href',
+      '/admin/forgot',
+    )
+    await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
+    await expect(page.getByLabel('E-mailadres')).toHaveAttribute('aria-invalid', 'true')
+    await page.route('**/api/users/login', (route) => route.fulfill({ status: 401 }), { times: 1 })
+    await page.getByLabel('E-mailadres').fill(email)
+    await page.getByLabel('Wachtwoord', { exact: true }).fill('Rejected password')
+    await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Inloggen is niet gelukt' }),
+    ).toBeVisible()
+    await expect(page.getByLabel('E-mailadres')).toHaveValue(email)
+    await expect(page.getByLabel('Wachtwoord', { exact: true })).toHaveValue('')
     await page.getByLabel('E-mailadres').fill(email)
     await page.getByLabel('Wachtwoord', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
@@ -131,13 +146,25 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await page.getByRole('button', { name: 'Annuleren', exact: true }).click()
     await expect(page.getByRole('radio', { name: 'Donker', exact: true })).toBeChecked()
+    await page.getByRole('radio', { name: 'Bos', exact: true }).click()
+    await page.getByRole('button', { name: 'Compact', exact: true }).click()
     await page.getByRole('radio', { name: 'English', exact: true }).click()
     await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await page.reload()
     await expect(page.getByRole('radio', { name: 'English', exact: true })).toBeChecked()
+    await expect(page.locator('html')).toHaveAttribute('data-preset', 'forest')
+    await expect(page.locator('html')).toHaveAttribute('data-density', 'compact')
+    await page.goto(root + '/articles')
+    await expect(
+      page.locator('[data-collection-table] [data-slot="table-cell"]').first(),
+    ).toHaveCSS('padding-top', '4px')
+    await page.goto('/admin/account/preferences?website=' + tenant.id)
+
     await page.getByRole('button', { name: 'Reset to defaults' }).click()
     await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
+    await expect(page.locator('html')).toHaveAttribute('data-preset', 'optidigi')
+    await expect(page.locator('html')).toHaveAttribute('data-density', 'comfortable')
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(root + '/articles')
     await expect(page.getByRole('link', { name: longTitle, exact: true })).toBeVisible()
@@ -254,7 +281,8 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await page.getByLabel('Huidig wachtwoord', { exact: true }).fill(password)
     await page.getByLabel('Nieuw wachtwoord', { exact: true }).fill(updatedPassword)
     await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click()
-    await expect(page).toHaveURL('/admin/login')
+    await expect(page).toHaveURL('/admin/login?updated=1')
+    await expect(page.getByRole('status')).toContainText('Log opnieuw in.')
     await page.getByLabel('E-mailadres').fill(email)
     await page.getByLabel('Wachtwoord', { exact: true }).fill(updatedPassword)
     await page.getByRole('button', { name: 'Inloggen', exact: true }).click()
@@ -313,7 +341,8 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await page.goto(root + '/settings/assistant?panel=models')
     await page.getByRole('button', { name: 'Model toevoegen' }).click()
     await page.getByLabel('Model-ID', { exact: true }).fill('gpt-5-mini')
-    await page.getByLabel('Weergavenaam').fill('Fast model')
+    const alternativeModel = 'Fast model for editorial research and long localized documents'
+    await page.getByLabel('Weergavenaam').fill(alternativeModel)
     await page.getByRole('button', { name: 'Toepassen', exact: true }).click()
     await page.setViewportSize({ width: 320, height: 844 })
     await page.getByRole('tab', { name: 'Standaardwaarden', exact: true }).click()
@@ -325,7 +354,7 @@ test('editor publishes localized content and uses the shared assistant in the ca
     )
     await page.getByRole('tab', { name: 'Modellen', exact: true }).click()
     await expect(
-      page.getByRole('cell', { name: 'Fast model gpt-5-mini', exact: true }),
+      page.getByRole('cell', { name: alternativeModel + ' gpt-5-mini', exact: true }),
     ).toBeVisible()
     await page.setViewportSize({ width: 390, height: 844 })
 
@@ -336,7 +365,7 @@ test('editor publishes localized content and uses the shared assistant in the ca
     await expect(page.getByText('Wijzigingen opgeslagen.', { exact: true })).toBeVisible()
     const catalog = await (await assistant({ action: 'status' })).json()
     const chosenModelID = catalog.models.find(
-      ({ label }: { label: string }) => label === 'Fast model',
+      ({ label }: { label: string }) => label === alternativeModel,
     ).id
     await page.route('**/api/assistant', async (route) => {
       const input = route.request().postDataJSON()
@@ -380,15 +409,34 @@ test('editor publishes localized content and uses the shared assistant in the ca
       })
     })
     await page.goto(root + '/pages?id=' + home.id)
-    await page.getByRole('button', { name: 'Vraag AI' }).click()
-    await drawer.getByRole('button', { name: 'Model kiezen' }).click()
+    const launcherDraft = page.getByLabel('Concept voor de assistent')
+    await launcherDraft.fill('Werk deze pagina bij')
+    await launcherDraft.press('Enter')
+    const composer = drawer.getByRole('textbox', { name: 'Bericht' })
+    await expect(composer).toHaveValue('Werk deze pagina bij')
+    await expect(composer).toBeFocused()
+    await expect(drawer.getByRole('log')).toHaveCount(0)
+    await drawer.getByRole('button', { name: /^Model kiezen/ }).click()
     await page.getByRole('combobox', { name: 'Zoek modellen' }).fill('Fast')
-    await page.getByRole('option', { name: 'Fast model', exact: true }).click()
-    await expect(drawer.getByRole('button', { name: 'Model kiezen' })).toHaveText('Fast model')
-    await drawer.getByRole('button', { name: /^Antwoordlengte:/ }).click()
+    await page.getByRole('option', { name: alternativeModel, exact: true }).click()
+    await expect(drawer.getByRole('button', { name: /^Model kiezen/ })).toHaveText(alternativeModel)
+    await drawer.getByRole('button', { name: /^Antwoordopties/ }).click()
     await page.getByRole('menuitemradio', { name: 'Uitgebreid', exact: true }).click()
-    await drawer.getByRole('button', { name: /^Redeneerinspanning:/ }).click()
+    await drawer.getByRole('button', { name: /^Antwoordopties/ }).click()
     await page.getByRole('menuitemradio', { name: 'Laag', exact: true }).click()
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      const controls = [
+        drawer.getByRole('button', { name: 'Bijlage toevoegen' }),
+        drawer.getByRole('button', { name: /^Model kiezen/ }),
+        drawer.getByRole('button', { name: /^Antwoordopties/ }),
+        drawer.getByRole('button', { name: 'Versturen' }),
+      ]
+      const boxes = await Promise.all(controls.map((control) => control.boundingBox()))
+      expect(boxes.every((box) => box && box.x >= 0 && box.x + box.width <= width)).toBe(true)
+      const centers = boxes.map((box) => box!.y + box!.height / 2)
+      expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(2)
+    }
     await drawer.getByLabel('Bestanden', { exact: true }).setInputFiles({
       name: 'brief.txt',
       mimeType: 'text/plain',

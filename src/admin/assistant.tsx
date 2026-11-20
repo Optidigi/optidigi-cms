@@ -18,6 +18,7 @@ import {
   Plus,
   Settings2,
   Sparkles,
+  SlidersHorizontal,
   Square,
   Trash2,
   X,
@@ -105,6 +106,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
+  InputGroupInput,
   InputGroupTextarea,
 } from '@/components/ui/input-group'
 import {
@@ -223,13 +225,40 @@ export function ShadcnAssistantLauncher({ route }: { route: string }) {
 
   const [open, setOpen] = useState(false)
   const state = useContext(AssistantState)
+  const composer = useRef<HTMLTextAreaElement>(null)
+  if (!state) return null
+  const { chat, document } = state
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button size="lg" className="rounded-full px-5" />}>
-        <Sparkles data-icon="inline-start" />
-        {t('Vraag AI')}
-      </SheetTrigger>
-      <SheetContent className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
+      <InputGroup className="w-full sm:max-w-md">
+        <InputGroupInput
+          aria-label={t('Concept voor de assistent')}
+          placeholder={t(
+            document ? 'Vraag iets over dit document…' : 'Vraag iets aan de assistent…',
+          )}
+          value={chat.input}
+          maxLength={6000}
+          onChange={(event) => chat.setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              setOpen(true)
+            }
+          }}
+        />
+        <InputGroupAddon>
+          <Sparkles aria-hidden />
+        </InputGroupAddon>
+        <InputGroupAddon align="inline-end">
+          <SheetTrigger render={<InputGroupButton size="icon-xs" aria-label={t('Vraag AI')} />}>
+            <ArrowUp />
+          </SheetTrigger>
+        </InputGroupAddon>
+      </InputGroup>
+      <SheetContent
+        initialFocus={() => (composer.current?.disabled ? undefined : composer.current)}
+        className="gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
+      >
         <SheetHeader className="flex-row items-center justify-between border-b pe-14">
           <div>
             <SheetTitle>{t('AI-assistent')}</SheetTitle>
@@ -252,13 +281,19 @@ export function ShadcnAssistantLauncher({ route }: { route: string }) {
             <ExternalLink />
           </Button>
         </SheetHeader>
-        <ShadcnAssistantBody />
+        <ShadcnAssistantBody composer={composer} />
       </SheetContent>
     </Sheet>
   )
 }
 
-export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
+export function ShadcnAssistantBody({
+  full = false,
+  composer,
+}: {
+  full?: boolean
+  composer?: React.Ref<HTMLTextAreaElement>
+}) {
   const t = useAdminTranslations()
 
   const state = useContext(AssistantState)
@@ -286,7 +321,7 @@ export function ShadcnAssistantBody({ full = false }: { full?: boolean }) {
           <ThreadHistory chat={state.chat} />
         </aside>
       )}
-      <Chat {...state} full={full} />
+      <Chat {...state} full={full} composer={composer} />
     </div>
   )
 }
@@ -503,7 +538,8 @@ function Chat({
   includeContext,
   setIncludeContext,
   full,
-}: State & { full: boolean }) {
+  composer,
+}: State & { full: boolean; composer?: React.Ref<HTMLTextAreaElement> }) {
   const ready = useHydrated()
   const t = useAdminTranslations()
 
@@ -749,6 +785,7 @@ function Chat({
               </InputGroupAddon>
             )}
             <InputGroupTextarea
+              ref={composer}
               aria-label={t('Bericht')}
               value={chat.input}
               onPaste={(event) => {
@@ -769,7 +806,7 @@ function Chat({
                 }
               }}
             />
-            <InputGroupAddon align="block-end" className="flex-wrap">
+            <InputGroupAddon align="block-end" className="min-w-0 flex-nowrap gap-1">
               <Input
                 ref={upload}
                 type="file"
@@ -784,7 +821,7 @@ function Chat({
               />
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  render={<InputGroupButton size="icon-sm" aria-label={t('Bijlage toevoegen')} />}
+                  render={<InputGroupButton size="icon-xs" aria-label={t('Bijlage toevoegen')} />}
                   disabled={
                     !composerAvailable ||
                     !allowedTypes.length ||
@@ -808,9 +845,9 @@ function Chat({
               {chat.model?.model && <ChatModelPicker chat={chat} />}
               {connected && <ChatOptions chat={chat} efforts={efforts} />}
               <InputGroupButton
-                size="icon-sm"
+                size="icon-xs"
                 variant="default"
-                className="ms-auto rounded-full"
+                className="ms-auto shrink-0 rounded-full"
                 type={chat.streaming ? 'button' : 'submit'}
                 aria-label={chat.streaming ? 'Stop' : t('Versturen')}
                 disabled={
@@ -849,8 +886,11 @@ function ChatModelPicker({ chat }: { chat: AssistantController }) {
   const models = chat.model?.models ?? []
   if (models.length < 2) {
     return (
-      <span className="max-w-40 truncate px-1.5 text-xs text-muted-foreground" title={label}>
-        {label}
+      <span
+        className="flex h-6 min-w-0 max-w-40 flex-1 items-center px-1.5 text-sm text-muted-foreground"
+        title={label}
+      >
+        <span className="truncate">{label}</span>
       </span>
     )
   }
@@ -859,10 +899,17 @@ function ChatModelPicker({ chat }: { chat: AssistantController }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        render={<InputGroupButton size="sm" disabled={chat.busy} aria-label={t('Model kiezen')} />}
+        render={
+          <InputGroupButton
+            size="xs"
+            className="min-w-0 max-w-40 flex-1 justify-start"
+            disabled={chat.busy}
+            aria-label={t('Model kiezen') + (label ? ' · ' + label : '')}
+          />
+        }
       >
-        <span className="max-w-32 truncate">{label}</span>
-        <ChevronDown />
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronDown className="shrink-0" />
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -908,55 +955,57 @@ function ChatModelPicker({ chat }: { chat: AssistantController }) {
 
 function ChatOptions({ chat, efforts }: { chat: AssistantController; efforts: string[] }) {
   const t = useAdminTranslations()
-  const choices = [
-    ...(efforts.length
-      ? [
-          {
-            name: t('Redeneerinspanning'),
-            short: t('Inspanning'),
-            value: chat.effort,
-            change: chat.setEffort,
-            options: ['default', ...efforts].map(
-              (value) => [value, t(effortLabels[value] ?? value)] as const,
-            ),
-          },
-        ]
-      : []),
-    {
-      name: t('Antwoordlengte'),
-      short: t('Lengte'),
-      value: chat.detail,
-      change: (value: string) => chat.setDetail(value as ResponseDetail),
-      options: Object.entries(responseLabels).map(([value, label]) => [value, t(label)] as const),
-    },
-  ]
-  return choices.map(({ name, short, value, change, options }) => {
-    const selected = options.find(([id]) => id === value)?.[1]
-    return (
-      <DropdownMenu key={name}>
-        <DropdownMenuTrigger
-          disabled={chat.busy}
-          render={<InputGroupButton type="button" size="sm" aria-label={name + ': ' + selected} />}
-        >
-          <span className="inline">{short} · </span>
-          {selected}
-          <ChevronDown />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="start">
+  const detail = t(responseLabels[chat.detail])
+  const effort = t(effortLabels[chat.effort] ?? chat.effort)
+  const label = [
+    t('Antwoordopties'),
+    t('Antwoordlengte') + ': ' + detail,
+    ...(efforts.length ? [t('Redeneerinspanning') + ': ' + effort] : []),
+  ].join(' · ')
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={chat.busy}
+        render={
+          <InputGroupButton
+            type="button"
+            size="icon-xs"
+            aria-label={label}
+            title={t('Antwoordopties')}
+          />
+        }
+      >
+        <SlidersHorizontal />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" align="end" className="w-48">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('Antwoordlengte')}</DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={chat.detail}
+            onValueChange={(value) => chat.setDetail(value as ResponseDetail)}
+          >
+            {Object.entries(responseLabels).map(([id, text]) => (
+              <DropdownMenuRadioItem key={id} value={id} closeOnClick>
+                {t(text)}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+        {efforts.length > 0 && (
           <DropdownMenuGroup>
-            <DropdownMenuLabel>{name}</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={value} onValueChange={change}>
-              {options.map(([id, label]) => (
+            <DropdownMenuLabel>{t('Redeneerinspanning')}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={chat.effort} onValueChange={chat.setEffort}>
+              {['default', ...efforts].map((id) => (
                 <DropdownMenuRadioItem key={id} value={id} closeOnClick>
-                  {label}
+                  {t(effortLabels[id] ?? id)}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
           </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  })
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 function AttachmentCard({

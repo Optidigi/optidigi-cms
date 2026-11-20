@@ -20,23 +20,21 @@ export default async function LoginPage({
   if (await adminSession()) redirect(loginDestination(query.redirect))
   const accountUpdated = query.updated === '1'
   return (
-    <main className="grid min-h-svh grid-rows-[auto_1fr]">
-      <header className="flex items-center justify-between p-6">
-        <span className="flex items-center gap-2 font-semibold">
-          <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
-            <Globe2 className="size-4" />
-          </span>
-          Optidigi CMS
-        </span>
-        <div className="flex items-center gap-1">
-          <InterfaceLanguageMenu />
-          <AppearanceMenu />
-        </div>
+    <main className="relative grid min-h-svh grid-rows-[auto_1fr] bg-muted">
+      <header className="flex justify-end gap-1 px-4 py-3 sm:px-6">
+        <InterfaceLanguageMenu />
+        <AppearanceMenu />
       </header>
-      <div className="grid place-items-center px-6 pb-16">
-        <div className="w-full max-w-sm space-y-3">
+      <div className="grid place-items-center px-4 pb-12 sm:px-6">
+        <div className="flex w-full max-w-sm flex-col gap-6">
+          <div className="flex items-center gap-2 self-center font-semibold">
+            <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
+              <Globe2 className="size-4" aria-hidden />
+            </span>
+            Optidigi CMS
+          </div>
           {accountUpdated && (
-            <Alert>
+            <Alert role="status">
               <AlertDescription>{t('Inloggegevens opgeslagen. Log opnieuw in.')}</AlertDescription>
             </Alert>
           )}

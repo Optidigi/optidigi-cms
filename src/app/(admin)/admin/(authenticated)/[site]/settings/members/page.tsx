@@ -61,7 +61,7 @@ export default async function SiteMembers({
       }
     >
       <Card className="overflow-hidden py-0">
-        <Table>
+        <Table data-collection-table>
           <TableHeader>
             <TableRow>
               <TableHead>{t('E-mailadres')}</TableHead>

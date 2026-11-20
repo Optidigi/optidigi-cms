@@ -16,7 +16,13 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const [language, preferences] = await Promise.all([getInterfaceLanguage(), readPreferences()])
   return (
-    <html lang={language} className={GeistSans.variable} suppressHydrationWarning>
+    <html
+      data-preset={preferences?.preset ?? 'optidigi'}
+      data-density={preferences?.density ?? 'comfortable'}
+      lang={language}
+      className={GeistSans.variable}
+      suppressHydrationWarning
+    >
       <body>
         <AdminTheme theme={preferences?.theme}>
           <TooltipProvider>

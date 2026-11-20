@@ -3,7 +3,15 @@
 import { RelationshipNode, UploadNode } from '@payloadcms/richtext-lexical/client'
 import { useAdminTranslations } from './i18n-context'
 
-function EmbedReference({ kind, relation, value }: { kind: string; relation: string; value: unknown }) {
+function EmbedReference({
+  kind,
+  relation,
+  value,
+}: {
+  kind: string
+  relation: string
+  value: unknown
+}) {
   const t = useAdminTranslations()
   const id = value && typeof value === 'object' && 'id' in value ? value.id : value
   return (
@@ -16,7 +24,11 @@ function EmbedReference({ kind, relation, value }: { kind: string; relation: str
 // Use Payload's serialization and replace only the admin-specific decorators.
 export class EditorialUploadNode extends UploadNode {
   static clone(node: EditorialUploadNode) {
-    return new EditorialUploadNode({ data: node.__data, format: node.__format, key: node.__key })
+    return new EditorialUploadNode({
+      data: node.getData(),
+      format: node.getFormat(),
+      key: node.getKey(),
+    })
   }
 
   decorate() {
@@ -27,7 +39,11 @@ export class EditorialUploadNode extends UploadNode {
 
 export class EditorialRelationshipNode extends RelationshipNode {
   static clone(node: EditorialRelationshipNode) {
-    return new EditorialRelationshipNode({ data: node.__data, format: node.__format, key: node.__key })
+    return new EditorialRelationshipNode({
+      data: node.getData(),
+      format: node.getFormat(),
+      key: node.getKey(),
+    })
   }
 
   decorate() {
@@ -41,12 +57,14 @@ export const editorialEmbeds = [
   RelationshipNode,
   {
     replace: UploadNode,
-    with: (node: UploadNode) => new EditorialUploadNode({ data: node.getData(), format: node.getFormat() }),
+    with: (node: UploadNode) =>
+      new EditorialUploadNode({ data: node.getData(), format: node.getFormat() }),
     withKlass: EditorialUploadNode,
   },
   {
     replace: RelationshipNode,
-    with: (node: RelationshipNode) => new EditorialRelationshipNode({ data: node.getData(), format: node.getFormat() }),
+    with: (node: RelationshipNode) =>
+      new EditorialRelationshipNode({ data: node.getData(), format: node.getFormat() }),
     withKlass: EditorialRelationshipNode,
   },
 ]

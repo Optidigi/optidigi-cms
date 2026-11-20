@@ -172,7 +172,7 @@ export default async function SectionPage({
           {list?.docs.length ? (
             <Card className="py-0">
               <CardContent className="px-0">
-                <Table>
+                <Table data-collection-table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t('Titel')}</TableHead>

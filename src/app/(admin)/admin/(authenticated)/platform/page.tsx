@@ -134,7 +134,7 @@ export default async function PlatformPage({
                     search={search}
                     placeholder={t('Zoek website')}
                   />
-                  <Table>
+                  <Table data-collection-table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('Naam')}</TableHead>
@@ -248,7 +248,7 @@ export default async function PlatformPage({
                     scope="users"
                     placeholder={t('Zoek op e-mailadres')}
                   />
-                  <Table>
+                  <Table data-collection-table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('E-mailadres')}</TableHead>
