@@ -127,12 +127,14 @@ export function RichTextEditor({
   site,
   label,
   id,
+  editable = true,
 }: {
   value: unknown
   onChange: (value: SerializedEditorState) => void
   site: number
   label: string
   id: string
+  editable?: boolean
 }) {
   return (
     <SiteContext value={site}>
@@ -157,11 +159,35 @@ export function RichTextEditor({
           />
           <HistoryPlugin />
           <ListPlugin />
+          <PayloadFeaturesPlugin editable={editable} />
           <OnChangePlugin ignoreSelectionChange onChange={(state) => onChange(state.toJSON())} />
         </div>
       </LexicalComposer>
     </SiteContext>
   )
+}
+
+// Keep pasted content within the features enabled in Payload's editor config (src/payload.config.ts):
+// headings h2–h4 only, and no image uploads that Payload's own upload flow would still need to finish.
+function PayloadFeaturesPlugin({ editable }: { editable: boolean }) {
+  const [editor] = useLexicalComposerContext()
+  useEffect(() => editor.setEditable(editable), [editor, editable])
+  useEffect(
+    () =>
+      mergeRegister(
+        editor.registerNodeTransform(HeadingNode, (node) => {
+          const tag = node.getTag()
+          if (tag === 'h1') node.replace($createHeadingNode('h2'), true)
+          else if (tag === 'h5' || tag === 'h6') node.replace($createHeadingNode('h4'), true)
+        }),
+        editor.registerNodeTransform(CMSUploadNode, (node) => {
+          const data = node.getData() as { pending?: unknown; value?: unknown }
+          if (data.pending || data.value == null) node.remove()
+        }),
+      ),
+    [editor],
+  )
+  return null
 }
 
 type BlockType = 'paragraph' | 'h2' | 'h3' | 'h4' | 'quote'
@@ -310,8 +336,6 @@ function Toolbar() {
   )
 }
 
-const safeURL = /^(?:https?:\/\/|mailto:|tel:|\/(?![/\\])|#)/i
-
 function LinkControl({ current }: { current?: { url: string; newTab: boolean } }) {
   const { t } = useI18n()
   const [editor] = useLexicalComposerContext()
@@ -322,7 +346,7 @@ function LinkControl({ current }: { current?: { url: string; newTab: boolean } }
 
   function apply(remove = false) {
     const target = url.trim()
-    if (!remove && !safeURL.test(target)) {
+    if (!remove && !target) {
       setInvalid(true)
       return
     }
@@ -394,7 +418,7 @@ function LinkControl({ current }: { current?: { url: string; newTab: boolean } }
                   setInvalid(false)
                 }}
               />
-              {invalid && <FieldError>{t('linkUrlInvalid')}</FieldError>}
+              {invalid && <FieldError>{t('linkUrlRequired')}</FieldError>}
             </Field>
             <Field orientation="horizontal">
               <Checkbox id="rich-text-link-tab" checked={newTab} onCheckedChange={(checked) => setNewTab(checked === true)} />

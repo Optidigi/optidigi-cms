@@ -22,7 +22,7 @@ type Values = {
   name: string
   contactEmail: string
   phone: string
-  navigation: { label: string; href: string }[]
+  navigation: { id?: string | null; label: string; href: string }[]
   seo: { title: string; description: string }
 }
 
@@ -63,7 +63,6 @@ export function SiteSettingsForm({
       depth: 0,
       locale,
       draft: intent === 'draft' ? true : undefined,
-      publishAllLocales: intent === 'publish' ? false : undefined,
     })
     const data = { ...fields(), _status: intent === 'publish' ? 'published' : 'draft' }
     try {
@@ -96,7 +95,7 @@ export function SiteSettingsForm({
     })
   }
 
-  const invalid = (key: string) => (errors[key] ? { 'data-invalid': true, 'aria-invalid': true } : {})
+  const invalid = (key: string) => (errors[key] ? { 'data-invalid': true } : {})
 
   return (
     <Card>

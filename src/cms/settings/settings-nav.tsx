@@ -13,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
 import type { MessageKey } from '../i18n'
 import { useI18n } from '../client/i18n-provider'
 
@@ -63,9 +62,9 @@ export function SettingsNav({ site, platformAdmin }: { site?: number; platformAd
             {group.items.map((item) => (
               <Button
                 key={item.href}
-                variant="ghost"
+                variant={active?.href === item.href ? 'secondary' : 'ghost'}
                 size="sm"
-                className={cn('justify-start', active?.href === item.href && 'bg-muted')}
+                className="justify-start"
                 aria-current={active?.href === item.href ? 'page' : undefined}
                 nativeButton={false}
                 render={<Link href={item.href} />}

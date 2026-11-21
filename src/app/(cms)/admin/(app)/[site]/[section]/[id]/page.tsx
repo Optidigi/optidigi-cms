@@ -75,7 +75,7 @@ export default async function DocumentPage({
         ]}
       />
       <DocumentEditor
-        key={`${document?.id ?? 'new'}-${locale}`}
+        key={`${document?.id ?? 'new'}-${locale}-${document?.updatedAt ?? ''}`}
         site={site.id}
         section={section}
         collection={collection}

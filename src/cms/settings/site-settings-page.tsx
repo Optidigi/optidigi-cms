@@ -50,7 +50,7 @@ export async function SiteSettingsPage({ site: siteParam, locale: localeParam, p
                   name: doc.name ?? '',
                   contactEmail: doc.contactEmail ?? '',
                   phone: doc.phone ?? '',
-                  navigation: (doc.navigation ?? []).map(({ label, href }) => ({ label, href })),
+                  navigation: (doc.navigation ?? []).map(({ id, label, href }) => ({ id, label, href })),
                   seo: { title: doc.seo?.title ?? '', description: doc.seo?.description ?? '' },
                 }
               : undefined
