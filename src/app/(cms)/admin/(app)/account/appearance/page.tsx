@@ -4,13 +4,13 @@ import { SettingsFrame } from '@/cms/settings/settings-layout'
 import { PageTitle } from '@/cms/shell/page'
 import { SiteHeader } from '@/cms/shell/site-header'
 
-export default async function PreferencesPage() {
+export default async function AppearancePage() {
   const t = await getTranslator()
   return (
     <>
-      <SiteHeader crumbs={[{ label: t('account') }, { label: t('preferences') }]} />
+      <SiteHeader crumbs={[{ label: t('websiteSettings') }, { label: t('appearance') }]} />
       <SettingsFrame>
-        <PageTitle title={t('preferences')} description={t('preferencesDescription')} />
+        <PageTitle title={t('appearance')} description={t('preferencesDescription')} />
         <PreferencesForm />
       </SettingsFrame>
     </>

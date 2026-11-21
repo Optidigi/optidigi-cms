@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { PasswordInput } from './password-input'
 import { Spinner } from '@/components/ui/spinner'
@@ -39,12 +38,12 @@ export function ResetForm({ token }: { token: string }) {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-xl">{t('resetTitle')}</CardTitle>
-        <CardDescription>{t('resetDescription')}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    // The form of the official shadcn login-02 block: a centred heading above the fields.
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <h1 className="text-2xl font-bold">{t('resetTitle')}</h1>
+        <p className="text-sm text-balance text-muted-foreground">{t('resetDescription')}</p>
+      </div>
         {done ? (
           <Alert>
             <AlertDescription>{t('passwordSaved')}</AlertDescription>
@@ -69,7 +68,6 @@ export function ResetForm({ token }: { token: string }) {
         <FieldDescription className="mt-6 text-center">
           <Link href="/admin/login">{t('backToSignIn')}</Link>
         </FieldDescription>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

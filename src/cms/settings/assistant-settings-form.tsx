@@ -46,6 +46,8 @@ export type SettingsView = { id: number; connections: ConnectionView[]; defaultM
 type Listed = { id: string; name: string; tools?: boolean }
 
 const serviceName = (service: Service, t: Translate) => service.name || t('customService')
+// Groups folded under "More services" in the picker.
+const moreGroups: string[] = ['other', 'custom']
 
 // The connection list sent back to Payload. Keys are never read, so other rows go without one and
 // keep their stored key; `change` adds a new key for one row.
@@ -365,6 +367,34 @@ function ConnectionDialog({
     ...models.filter((model) => !listed?.some(({ id }) => id === model)).map((id) => ({ id, name: id })),
   ].filter(({ id, name }) => !query || id.toLowerCase().includes(query) || name.toLowerCase().includes(query))
 
+  // One group of services as shadcn choice cards.
+  const serviceGroup = ({ group, label: groupLabel }: (typeof serviceGroups)[number]) => (
+    <FieldSet key={group} className="gap-2">
+      <FieldLegend variant="label">{t(groupLabel)}</FieldLegend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {services
+          .filter((item) => item.group === group)
+          .map((item) => (
+            <FieldLabel
+              key={item.id}
+              htmlFor={`service-${item.id}`}
+              className="has-data-checked:border-primary dark:has-data-checked:border-primary"
+            >
+              <Field orientation="horizontal" className="items-center">
+                <ServiceTile service={item} />
+                <FieldContent className="min-w-0">
+                  <FieldTitle>{serviceName(item, t)}</FieldTitle>
+                  <FieldDescription className="line-clamp-2 text-xs">{t(item.description)}</FieldDescription>
+                </FieldContent>
+                {/* Only visually hidden: the card's selected style shows the choice. */}
+                <RadioGroupItem value={item.id} id={`service-${item.id}`} className="sr-only" />
+              </Field>
+            </FieldLabel>
+          ))}
+      </div>
+    </FieldSet>
+  )
+
   if (step === 'service') {
     return (
       <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -374,27 +404,17 @@ function ConnectionDialog({
             <DialogDescription>{t('chooseServiceDescription')}</DialogDescription>
           </DialogHeader>
           <RadioGroup value={service.id} onValueChange={(value) => chooseService(String(value))} aria-label={t('service')} className="gap-5">
-            {serviceGroups.map(({ group, label: groupLabel }) => (
-              <FieldSet key={group} className="gap-2">
-                <FieldLegend variant="label">{t(groupLabel)}</FieldLegend>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {services
-                    .filter((item) => item.group === group)
-                    .map((item) => (
-                      <FieldLabel key={item.id} htmlFor={`service-${item.id}`}>
-                        <Field orientation="horizontal" className="items-center">
-                          <ServiceTile service={item} />
-                          <FieldContent className="min-w-0">
-                            <FieldTitle>{serviceName(item, t)}</FieldTitle>
-                            <FieldDescription className="line-clamp-2 text-xs">{t(item.description)}</FieldDescription>
-                          </FieldContent>
-                          <RadioGroupItem value={item.id} id={`service-${item.id}`} />
-                        </Field>
-                      </FieldLabel>
-                    ))}
-                </div>
-              </FieldSet>
-            ))}
+            {serviceGroups.filter(({ group }) => !moreGroups.includes(group)).map(serviceGroup)}
+            {/* The rest of the services stay folded away until needed. */}
+            <Collapsible defaultOpen={moreGroups.includes(service.group)}>
+              <CollapsibleTrigger render={<Button type="button" variant="ghost" size="sm" className="-ml-2 text-muted-foreground" />}>
+                {t('moreServices', { count: services.filter((item) => moreGroups.includes(item.group)).length })}
+                <ChevronDownIcon data-icon="inline-end" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-col gap-5 pt-3">
+                {serviceGroups.filter(({ group }) => moreGroups.includes(group)).map(serviceGroup)}
+              </CollapsibleContent>
+            </Collapsible>
           </RadioGroup>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={connection ? () => setStep('details') : onClose}>

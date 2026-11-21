@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -32,12 +31,12 @@ export function ForgotForm() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-xl">{t('forgotTitle')}</CardTitle>
-        <CardDescription>{t('forgotDescription')}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    // The form of the official shadcn login-02 block: a centred heading above the fields.
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <h1 className="text-2xl font-bold">{t('forgotTitle')}</h1>
+        <p className="text-sm text-balance text-muted-foreground">{t('forgotDescription')}</p>
+      </div>
         {sent ? (
           <Alert>
             <AlertDescription>{t('resetLinkSent')}</AlertDescription>
@@ -61,7 +60,6 @@ export function ForgotForm() {
         <FieldDescription className="mt-6 text-center">
           <Link href="/admin/login">{t('backToSignIn')}</Link>
         </FieldDescription>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

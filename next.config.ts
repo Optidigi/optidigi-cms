@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     return [
       { source: '/admin/:site/assistant/:path*', destination: '/admin/:site/ai/:path*', permanent: true },
       { source: '/admin/:site/settings/assistant', destination: '/admin/:site/settings/ai', permanent: true },
+      { source: '/admin/account/preferences', destination: '/admin/account/appearance', permanent: true },
     ]
   },
   images: {
