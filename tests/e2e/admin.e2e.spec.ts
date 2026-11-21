@@ -50,6 +50,11 @@ test('the assistant explains when no model is set up', async ({ page }) => {
   await login(page, user)
   await page.goto(`/admin/${site}/ai`)
   await expect(page.getByText(/niet ingesteld|not set up/i)).toBeVisible()
+  // Members can't set AI up, so other pages show neither the prompt bar nor a set-up hint.
+  await page.goto(`/admin/${site}/pages`)
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /^(instellen|set up)$/i })).toHaveCount(0)
 })
 
 test('sections a website does not use are hidden and unreachable', async ({ page }) => {
@@ -93,6 +98,15 @@ test.describe('AI services', () => {
     await payload.delete({ collection: 'users', overrideAccess: true, where: { email: { equals: admin.email } } })
   })
 
+  test('platform administrators are pointed to AI settings until a model is set up', async ({ page }) => {
+    await login(page, admin)
+    await page.goto(`/admin/${site}/pages`)
+    await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(0)
+    await page.getByRole('link', { name: /^(instellen|set up)$/i }).click()
+    await page.waitForURL(`**/admin/${site}/settings/ai`)
+    await expect(page.getByRole('link', { name: /^(instellen|set up)$/i })).toHaveCount(0)
+  })
+
   test('choosing a named service fills in its address and shows its name', async ({ page }) => {
     await login(page, admin)
     await page.goto(`/admin/${site}/settings/ai`)
@@ -122,5 +136,21 @@ test.describe('AI services', () => {
     await page.getByRole('option', { name: /^DeepSeek/ }).click()
     await expect(dialog.locator('#apiKey')).toHaveAttribute('required')
     await expect(dialog.getByText(/sleutel voor de nieuwe dienst|key for the new service/i)).toBeVisible()
+  })
+
+  test('the prompt bar offers a model choice when the website has several models', async ({ page }) => {
+    const { docs: [settings] } = await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })
+    const [connection] = settings.connections ?? []
+    await payload.update({
+      collection: 'assistant-settings', overrideAccess: true, id: settings.id,
+      data: { connections: [{ id: connection.id, label: connection.label, provider: connection.provider, baseURL: connection.baseURL, models: ['model-a', 'model-b'] }] },
+    })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await login(page, admin)
+    await page.goto(`/admin/${site}/pages`)
+    await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toBeVisible()
+    await page.getByRole('button', { name: /^(model)$/i }).click()
+    await page.getByRole('menuitemradio', { name: 'model-b' }).click()
+    await expect(page.getByRole('button', { name: /^(model)$/i })).toContainText('model-b')
   })
 })

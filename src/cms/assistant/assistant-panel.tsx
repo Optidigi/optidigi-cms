@@ -16,24 +16,37 @@ import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
 import { useAssistant } from './assistant-context'
 import { ChatHistory } from './chat-history'
+import { ModelMenu } from './model-menu'
 import { Conversation } from './conversation'
 
 function onAssistantPage(pathname: string) {
   return /^\/admin\/\d+\/ai(\/|$)/.test(pathname)
 }
 
+function onAISettings(pathname: string) {
+  return /^\/admin\/\d+\/settings\/ai(\/|$)/.test(pathname)
+}
+
+// Below lg the editor has its own sticky save bar with an AI button instead; beside the live
+// preview it has one at every size.
+function barVisibility(bottomBar: false | 'small' | 'always') {
+  return bottomBar === 'always' ? 'hidden' : bottomBar === 'small' ? 'hidden lg:flex' : 'flex'
+}
+
 // Lays the assistant panel next to the page so it pushes content aside instead of covering it.
 // On small screens it opens as a bottom drawer.
-export function AssistantFrame({ children }: { children: React.ReactNode }) {
+export function AssistantFrame({ platformAdmin, children }: { platformAdmin: boolean; children: React.ReactNode }) {
   const assistant = useAssistant()
   const pathname = usePathname()
   const mobile = useIsMobile()
   const { t } = useI18n()
   const setOpen = assistant?.setOpen
+  const ready = assistant?.setup.state === 'ready'
   const visible = Boolean(assistant?.open) && !onAssistantPage(pathname)
 
   useEffect(() => {
-    if (!setOpen) return
+    // Until AI is set up for the website there is nothing to open.
+    if (!setOpen || !ready) return
     const toggle = (event: KeyboardEvent) => {
       // Leave ⌘I to text fields and the rich-text editor, where it means italic.
       const target = event.target as HTMLElement | null
@@ -45,7 +58,7 @@ export function AssistantFrame({ children }: { children: React.ReactNode }) {
     }
     window.addEventListener('keydown', toggle)
     return () => window.removeEventListener('keydown', toggle)
-  }, [setOpen])
+  }, [setOpen, ready])
 
   if (!assistant) return children
   return (
@@ -53,6 +66,7 @@ export function AssistantFrame({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         {children}
         {!visible && !onAssistantPage(pathname) && assistant.setup.state === 'ready' && <AskBar />}
+        {platformAdmin && assistant.setup.state === 'missing' && !onAssistantPage(pathname) && !onAISettings(pathname) && <SetupBar />}
       </div>
       {!mobile && visible && (
         <aside aria-label={t('assistantTitle')} className="sticky top-0 flex h-svh w-[24rem] shrink-0 flex-col border-l bg-background">
@@ -149,8 +163,7 @@ function AskBar() {
     <div
       className={cn(
         'pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]',
-        // Below lg the editor has its own sticky save bar with an AI button instead.
-        assistant.bottomBar === 'always' ? 'hidden' : assistant.bottomBar === 'small' ? 'hidden lg:flex' : 'flex',
+        barVisibility(assistant.bottomBar),
       )}
     >
       <form onSubmit={send} className="pointer-events-auto w-full max-w-xl">
@@ -172,6 +185,7 @@ function AskBar() {
                 <span className="truncate">{assistant.context.title}</span>
               </Badge>
             )}
+            <ModelMenu />
             {!text && (
               <KbdGroup className="hidden md:inline-flex">
                 <Kbd>⌘</Kbd>
@@ -184,6 +198,24 @@ function AskBar() {
           </InputGroupAddon>
         </InputGroup>
       </form>
+    </div>
+  )
+}
+
+// In place of the bar for platform administrators while the website has no AI model yet: says so
+// and links to the AI settings. Members can't change this, so they see nothing.
+function SetupBar() {
+  const assistant = useAssistant()!
+  const { t } = useI18n()
+  return (
+    <div className={cn('pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]', barVisibility(assistant.bottomBar))}>
+      <div className="pointer-events-auto flex h-11 w-full max-w-xl items-center gap-2 rounded-full border bg-background pr-1.5 pl-3 text-sm text-muted-foreground shadow-lg">
+        <SparklesIcon className="size-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">{t('aiNotSetUpYet')}</span>
+        <Link href={`/admin/${assistant.site}/settings/ai`} className={cn(buttonVariants({ size: 'sm' }), 'rounded-full')}>
+          {t('setUpAI')}
+        </Link>
+      </div>
     </div>
   )
 }
