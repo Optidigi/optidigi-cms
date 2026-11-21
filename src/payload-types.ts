@@ -139,33 +139,21 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_0B9F8754".
+ * via the `definition` "LexicalNodes_CE828650".
  */
-export type LexicalNodes_0B9F8754 =
+export type LexicalNodes_CE828650 =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_0B9F8754>
+  | SerializedParagraphNode<LexicalNodes_CE828650>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedQuoteNode<LexicalNodes_0B9F8754>
-  | SerializedRelationshipNode<
-      | 'users'
-      | 'tenants'
-      | 'pages'
-      | 'articles'
-      | 'projects'
-      | 'site-settings'
-      | 'payload-kv'
-      | 'payload-locked-documents'
-      | 'payload-preferences'
-      | 'payload-migrations'
-    >
-  | SerializedAutoLinkNode<LexicalNodes_0B9F8754, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_0B9F8754, LexicalLinkFields>
-  | SerializedListNode<LexicalNodes_0B9F8754>
-  | SerializedListItemNode<LexicalNodes_0B9F8754>
-  | SerializedHeadingNode<LexicalNodes_0B9F8754>;
+  | SerializedAutoLinkNode<LexicalNodes_CE828650, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_CE828650, LexicalLinkFields>
+  | SerializedQuoteNode<LexicalNodes_CE828650>
+  | SerializedListNode<LexicalNodes_CE828650>
+  | SerializedListItemNode<LexicalNodes_CE828650>
+  | SerializedHeadingNode<LexicalNodes_CE828650, 'h2' | 'h3' | 'h4'>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -337,7 +325,7 @@ export interface Page {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_0B9F8754> | null;
+  body?: LexicalRichText<LexicalNodes_CE828650> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -365,7 +353,7 @@ export interface Article {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_0B9F8754> | null;
+  body?: LexicalRichText<LexicalNodes_CE828650> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -393,7 +381,7 @@ export interface Project {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_0B9F8754> | null;
+  body?: LexicalRichText<LexicalNodes_CE828650> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -983,22 +971,6 @@ export type SerializedUploadNode<TSlugs extends keyof Config['collections'], TFi
   };
 }[TSlugs];
 
-export interface SerializedQuoteNode<TChildren> extends SerializedLexicalElementBase<TChildren> {
-  type: 'quote';
-}
-
-export type SerializedRelationshipNode<TSlugs extends keyof Config['collections']> = {
-  type: 'relationship';
-  format: LexicalElementFormat;
-  /** @deprecated Ignored when loading. Typed as required only to match Lexical's types: rich text sent through the API, CLI or MCP may not contain it. */
-  version: number;
-} & {
-  [TSlug in TSlugs]: {
-    relationTo: TSlug;
-    value: Config['collections'][TSlug]['id'] | Config['collections'][TSlug];
-  };
-}[TSlugs];
-
 export interface LexicalLinkFields {
   [k: string]: unknown;
   doc?: {
@@ -1017,6 +989,10 @@ export interface SerializedLinkNode<TChildren, TFields = LexicalLinkFields> exte
 export interface SerializedAutoLinkNode<TChildren, TFields = LexicalLinkFields> extends SerializedLexicalElementBase<TChildren> {
   type: 'autolink';
   fields: TFields;
+}
+
+export interface SerializedQuoteNode<TChildren> extends SerializedLexicalElementBase<TChildren> {
+  type: 'quote';
 }
 
 export interface SerializedListNode<TChildren> extends SerializedLexicalElementBase<TChildren> {
