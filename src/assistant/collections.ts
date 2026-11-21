@@ -2,21 +2,26 @@ import path from 'node:path'
 import type { Access, CollectionConfig, FieldHook } from 'payload'
 import { platformOnly, signedIn } from '../site/access'
 
-export const assistantProviders = ['anthropic', 'openai', 'openai-compatible'] as const
+export const assistantProviders = ['anthropic', 'openai', 'google', 'mistral', 'gateway', 'openai-compatible'] as const
+export type AssistantProvider = (typeof assistantProviders)[number]
 
 // Chats and chat files belong to the user who created them (Payload's createdBy authorship field).
 const own: Access = ({ req }) =>
   req.user?.collection === 'users' ? { 'createdBy.value': { equals: req.user.id } } : false
 
 // The key is never readable through the API, so a new value from a request is always plain text.
-// An unchanged value equals the stored ciphertext; null clears the key.
-const encryptKey: FieldHook = ({ value, originalDoc, req }) => {
-  if (value === null) return null
-  if (typeof value !== 'string' || !value || value === originalDoc?.apiKey) return originalDoc?.apiKey
-  return req.payload.encrypt(value)
+// An unchanged or missing value keeps the stored ciphertext of the same connection (Payload matches
+// array rows by id); null clears the key. `hasKey` tells readers whether a key is stored.
+const encryptKey: FieldHook = ({ value, previousValue, siblingData, req }) => {
+  const stored = typeof previousValue === 'string' && previousValue ? previousValue : null
+  const next =
+    value === null ? null : typeof value !== 'string' || !value || value === stored ? stored : req.payload.encrypt(value)
+  siblingData.hasKey = Boolean(next)
+  return next
 }
 
-// One per website (the multi-tenant plugin treats it as a per-tenant global).
+// One per website (the multi-tenant plugin treats it as a per-tenant global). Members of the website
+// can read the connections; only platform administrators change them, and nobody reads a key.
 export const AssistantSettings: CollectionConfig = {
   slug: 'assistant-settings',
   labels: {
@@ -24,19 +29,38 @@ export const AssistantSettings: CollectionConfig = {
     plural: { en: 'AI settings', nl: 'AI-instellingen' },
   },
   access: { create: platformOnly, delete: platformOnly, read: signedIn, update: platformOnly },
-  // No version history: it would keep extra copies of the encrypted key.
+  // No version history: it would keep extra copies of the encrypted keys.
   versions: false,
   fields: [
-    { name: 'provider', type: 'select', required: true, defaultValue: 'anthropic', options: [...assistantProviders] },
-    { name: 'baseURL', type: 'text' },
     {
-      name: 'apiKey',
-      type: 'text',
-      // Encrypted with Payload's own key ring and never returned by the API.
-      access: { read: () => false },
-      hooks: { beforeChange: [encryptKey] },
+      name: 'connections',
+      type: 'array',
+      fields: [
+        { name: 'label', type: 'text', required: true },
+        { name: 'provider', type: 'select', required: true, defaultValue: 'anthropic', options: [...assistantProviders] },
+        // Required for OpenAI-compatible endpoints (OpenRouter, self-hosted); optional proxy for the others.
+        {
+          name: 'baseURL',
+          type: 'text',
+          validate: (value: unknown, { siblingData }: { siblingData: { provider?: string } }) => {
+            if (value && !/^https?:\/\/\S+$/.test(String(value))) return 'Use an http(s) URL.'
+            return siblingData?.provider === 'openai-compatible' && !value ? 'An OpenAI-compatible connection needs a base URL.' : true
+          },
+        },
+        {
+          name: 'apiKey',
+          type: 'text',
+          // Encrypted with Payload's own key ring and never returned by the API.
+          access: { read: () => false },
+          hooks: { beforeChange: [encryptKey] },
+        },
+        { name: 'hasKey', type: 'checkbox', defaultValue: false },
+        // The model IDs this connection offers in the chat.
+        { name: 'models', type: 'text', hasMany: true },
+      ],
     },
-    { name: 'models', type: 'text', hasMany: true, required: true, minRows: 1 },
+    // `connectionID:modelID`; the first enabled model is used when it's empty or no longer enabled.
+    { name: 'defaultModel', type: 'text' },
   ],
 }
 

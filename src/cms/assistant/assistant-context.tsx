@@ -9,7 +9,22 @@ import { useI18n } from '../client/i18n-provider'
 
 export type ThreadSummary = { id: number; title?: string | null; archived?: boolean | null; updatedAt: string }
 export type PageContext = { collection: string; id: number; title: string }
-type Setup = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; models: string[] }
+// A model the chat can use: `key` is `connectionID:modelID`, as the chat endpoint expects.
+export type ModelOption = { key: string; model: string; connection: string }
+type Setup = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; models: ModelOption[] }
+type SettingsDoc = {
+  connections?: { id?: string | null; label: string; hasKey?: boolean | null; models?: string[] | null }[] | null
+  defaultModel?: string | null
+}
+
+// Enabled models of connections that have a key, in order; matches the endpoint's own choice.
+function modelOptions(settings?: SettingsDoc): ModelOption[] {
+  return (settings?.connections ?? []).flatMap((connection) =>
+    connection.id && connection.hasKey
+      ? (connection.models ?? []).map((model) => ({ key: `${connection.id}:${model}`, model, connection: connection.label }))
+      : [],
+  )
+}
 
 type AssistantState = {
   site: number
@@ -141,14 +156,12 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
 
   useEffect(() => {
     let current = true
-    api<{ docs: { models?: string[] | null }[] }>(
-      'assistant-settings' + query({ 'where[tenant][equals]': site, limit: 1, depth: 0 }),
-    ).then(
+    api<{ docs: SettingsDoc[] }>('assistant-settings' + query({ 'where[tenant][equals]': site, limit: 1, depth: 0 })).then(
       ({ docs: [settings] }) => {
         if (!current) return
-        const models = settings?.models ?? []
+        const models = modelOptions(settings)
         setSetup(models.length ? { state: 'ready', models } : { state: 'missing' })
-        setModel(models[0])
+        setModel((models.find(({ key }) => key === settings?.defaultModel) ?? models[0])?.key)
       },
       () => current && setSetup({ state: 'missing' }),
     )

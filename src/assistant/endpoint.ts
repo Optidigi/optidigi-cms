@@ -1,7 +1,4 @@
-import { createAnthropic } from '@ai-sdk/anthropic'
 import { createMCPClient } from '@ai-sdk/mcp'
-import { createOpenAI } from '@ai-sdk/openai'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { convertToModelMessages, createIdGenerator, isToolUIPart, stepCountIs, streamText, validateUIMessages, type UIMessage } from 'ai'
 import { createHmac } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
@@ -9,6 +6,7 @@ import path from 'node:path'
 import { APIError, type Endpoint, type PayloadRequest } from 'payload'
 import { z } from 'zod'
 import { isPlatformAdmin, relationID, tenantIDs } from '../site/access'
+import { choiceKey, connectionWithKey, languageModel, modelEndpoints, pickModel, settingsFor } from './connections'
 import { assistantSiteHeader } from './scope'
 
 const body = z.object({
@@ -24,30 +22,6 @@ const messageID = createIdGenerator({ prefix: 'msg', size: 16 })
 
 function json(value: unknown, status: number) {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } })
-}
-
-async function settingsFor(req: PayloadRequest, site: number) {
-  const { docs: [settings] } = await req.payload.find({
-    collection: 'assistant-settings', depth: 0, limit: 1, overrideAccess: false, req,
-    where: { tenant: { equals: site } },
-  })
-  if (!settings) throw new APIError('The assistant is not set up for this website.', 409, undefined, true)
-  // The key is unreadable through access control; read it as trusted server work after the check above.
-  const { apiKey } = await req.payload.findByID({
-    collection: 'assistant-settings', id: settings.id, depth: 0, overrideAccess: true, select: { apiKey: true },
-  })
-  if (!apiKey) throw new APIError('The assistant has no API key for this website.', 409, undefined, true)
-  return { ...settings, apiKey: req.payload.decrypt(apiKey) }
-}
-
-function languageModel(settings: Awaited<ReturnType<typeof settingsFor>>, model: string) {
-  const { provider, apiKey, baseURL } = settings
-  if (provider === 'openai') return createOpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) })(model)
-  if (provider === 'openai-compatible') {
-    if (!baseURL) throw new APIError('The assistant connection has no base URL.', 409, undefined, true)
-    return createOpenAICompatible({ name: 'assistant', apiKey, baseURL })(model)
-  }
-  return createAnthropic({ apiKey, ...(baseURL ? { baseURL } : {}) })(model)
 }
 
 const filePrefix = '/api/assistant-files/file/'
@@ -117,7 +91,10 @@ async function chat(req: PayloadRequest): Promise<Response> {
   let mcp: Awaited<ReturnType<typeof createMCPClient>> | undefined
   try {
     const settings = await settingsFor(req, site)
-    const modelID = input.data.model && settings.models.includes(input.data.model) ? input.data.model : settings.models[0]
+    const choice = pickModel(settings, input.data.model)
+    if (!settings || !choice) throw new APIError('AI is not set up for this website.', 409, undefined, true)
+    const connection = await connectionWithKey(req, settings, choice.connection)
+    const modelID = choice.model
 
     const thread = input.data.thread
       ? await req.payload.findByID({ collection: 'assistant-threads', id: input.data.thread, depth: 0, overrideAccess: false, req })
@@ -137,7 +114,7 @@ async function chat(req: PayloadRequest): Promise<Response> {
     } else {
       return json({ error: 'Invalid message' }, 400)
     }
-    const model = languageModel(settings, modelID)
+    const model = languageModel(connection, modelID)
     const modelMessages = await convertToModelMessages(await inlineFiles(req, messages), { ignoreIncompleteToolCalls: true })
     const record =
       thread ??
@@ -184,7 +161,7 @@ async function chat(req: PayloadRequest): Promise<Response> {
     return result.toUIMessageStreamResponse({
       originalMessages: messages,
       generateMessageId: messageID,
-      headers: { 'Cache-Control': 'no-store', 'x-assistant-thread': String(record.id), 'x-assistant-model': modelID },
+      headers: { 'Cache-Control': 'no-store', 'x-assistant-thread': String(record.id), 'x-assistant-model': choiceKey(choice) },
       messageMetadata: ({ part }) => (part.type === 'start' ? { model: modelID } : undefined),
       onEnd: async ({ messages: finished }) => {
         // The messages field is closed to API writes; the server saves it after the ownership check above.
@@ -204,4 +181,4 @@ async function chat(req: PayloadRequest): Promise<Response> {
   }
 }
 
-export const assistantEndpoints: Endpoint[] = [{ path: '/assistant/chat', method: 'post', handler: chat }]
+export const assistantEndpoints: Endpoint[] = [{ path: '/assistant/chat', method: 'post', handler: chat }, ...modelEndpoints]
