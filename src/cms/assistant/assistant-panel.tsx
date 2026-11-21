@@ -4,7 +4,7 @@ import { BotIcon, HistoryIcon, Maximize2Icon, PlusIcon, XIcon } from 'lucide-rea
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
@@ -91,12 +91,11 @@ function PanelHeader() {
       <Tooltip>
         <TooltipTrigger
           render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
+            <Link
+              href={`/admin/${assistant.site}/assistant`}
               aria-label={t('openFullPage')}
-              nativeButton={false}
-              render={<Link href={`/admin/${assistant.site}/assistant`} onClick={() => assistant.setOpen(false)} />}
+              className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
+              onClick={() => assistant.setOpen(false)}
             />
           }
         >

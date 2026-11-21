@@ -2,7 +2,7 @@ import { PlusIcon } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Where } from 'payload'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { getLanguage, getTranslator, requireSite } from '@/cms/server'
 import { contentLocale, isSection, sections } from '@/cms/sections'
 import { CollectionTable } from '@/cms/content/collection-table'
@@ -54,10 +54,10 @@ export default async function CollectionPage({
         <PageTitle
           title={t(label)}
           actions={
-            <Button nativeButton={false} render={<Link href={`${base}/new?locale=${locale}`} />}>
+            <Link href={`${base}/new?locale=${locale}`} className={buttonVariants()}>
               <PlusIcon data-icon="inline-start" />
               {t('newItem')}
-            </Button>
+            </Link>
           }
         />
         <CollectionToolbar />

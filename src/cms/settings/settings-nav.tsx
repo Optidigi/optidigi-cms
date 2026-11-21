@@ -3,7 +3,7 @@
 import { ChevronDownIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,17 +60,14 @@ export function SettingsNav({ site, platformAdmin }: { site?: number; platformAd
           <div key={group.label} className="flex flex-col gap-1">
             <p className="px-2 text-xs font-medium text-muted-foreground">{t(group.label)}</p>
             {group.items.map((item) => (
-              <Button
+              <Link
                 key={item.href}
-                variant={active?.href === item.href ? 'secondary' : 'ghost'}
-                size="sm"
-                className="justify-start"
+                href={item.href}
                 aria-current={active?.href === item.href ? 'page' : undefined}
-                nativeButton={false}
-                render={<Link href={item.href} />}
+                className={buttonVariants({ variant: active?.href === item.href ? 'secondary' : 'ghost', size: 'sm', className: 'justify-start' })}
               >
                 {t(item.label)}
-              </Button>
+              </Link>
             ))}
           </div>
         ))}
