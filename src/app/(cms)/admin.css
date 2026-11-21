@@ -118,6 +118,147 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Space around the page card of the inset sidebar layout (from md up, as in the sidebar block). */
+:root {
+    --inset-gap: 0px;
+}
+@media (width >= 48rem) {
+    :root {
+        --inset-gap: 0.5rem;
+    }
+}
+
+/* Appearance preferences. The server sets these attributes on <html>; each one only changes
+   shadcn's own theme tokens, so every component follows. */
+
+/* Accent colours: primary, ring and sidebar highlight from shadcn's official themes
+   (https://ui.shadcn.com/r/themes.css). */
+[data-accent='blue'] {
+    --primary: hsl(221.2 83.2% 53.3%);
+    --primary-foreground: hsl(210 40% 98%);
+    --ring: hsl(221.2 83.2% 53.3%);
+    --sidebar-primary: hsl(221.2 83.2% 53.3%);
+    --sidebar-primary-foreground: hsl(210 40% 98%);
+    --sidebar-ring: hsl(221.2 83.2% 53.3%);
+}
+[data-accent='violet'] {
+    --primary: hsl(262.1 83.3% 57.8%);
+    --primary-foreground: hsl(210 20% 98%);
+    --ring: hsl(262.1 83.3% 57.8%);
+    --sidebar-primary: hsl(262.1 83.3% 57.8%);
+    --sidebar-primary-foreground: hsl(210 20% 98%);
+    --sidebar-ring: hsl(262.1 83.3% 57.8%);
+}
+[data-accent='green'] {
+    --primary: hsl(142.1 76.2% 36.3%);
+    --primary-foreground: hsl(355.7 100% 97.3%);
+    --ring: hsl(142.1 76.2% 36.3%);
+    --sidebar-primary: hsl(142.1 76.2% 36.3%);
+    --sidebar-primary-foreground: hsl(355.7 100% 97.3%);
+    --sidebar-ring: hsl(142.1 76.2% 36.3%);
+}
+[data-accent='orange'] {
+    --primary: hsl(24.6 95% 53.1%);
+    --primary-foreground: hsl(60 9.1% 97.8%);
+    --ring: hsl(24.6 95% 53.1%);
+    --sidebar-primary: hsl(24.6 95% 53.1%);
+    --sidebar-primary-foreground: hsl(60 9.1% 97.8%);
+    --sidebar-ring: hsl(24.6 95% 53.1%);
+}
+[data-accent='rose'] {
+    --primary: hsl(346.8 77.2% 49.8%);
+    --primary-foreground: hsl(355.7 100% 97.3%);
+    --ring: hsl(346.8 77.2% 49.8%);
+    --sidebar-primary: hsl(346.8 77.2% 49.8%);
+    --sidebar-primary-foreground: hsl(355.7 100% 97.3%);
+    --sidebar-ring: hsl(346.8 77.2% 49.8%);
+}
+.dark[data-accent='blue'] {
+    --primary: hsl(217.2 91.2% 59.8%);
+    --primary-foreground: hsl(222.2 47.4% 11.2%);
+    --ring: hsl(224.3 76.3% 48%);
+    --sidebar-primary: hsl(217.2 91.2% 59.8%);
+    --sidebar-primary-foreground: hsl(222.2 47.4% 11.2%);
+    --sidebar-ring: hsl(224.3 76.3% 48%);
+}
+.dark[data-accent='violet'] {
+    --primary: hsl(263.4 70% 50.4%);
+    --primary-foreground: hsl(210 20% 98%);
+    --ring: hsl(263.4 70% 50.4%);
+    --sidebar-primary: hsl(263.4 70% 50.4%);
+    --sidebar-primary-foreground: hsl(210 20% 98%);
+    --sidebar-ring: hsl(263.4 70% 50.4%);
+}
+.dark[data-accent='green'] {
+    --primary: hsl(142.1 70.6% 45.3%);
+    --primary-foreground: hsl(144.9 80.4% 10%);
+    --ring: hsl(142.4 71.8% 29.2%);
+    --sidebar-primary: hsl(142.1 70.6% 45.3%);
+    --sidebar-primary-foreground: hsl(144.9 80.4% 10%);
+    --sidebar-ring: hsl(142.4 71.8% 29.2%);
+}
+.dark[data-accent='orange'] {
+    --primary: hsl(20.5 90.2% 48.2%);
+    --primary-foreground: hsl(60 9.1% 97.8%);
+    --ring: hsl(20.5 90.2% 48.2%);
+    --sidebar-primary: hsl(20.5 90.2% 48.2%);
+    --sidebar-primary-foreground: hsl(60 9.1% 97.8%);
+    --sidebar-ring: hsl(20.5 90.2% 48.2%);
+}
+.dark[data-accent='rose'] {
+    --primary: hsl(346.8 77.2% 49.8%);
+    --primary-foreground: hsl(355.7 100% 97.3%);
+    --ring: hsl(346.8 77.2% 49.8%);
+    --sidebar-primary: hsl(346.8 77.2% 49.8%);
+    --sidebar-primary-foreground: hsl(355.7 100% 97.3%);
+    --sidebar-ring: hsl(346.8 77.2% 49.8%);
+}
+
+[data-font='inter'] {
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+[data-font='atkinson'] {
+    --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+}
+[data-font='system'] {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Everything is sized in rem, so the root size scales the whole interface. */
+[data-text-size='large'] {
+    font-size: 112.5%;
+}
+
+[data-radius='none'] {
+    --radius: 0rem;
+}
+[data-radius='small'] {
+    --radius: 0.375rem;
+}
+[data-radius='round'] {
+    --radius: 1rem;
+}
+
+/* Reduced motion: always when the user asks for it, otherwise when the device asks for it. */
+[data-reduce-motion='true'] *,
+[data-reduce-motion='true'] ::before,
+[data-reduce-motion='true'] ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

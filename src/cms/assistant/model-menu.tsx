@@ -13,6 +13,7 @@ import {
 import { InputGroupButton } from '@/components/ui/input-group'
 import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
+import { ServiceLogo } from '../settings/service-logo'
 import { useAssistant } from './assistant-context'
 
 // The chat's model choice, grouped by connection. Shown only when the website has more than one
@@ -23,7 +24,7 @@ export function ModelMenu({ className }: { className?: string }) {
   const models = assistant?.setup.state === 'ready' ? assistant.setup.models : []
   if (!assistant || models.length < 2) return null
   const selected = models.find(({ key }) => key === assistant.model)
-  const connections = [...new Map(models.map((option) => [option.connectionID, option.connection]))]
+  const connections = [...new Map(models.map((option) => [option.connectionID, option]))]
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<InputGroupButton size="sm" className={cn('min-w-0', className)} aria-label={t('model')} />}>
@@ -32,9 +33,12 @@ export function ModelMenu({ className }: { className?: string }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup value={assistant.model} onValueChange={(value) => assistant.setModel(String(value))}>
-          {connections.map(([id, label]) => (
+          {connections.map(([id, first]) => (
             <DropdownMenuGroup key={id}>
-              <DropdownMenuLabel>{label}</DropdownMenuLabel>
+              <DropdownMenuLabel className="flex items-center gap-2">
+                <ServiceLogo service={first.service} className="size-3.5" />
+                {first.connection}
+              </DropdownMenuLabel>
               {models
                 .filter((option) => option.connectionID === id)
                 .map((option) => (
