@@ -153,8 +153,11 @@ export function SiteSettingsForm({
                     {/* Pick one of the website's pages, or type any path on the website. */}
                     <Combobox
                       items={pageLinks.map(({ href }) => href)}
+                      // The selection follows the typed path, so closing the list never restores an older pick.
+                      value={pageLinks.some(({ href }) => href === link.href) ? link.href : null}
                       inputValue={link.href}
-                      onInputValueChange={(value) => setLink(index, 'href', value)}
+                      // Base UI clears the input when the list closes without a choice; keep the typed path.
+                      onInputValueChange={(value, { reason }) => reason !== 'input-clear' && setLink(index, 'href', value)}
                       onValueChange={(value) => typeof value === 'string' && setLink(index, 'href', value)}
                     >
                       <ComboboxInput id={`nav-href-${index}`} required placeholder="/" className="w-full" />

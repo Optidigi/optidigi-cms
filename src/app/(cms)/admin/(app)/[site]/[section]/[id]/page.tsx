@@ -12,7 +12,7 @@ export default async function DocumentPage({
   searchParams,
 }: {
   params: Promise<{ site: string; section: string; id: string }>
-  searchParams: Promise<{ locale?: string; preview?: string }>
+  searchParams: Promise<{ locale?: string; preview?: string; restored?: string }>
 }) {
   const { site: siteParam, section, id: idParam } = await params
   if (!isSection(section)) notFound()
@@ -75,7 +75,9 @@ export default async function DocumentPage({
         ]}
       />
       <DocumentEditor
-        key={`${document?.id ?? 'new'}-${locale}-${document?.updatedAt ?? ''}`}
+        // Not keyed on updatedAt: saves and refreshes keep the editor (and its preview) mounted.
+        // Restoring a version passes `restored` to load the restored values into a fresh editor.
+        key={`${document?.id ?? 'new'}-${locale}-${query.restored ?? ''}`}
         site={site.id}
         section={section}
         collection={collection}
