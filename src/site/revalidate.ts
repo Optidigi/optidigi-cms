@@ -3,7 +3,14 @@ import { relationID } from './access'
 
 // Tells a website to refresh after published content changes, modelled on the revalidate hooks in
 // Payload's website template. Only websites with a refresh URL are called; failures are logged.
-async function notify(req: PayloadRequest, collection: string, doc: { tenant?: unknown; slug?: unknown }) {
+// The call doesn't hold up the save, and it can arrive just before the save commits, so websites
+// should mark their cache stale rather than refetch immediately.
+async function notify(
+  req: PayloadRequest,
+  collection: string,
+  doc: { tenant?: unknown; slug?: unknown },
+  previousSlug?: unknown,
+) {
   const tenantID = relationID(doc.tenant)
   if (!tenantID || req.context.disableRevalidate) return
   const tenant = await req.payload.findByID({
@@ -18,7 +25,12 @@ async function notify(req: PayloadRequest, collection: string, doc: { tenant?: u
         'Content-Type': 'application/json',
         ...(tenant.refreshSecret ? { Authorization: `Bearer ${req.payload.decrypt(tenant.refreshSecret)}` } : {}),
       },
-      body: JSON.stringify({ collection, slug: typeof doc.slug === 'string' ? doc.slug : null, locale: req.locale ?? null }),
+      // Publishing covers every translation, so no locale is sent. A renamed document also sends its old slug.
+      body: JSON.stringify({
+        collection,
+        slug: typeof doc.slug === 'string' ? doc.slug : null,
+        previousSlug: typeof previousSlug === 'string' && previousSlug !== doc.slug ? previousSlug : null,
+      }),
       redirect: 'error',
       signal: AbortSignal.timeout(5_000),
     })
@@ -29,11 +41,13 @@ async function notify(req: PayloadRequest, collection: string, doc: { tenant?: u
 }
 
 export const refreshAfterChange: CollectionAfterChangeHook = async ({ collection, doc, previousDoc, req }) => {
-  if (doc?._status === 'published' || previousDoc?._status === 'published') await notify(req, collection.slug, doc)
+  if (doc?._status === 'published' || previousDoc?._status === 'published') {
+    void notify(req, collection.slug, doc, previousDoc?.slug)
+  }
   return doc
 }
 
 export const refreshAfterDelete: CollectionAfterDeleteHook = async ({ collection, doc, req }) => {
-  if (doc?._status === 'published') await notify(req, collection.slug, doc)
+  if (doc?._status === 'published') void notify(req, collection.slug, doc)
   return doc
 }

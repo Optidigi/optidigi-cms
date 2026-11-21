@@ -78,6 +78,7 @@ export const AssistantFiles: CollectionConfig = {
     singular: { en: 'Assistant file', nl: 'Assistentbestand' },
     plural: { en: 'Assistant files', nl: 'Assistentbestanden' },
   },
+  // Chat images are never edited; uploads are replaced instead.
   access: { create: signedIn, delete: own, read: own, update: () => false },
   versions: false,
   fields: [],

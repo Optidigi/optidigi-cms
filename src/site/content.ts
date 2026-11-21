@@ -33,11 +33,15 @@ export const Tenants: CollectionConfig = {
       type: 'group',
       access: { read: signedIn },
       admin: { description: 'Path on the website for each collection, with {slug} for the document slug, e.g. /blog/{slug}.' },
-      fields: [
-        { name: 'pages', label: { en: 'Pages', nl: 'Pagina’s' }, type: 'text' },
-        { name: 'articles', label: { en: 'Articles', nl: 'Artikelen' }, type: 'text' },
-        { name: 'projects', label: { en: 'Portfolio', nl: 'Portfolio' }, type: 'text' },
-      ],
+      fields: (['pages', 'articles', 'projects'] as const).map((name) => ({
+        name,
+        label: { pages: { en: 'Pages', nl: 'Pagina’s' }, articles: { en: 'Articles', nl: 'Artikelen' }, projects: { en: 'Portfolio', nl: 'Portfolio' } }[name],
+        type: 'text' as const,
+        // Same rule as website navigation links: a path on the website itself.
+        validate: (value: unknown) =>
+          value == null || value === '' || (typeof value === 'string' && /^\/(?![\/\\])/.test(value) && !/[\\\s]/.test(value))
+          || 'Use a site-relative path starting with a single slash.',
+      })),
     },
     {
       name: 'refreshUrl',

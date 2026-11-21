@@ -56,6 +56,12 @@ docker compose ps
 curl --fail --silent --show-error https://cms.optidigi.nl/api/health
 ```
 
-The app runs `payload migrate` from the release image before starting Next.js. A failed migration prevents the server from starting. Check `docker compose logs app postgres` if readiness fails. Roll back by setting `CMS_IMAGE` to the previous digest and recreating the app only when the migrated schema remains compatible.
+The app runs `payload migrate` from the release image before starting Next.js. A failed migration prevents the server from starting. Check `docker compose logs app postgres` if readiness fails. Roll back by setting `CMS_IMAGE` to the previous digest and recreating the app only when the migrated schema remains compatible. The admin replacement release is **not** schema-compatible with older images: its migrations drop the old assistant tables. Before that cutover, take a `pg_dump` and copy the uploads volume. Rolling back then means restoring both and starting the previous digest with its old compose file, which mounts the `assistant_key` secret.
 
-Verify that the assistant streams through Cloudflare, signed-out visitors cannot open it, and the Optidigi pilot keeps drafts private while publishing updates without a site redeploy. Keep the assistant route free of Traefik buffering and shared caching. Off-host backup setup is deferred to the VPS refactor.
+Verify the following after a release:
+- The assistant (`/api/assistant/chat`) streams through Cloudflare, and signed-out visitors cannot use it. Keep that route free of Traefik buffering and shared caching.
+- Each website's assistant connection is configured under Settings → Assistant, by a platform admin.
+- Anonymous `GET /api/pages?where[tenant.slug][equals]=…` returns published documents only.
+- The pilot website still previews drafts. It keeps using `/api/site-content` until it moves to Payload's REST API with the preview grant (see `tasks/admin-replacement-plan.md`, phase 5).
+
+Set the `SMTP_*` variables in `.env` to send password-reset email; without them, reset links appear in the app logs. Off-host backup setup is deferred to the VPS refactor.

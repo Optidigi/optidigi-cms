@@ -97,13 +97,24 @@ export async function authorizePreview(req: PayloadRequest, tenant: number, loca
   return permitted(actor, tenant) ? actor : undefined
 }
 
-// Payload auth strategy for website previews: a valid grant signs in as its user for GET requests
-// only, limited to the grant's website as an editor. Websites then read drafts through Payload's
-// normal REST API with `draft=true`, and nothing can be written with a grant.
+// REST reads a website needs for a preview: its content collections and media files.
+const previewPath = /^\/api\/(pages|articles|projects|site-settings|media)(\/|$)/
+
+// Payload auth strategy for website previews: a valid grant signs in as its user only for GET and HEAD
+// requests to the content REST paths above, limited to the grant's website as an editor. Websites read
+// drafts through Payload's normal REST API with `draft=true`; nothing else accepts a grant, so it can't
+// write, reach the admin, server functions, chats, preferences or the user's own account.
 export const previewGrantStrategy: AuthStrategy = {
   name: 'preview-grant',
   async authenticate({ headers, payload, req }) {
-    if (req?.method && req.method !== 'GET' && req.method !== 'HEAD') return { user: null }
+    if (req?.method !== 'GET' && req?.method !== 'HEAD') return { user: null }
+    let path: string
+    try {
+      path = new URL(req.url ?? '', 'http://localhost').pathname
+    } catch {
+      return { user: null }
+    }
+    if (!previewPath.test(path)) return { user: null }
     const grant = readGrant(headers)
     if (!grant) return { user: null }
     const user = (await payload.findByID({
