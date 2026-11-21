@@ -19,11 +19,11 @@ export default async function AssistantSettingsPage({ params }: { params: Promis
         crumbs={[
           { label: site.name, href: `/admin/${site.id}` },
           { label: t('websiteSettings'), href: `/admin/${site.id}/settings` },
-          { label: t('assistant') },
+          { label: t('aiSettings') },
         ]}
       />
       <SettingsFrame site={site.id}>
-        <PageTitle title={t('assistant')} description={t('assistantSettingsDescription')} />
+        <PageTitle title={t('aiSettings')} description={t('assistantSettingsDescription')} />
         {!editable && (
           <Alert>
             <AlertDescription>{t('platformOnlySettings')}</AlertDescription>

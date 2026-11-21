@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { AskField } from '../assistant/assistant-panel'
 import { LanguageMenu } from './language-menu'
 
 export type Crumb = { label: string; href?: string }
@@ -46,7 +45,6 @@ export function SiteHeader({ crumbs, children }: { crumbs: Crumb[]; children?: R
       </div>
       <div className="flex shrink-0 items-center gap-2 px-4">
         {children}
-        <AskField />
         <LanguageMenu />
       </div>
     </header>

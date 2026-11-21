@@ -4,7 +4,7 @@ import { useChat } from '@ai-sdk/react'
 import { getToolName, isToolUIPart, type FileUIPart, type UIMessage } from 'ai'
 import {
   ArrowUpIcon,
-  BotIcon,
+  SparklesIcon,
   CheckIcon,
   ChevronDownIcon,
   CopyIcon,
@@ -45,7 +45,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message'
 import {
   MessageScroller,
@@ -69,7 +68,9 @@ import { cn } from '@/lib/utils'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import type { MessageKey } from '../i18n'
+import { ApprovalCard } from './approval-card'
 import { useAssistant } from './assistant-context'
+import { toolLabel } from './tool-label'
 
 // Chat composition from the shadcn AI Elements docs (Chat, Message, Tool, Confirmation,
 // Prompt Input, Model Selector, Suggestion), with state from the AI SDK's useChat.
@@ -89,7 +90,7 @@ export function Conversation({ className, compact = false }: { className?: strin
       <Empty className={className}>
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <BotIcon />
+            <SparklesIcon />
           </EmptyMedia>
           <EmptyTitle>{t('notSetUp')}</EmptyTitle>
           <EmptyDescription>{t('notSetUpDescription')}</EmptyDescription>
@@ -112,7 +113,7 @@ export function Conversation({ className, compact = false }: { className?: strin
                 <Empty>
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
-                      <BotIcon />
+                      <SparklesIcon />
                     </EmptyMedia>
                     <EmptyTitle>{t('assistantTitle')}</EmptyTitle>
                     <EmptyDescription>{t('assistantDescription')}</EmptyDescription>
@@ -184,10 +185,6 @@ function textOf(message: UIMessage) {
   return message.parts.flatMap((part) => (part.type === 'text' ? [part.text] : [])).join('\n\n')
 }
 
-function toolLabel(name: string) {
-  return name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
-}
-
 function ChatMessage({
   message,
   streaming,
@@ -203,7 +200,7 @@ function ChatMessage({
   onApprove: (id: string, approved: boolean) => void
   canAct: boolean
 }) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [copied, setCopied] = useState(false)
   const text = textOf(message)
 
@@ -260,31 +257,16 @@ function ChatMessage({
             )
           }
           if (isToolUIPart(part)) {
-            const tool = toolLabel(getToolName(part))
+            const name = getToolName(part)
             if (part.state === 'approval-requested') {
               return (
-                <Item key={index} variant="outline" size="sm">
-                  <ItemMedia variant="icon">
-                    <FileTextIcon />
-                  </ItemMedia>
-                  <ItemContent className="min-w-0">
-                    <ItemTitle>{t('approveTitle', { tool })}</ItemTitle>
-                    <ItemDescription>{t('approveDescription')}</ItemDescription>
-                    <CodeBlock size="sm" className="mt-2">
-                      <CodeBlockContent wrap className="max-h-64">
-                        {JSON.stringify(part.input, null, 2)}
-                      </CodeBlockContent>
-                    </CodeBlock>
-                  </ItemContent>
-                  <ItemActions>
-                    <Button size="sm" variant="outline" onClick={() => onApprove(part.approval.id, false)}>
-                      {t('deny')}
-                    </Button>
-                    <Button size="sm" onClick={() => onApprove(part.approval.id, true)}>
-                      {t('approve')}
-                    </Button>
-                  </ItemActions>
-                </Item>
+                <ApprovalCard
+                  key={index}
+                  tool={name}
+                  input={part.input}
+                  disabled={!canAct}
+                  onAnswer={(approved) => onApprove(part.approval.id, approved)}
+                />
               )
             }
             const denied = part.state === 'output-denied' || (part.state === 'approval-responded' && !part.approval.approved)
@@ -295,7 +277,7 @@ function ChatMessage({
                     <TraceIcon>
                       <WrenchIcon />
                     </TraceIcon>
-                    <TraceTitle>{t('denied', { tool })}</TraceTitle>
+                    <TraceTitle>{toolLabel(name, part.input, 'denied', t, language)}</TraceTitle>
                   </TraceLine>
                 </Trace>
               )
@@ -310,7 +292,7 @@ function ChatMessage({
                         <TraceIcon>
                           <WrenchIcon />
                         </TraceIcon>
-                        <TraceTitle>{failed ? t('failed', { tool }) : t('ran', { tool })}</TraceTitle>
+                        <TraceTitle>{toolLabel(name, part.input, failed ? 'failed' : 'done', t, language)}</TraceTitle>
                       </TraceLine>
                     </TraceCollapsibleTrigger>
                     <TraceCollapsibleContent>
@@ -330,7 +312,7 @@ function ChatMessage({
                   <TraceIcon>
                     <WrenchIcon />
                   </TraceIcon>
-                  <TraceTitle>{streaming ? t('running', { tool }) : t('failed', { tool })}</TraceTitle>
+                  <TraceTitle>{toolLabel(name, part.input, streaming ? 'running' : 'failed', t, language)}</TraceTitle>
                 </TraceLine>
               </Trace>
             )

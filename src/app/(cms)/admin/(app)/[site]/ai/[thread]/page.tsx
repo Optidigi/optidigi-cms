@@ -11,7 +11,7 @@ export default async function AssistantThreadRoute({ params }: { params: Promise
   const [{ site }, t] = await Promise.all([requireSite(siteParam), getTranslator()])
   return (
     <div className="flex h-svh flex-col">
-      <SiteHeader crumbs={[{ label: site.name, href: `/admin/${site.id}` }, { label: t('assistant'), href: `/admin/${site.id}/assistant` }]} />
+      <SiteHeader crumbs={[{ label: site.name, href: `/admin/${site.id}` }, { label: t('assistant'), href: `/admin/${site.id}/ai` }]} />
       <AssistantPage thread={thread} />
     </div>
   )

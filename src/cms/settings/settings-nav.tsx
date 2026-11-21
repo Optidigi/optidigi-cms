@@ -30,7 +30,7 @@ export function SettingsNav({ site, platformAdmin }: { site?: number; platformAd
             { label: 'general' as const, href: `/admin/${site}/settings/general` },
             { label: 'navigation' as const, href: `/admin/${site}/settings/navigation` },
             { label: 'seo' as const, href: `/admin/${site}/settings/seo` },
-            { label: 'assistant' as const, href: `/admin/${site}/settings/assistant` },
+            { label: 'aiSettings' as const, href: `/admin/${site}/settings/ai` },
           ],
         }]
       : []),

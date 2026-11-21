@@ -8,6 +8,13 @@ const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // The AI pages moved from /assistant to /ai.
+  async redirects() {
+    return [
+      { source: '/admin/:site/assistant/:path*', destination: '/admin/:site/ai/:path*', permanent: true },
+      { source: '/admin/:site/settings/assistant', destination: '/admin/:site/settings/ai', permanent: true },
+    ]
+  },
   images: {
     localPatterns: [
       {
