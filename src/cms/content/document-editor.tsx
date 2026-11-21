@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSet, FieldLegend } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -292,10 +292,10 @@ export function DocumentEditor({
             {document && (
               <div className="grid gap-2">
                 {previewHref && (
-                  <Button variant="ghost" className="justify-start" nativeButton={false} render={<a href={previewHref} target="_blank" rel="noreferrer" />}>
+                  <a href={previewHref} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'ghost', className: 'justify-start' })}>
                     <ExternalLinkIcon data-icon="inline-start" />
                     {t('preview')}
-                  </Button>
+                  </a>
                 )}
                 <VersionsSheet collection={collection} versions={versions} language={language} disabled={lockedByOther} />
                 <Button variant="ghost" className="justify-start text-destructive" disabled={lockedByOther} onClick={() => setDeleting(true)}>

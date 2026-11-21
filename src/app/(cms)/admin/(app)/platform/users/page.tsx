@@ -1,7 +1,7 @@
 import { PlusIcon } from 'lucide-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getTranslator, requirePlatformAdmin } from '@/cms/server'
 import { SettingsFrame } from '@/cms/settings/settings-layout'
@@ -21,10 +21,10 @@ export default async function UsersPage() {
           title={t('users')}
           description={t('usersDescription')}
           actions={
-            <Button nativeButton={false} render={<Link href="/admin/platform/users/new" />}>
+            <Link href="/admin/platform/users/new" className={buttonVariants()}>
               <PlusIcon data-icon="inline-start" />
               {t('newUser')}
-            </Button>
+            </Link>
           }
         />
         <div className="overflow-hidden rounded-md border">

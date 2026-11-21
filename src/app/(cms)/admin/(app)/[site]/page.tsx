@@ -1,6 +1,6 @@
 import { BotIcon, ExternalLinkIcon } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { formatDate, StatusBadge } from '@/cms/content/status-badge'
@@ -69,14 +69,14 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
           description={t('overviewDescription')}
           actions={
             <>
-              <Button variant="outline" nativeButton={false} render={<a href={site.siteOrigin} target="_blank" rel="noreferrer" />}>
+              <a href={site.siteOrigin} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline' })}>
                 <ExternalLinkIcon data-icon="inline-start" />
                 {t('openWebsite')}
-              </Button>
-              <Button nativeButton={false} render={<Link href={`/admin/${site.id}/assistant`} />}>
+              </a>
+              <Link href={`/admin/${site.id}/assistant`} className={buttonVariants()}>
                 <BotIcon data-icon="inline-start" />
                 {t('askAssistant')}
-              </Button>
+              </Link>
             </>
           }
         />

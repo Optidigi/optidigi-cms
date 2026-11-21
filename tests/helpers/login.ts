@@ -1,31 +1,10 @@
 import type { Page } from '@playwright/test'
-import { expect } from '@playwright/test'
 
-export interface LoginOptions {
-  page: Page
-  serverURL?: string
-  user: {
-    email: string
-    password: string
-  }
-}
-
-/**
- * Logs the user into the admin panel via the login page.
- */
-export async function login({
-  page,
-  serverURL = 'http://localhost:3000',
-  user,
-}: LoginOptions): Promise<void> {
-  await page.goto(`${serverURL}/admin/login`)
-
-  await page.fill('#field-email', user.email)
-  await page.fill('#field-password', user.password)
-  await page.click('button[type="submit"]')
-
-  await page.waitForURL(`${serverURL}/admin`)
-
-  const dashboardArtifact = page.locator('.step-nav__first')
-  await expect(dashboardArtifact).toBeVisible()
+/** Signs in through the admin login page and waits for a website overview. */
+export async function login(page: Page, user: { email: string; password: string }) {
+  await page.goto('/admin/login')
+  await page.locator('#email').fill(user.email)
+  await page.locator('#password').fill(user.password)
+  await page.getByRole('button', { name: /inloggen|sign in/i }).click()
+  await page.waitForURL(/\/admin\/\d+$/)
 }

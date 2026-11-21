@@ -1,6 +1,6 @@
 import { PlusIcon } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getTranslator, requirePlatformAdmin } from '@/cms/server'
 import { SettingsFrame } from '@/cms/settings/settings-layout'
@@ -20,10 +20,10 @@ export default async function WebsitesPage() {
           title={t('websites')}
           description={t('websitesDescription')}
           actions={
-            <Button nativeButton={false} render={<Link href="/admin/platform/websites/new" />}>
+            <Link href="/admin/platform/websites/new" className={buttonVariants()}>
               <PlusIcon data-icon="inline-start" />
               {t('newWebsite')}
-            </Button>
+            </Link>
           }
         />
         <div className="overflow-hidden rounded-md border">

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { getTranslator } from '@/cms/server'
 
@@ -12,9 +12,9 @@ export default async function NotFound() {
         <EmptyDescription>{t('notFoundDescription')}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button nativeButton={false} render={<Link href="/admin" />}>
+        <Link href="/admin" className={buttonVariants()}>
           {t('overview')}
-        </Button>
+        </Link>
       </EmptyContent>
     </Empty>
   )
