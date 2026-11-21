@@ -33,6 +33,9 @@ export function AssistantFrame({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!setOpen) return
     const toggle = (event: KeyboardEvent) => {
+      // Leave ⌘I to text fields and the rich-text editor, where it means italic.
+      const target = event.target as HTMLElement | null
+      if (event.defaultPrevented || target?.isContentEditable || target?.closest('textarea')) return
       if (event.key.toLowerCase() === 'i' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault()
         setOpen((current: boolean) => !current)
@@ -140,7 +143,8 @@ export function AskField() {
           onFocus={() => assistant.setup.state !== 'ready' && assistant.setOpen(true)}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' && text.trim() && assistant.setup.state === 'ready') {
+            const idle = assistant.chat.status === 'ready' || assistant.chat.status === 'error'
+            if (event.key === 'Enter' && text.trim() && assistant.setup.state === 'ready' && idle) {
               event.preventDefault()
               assistant.setOpen(true)
               assistant.chat.sendMessage({ text: text.trim() })

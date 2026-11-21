@@ -310,6 +310,16 @@ export interface Tenant {
   name: string;
   slug: string;
   siteOrigin: string;
+  /**
+   * Path on the website for each collection, with {slug} for the document slug, e.g. /blog/{slug}.
+   */
+  previewPaths?: {
+    pages?: string | null;
+    articles?: string | null;
+    projects?: string | null;
+  };
+  refreshUrl?: string | null;
+  refreshSecret?: string | null;
   createdBy?: {
     relationTo: 'users';
     value: number | User;
@@ -744,6 +754,15 @@ export interface TenantsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   siteOrigin?: T;
+  previewPaths?:
+    | T
+    | {
+        pages?: T;
+        articles?: T;
+        projects?: T;
+      };
+  refreshUrl?: T;
+  refreshSecret?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;

@@ -173,6 +173,29 @@ describe('tenant content', () => {
     await payload.delete({ collection: 'articles', id: created.id, overrideAccess: true })
   })
 
+  it('limits AI version reads and media to the chat website', async () => {
+    const req = request('https://cms.optidigi.nl/api/mcp')
+    req.headers.set(assistantSiteHeader, String(tenantA))
+    const versions = await payload.findVersions({ collection: 'pages', depth: 0, overrideAccess: false, req })
+    expect(versions.docs.length).toBeGreaterThan(0)
+    expect(new Set(versions.docs.map(({ version }) => relationID(version.tenant)))).toEqual(new Set([tenantA]))
+    const media = await payload.find({ collection: 'media', depth: 0, overrideAccess: false, req })
+    expect(media.docs.every(({ tenant }) => relationID(tenant) === tenantA)).toBe(true)
+  })
+
+  it('signs a preview grant in as a read-only editor of its website only', async () => {
+    const preview = await previewURL('pages', home, 'nl', request('https://cms.optidigi.nl/api'))
+    const grant = new URL(preview!).searchParams.get('grant')!
+    const { user } = await payload.auth({ headers: new Headers({ authorization: `Bearer ${grant}` }) })
+    expect(user?.id).toBe(actor.id)
+    expect(user?.tenants?.map(({ tenant }) => relationID(tenant))).toEqual([tenantA])
+    const { docs } = await payload.find({ collection: 'pages', depth: 0, draft: true, locale: 'nl', overrideAccess: false, user })
+    expect(docs.map(({ tenant }) => relationID(tenant))).toEqual([tenantA])
+    expect(docs[0].heading).toBe('Draft only')
+    const forged = grant.slice(0, -2) + (grant.endsWith('AA') ? 'BB' : 'AA')
+    expect((await payload.auth({ headers: new Headers({ authorization: `Bearer ${forged}` }) })).user).toBeNull()
+  })
+
   it('keeps assistant chats private to their author and model keys unreadable', async () => {
     const thread = await payload.create({
       collection: 'assistant-threads', overrideAccess: false, user: actor,

@@ -1,6 +1,7 @@
 import type { CollectionConfig, Field } from 'payload'
 import { anyone, platformOnly, signedIn, signedInOrPublished, tenantDelete } from './access'
 import { previewURL } from './preview'
+import { refreshAfterChange, refreshAfterDelete } from './revalidate'
 
 const drafts = { drafts: { autosave: true } }
 
@@ -24,6 +25,48 @@ export const Tenants: CollectionConfig = {
         } catch {
           return 'Enter an HTTPS origin without a path.'
         }
+      },
+    },
+    {
+      name: 'previewPaths',
+      label: { en: 'Preview addresses', nl: 'Voorbeeldadressen' },
+      type: 'group',
+      access: { read: signedIn },
+      admin: { description: 'Path on the website for each collection, with {slug} for the document slug, e.g. /blog/{slug}.' },
+      fields: [
+        { name: 'pages', label: { en: 'Pages', nl: 'Pagina’s' }, type: 'text' },
+        { name: 'articles', label: { en: 'Articles', nl: 'Artikelen' }, type: 'text' },
+        { name: 'projects', label: { en: 'Portfolio', nl: 'Portfolio' }, type: 'text' },
+      ],
+    },
+    {
+      name: 'refreshUrl',
+      label: { en: 'Refresh URL', nl: 'Ververs-URL' },
+      type: 'text',
+      access: { read: platformOnly },
+      validate: (value: unknown) => {
+        if (value == null || value === '') return true
+        try {
+          return new URL(String(value)).protocol === 'https:' || 'Use an HTTPS address.'
+        } catch {
+          return 'Use an HTTPS address.'
+        }
+      },
+    },
+    {
+      name: 'refreshSecret',
+      label: { en: 'Refresh secret', nl: 'Ververs-geheim' },
+      type: 'text',
+      // Encrypted with Payload's key ring and never returned by the API.
+      access: { read: () => false },
+      hooks: {
+        beforeChange: [
+          ({ value, originalDoc, req }) => {
+            if (value === null) return null
+            if (typeof value !== 'string' || !value || value === originalDoc?.refreshSecret) return originalDoc?.refreshSecret
+            return req.payload.encrypt(value)
+          },
+        ],
       },
     },
   ],
@@ -54,6 +97,7 @@ export const SiteSettings: CollectionConfig = {
     livePreview: { url: ({ data, locale, req }) => previewURL('site-settings', data.id, locale.code, req) },
   },
   access: { ...editorAccess, delete: () => false },
+  hooks: { afterChange: [refreshAfterChange] },
   versions: drafts,
   llmInstructions: 'Edit the current tenant’s site identity and defaults. Save edits as drafts unless the editor explicitly asks to publish.',
   fields: [
@@ -75,13 +119,12 @@ function editorialCollection(slug: 'pages' | 'articles' | 'projects'): Collectio
     slug,
     admin: {
       useAsTitle: 'title',
-      ...(slug === 'pages' && {
-        preview: (doc, { locale, req }) => previewURL('pages', doc.id, locale, req),
-        livePreview: { url: ({ data, locale, req }) => previewURL('pages', data.id, locale.code, req) },
-      }),
+      preview: (doc, { locale, req }) => previewURL(slug, doc.id, locale, req),
+      livePreview: { url: ({ data, locale, req }) => previewURL(slug, data.id, locale.code, req) },
     },
     access: editorAccess,
     indexes: [{ fields: ['tenant', 'slug'], unique: true }],
+    hooks: { afterChange: [refreshAfterChange], afterDelete: [refreshAfterDelete] },
     versions: drafts,
     llmInstructions: 'Read the schema first. Save changes as drafts unless the editor explicitly asks to publish. Preserve unchanged translations.',
     fields: [

@@ -1,11 +1,14 @@
 import { Forbidden, type CollectionConfig } from 'payload'
 import { isPlatformAdmin, platformOnly } from '../site/access'
+import { previewGrantStrategy } from '../site/preview'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: { useAsTitle: 'email' },
   auth: {
     cookies: { sameSite: 'Lax', secure: process.env.NODE_ENV === 'production' },
+    // Read-only website previews; see src/site/preview.ts.
+    strategies: [previewGrantStrategy],
   },
   access: {
     admin: ({ req }) => Boolean(req.user),

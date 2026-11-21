@@ -21,7 +21,24 @@ export default async function WebsitePage({ params }: { params: Promise<{ id: st
       <SiteHeader crumbs={[{ label: t('platform') }, { label: t('websites'), href: '/admin/platform/websites' }, { label: title }]} />
       <SettingsFrame>
         <PageTitle title={title} />
-        <WebsiteForm website={tenant ? { id: tenant.id, name: tenant.name, slug: tenant.slug, siteOrigin: tenant.siteOrigin } : undefined} />
+        <WebsiteForm
+          website={
+            tenant
+              ? {
+                  id: tenant.id,
+                  name: tenant.name,
+                  slug: tenant.slug,
+                  siteOrigin: tenant.siteOrigin,
+                  previewPaths: {
+                    pages: tenant.previewPaths?.pages ?? '',
+                    articles: tenant.previewPaths?.articles ?? '',
+                    projects: tenant.previewPaths?.projects ?? '',
+                  },
+                  refreshUrl: tenant.refreshUrl ?? '',
+                }
+              : undefined
+          }
+        />
       </SettingsFrame>
     </>
   )
