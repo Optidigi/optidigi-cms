@@ -362,7 +362,7 @@ function Composer({
   const input = useRef<HTMLInputElement>(null)
   const models = assistant.setup.state === 'ready' ? assistant.setup.models : []
   const selected = models.find(({ key }) => key === assistant.model)
-  const connections = [...new Set(models.map(({ connection }) => connection))]
+  const connections = [...new Map(models.map((option) => [option.connectionID, option.connection]))]
   const ready = uploads.every(({ state }) => state !== 'uploading')
   const canSend = Boolean(text.trim()) && ready && !busy && !locked && assistant.setup.state === 'ready'
 
@@ -482,11 +482,11 @@ function Composer({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuRadioGroup value={assistant.model} onValueChange={(value) => assistant.setModel(String(value))}>
-                  {connections.map((connection) => (
-                    <DropdownMenuGroup key={connection}>
-                      <DropdownMenuLabel>{connection}</DropdownMenuLabel>
+                  {connections.map(([id, label]) => (
+                    <DropdownMenuGroup key={id}>
+                      <DropdownMenuLabel>{label}</DropdownMenuLabel>
                       {models
-                        .filter((option) => option.connection === connection)
+                        .filter((option) => option.connectionID === id)
                         .map((option) => (
                           <DropdownMenuRadioItem key={option.key} value={option.key} closeOnClick>
                             {option.model}

@@ -1,18 +1,23 @@
 'use client'
 
-import { ChevronDownIcon, FileTextIcon } from 'lucide-react'
+import { ChevronDownIcon, FileTextIcon, TriangleAlertIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CodeBlock, CodeBlockContent } from '@/components/ui/code-block'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Item, ItemContent, ItemDescription, ItemFooter, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
+import { collectionLabels } from '@/site/collection-labels'
 import { api, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import type { MessageKey } from '../i18n'
 import { toolLabel } from './tool-label'
 
-type Input = { slug?: unknown; id?: unknown; data?: unknown; locale?: unknown }
+type Input = { slug?: unknown; id?: unknown; data?: unknown; documents?: unknown; locale?: unknown; draft?: unknown; where?: unknown }
+
+// Tools that write content; they publish unless the model asked for a draft.
+const writes = new Set(['updateDocument', 'createDocuments', 'duplicateDocument', 'restoreVersion'])
 type Row = { field: string; before?: string; after: string }
 
 const fieldLabels: Record<string, MessageKey> = {
@@ -62,10 +67,15 @@ export function ApprovalCard({
   onAnswer: (approved: boolean) => void
 }) {
   const { t, language } = useI18n()
-  const { slug, id, data, locale } = (input && typeof input === 'object' ? input : {}) as Input
-  const collection = typeof slug === 'string' ? slug : undefined
-  const documentID = typeof id === 'number' || typeof id === 'string' ? id : undefined
-  const fields = data && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : undefined
+  const { slug, id, data, documents, locale, draft, where } = (input && typeof input === 'object' ? input : {}) as Input
+  // The input comes from the model: only known collections and numeric ids are used to read the document.
+  const collection = typeof slug === 'string' && Object.hasOwn(collectionLabels, slug) ? slug : undefined
+  const documentID = (typeof id === 'number' || typeof id === 'string') && /^\d+$/.test(String(id)) ? String(id) : undefined
+  const firstDocument = Array.isArray(documents) ? (documents[0] as { data?: unknown } | undefined)?.data : undefined
+  const payloadData = data ?? firstDocument
+  const fields = payloadData && typeof payloadData === 'object' && !Array.isArray(payloadData) ? (payloadData as Record<string, unknown>) : undefined
+  const publishes = writes.has(tool) && draft !== true
+  const bulk = Boolean(where) && id === undefined
   const [current, setCurrent] = useState<{ title?: string; values: Record<string, unknown> } | null>()
 
   useEffect(() => {
@@ -100,6 +110,15 @@ export function ApprovalCard({
           <ItemDescription>{t('approveDescription')}</ItemDescription>
         </ItemContent>
       </div>
+      {(publishes || bulk) && (
+        <Alert variant="destructive" className="py-2">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            {publishes && <p>{t('approvePublishes')}</p>}
+            {bulk && <p>{t('approveAllMatching')}</p>}
+          </AlertDescription>
+        </Alert>
+      )}
       {loading ? (
         <Skeleton className="h-12 w-full" />
       ) : (

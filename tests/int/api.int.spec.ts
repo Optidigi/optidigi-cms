@@ -271,6 +271,24 @@ describe('tenant content', () => {
     await payload.delete({ collection: 'users', id: other.id, overrideAccess: true })
   })
 
+  it('reads the newest preferences row when an older duplicate exists', async () => {
+    // Written straight to the database, as two racing upserts from an older admin build did.
+    const make = (language: string) => payload.db.create({
+      collection: 'payload-preferences',
+      data: { key: 'cms', user: { relationTo: 'users', value: actor.id }, value: { language } },
+    }) as Promise<{ id: number }>
+    const older = await make('nl')
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const newer = await make('en')
+    // The same query the admin's getPreferences runs.
+    const { docs: [doc] } = await payload.find({
+      collection: 'payload-preferences', depth: 0, limit: 1, overrideAccess: false, sort: '-updatedAt', user: actor,
+      where: { key: { equals: 'cms' }, 'user.relationTo': { equals: 'users' }, 'user.value': { equals: actor.id } },
+    })
+    expect(doc.id).toBe(newer.id)
+    await payload.delete({ collection: 'payload-preferences', overrideAccess: true, where: { id: { in: [older.id, newer.id] } } })
+  })
+
   it('serves published content and only returns drafts under a tenant-bound grant', async () => {
     const endpoint = siteEndpoints.find(({ path }) => path === '/site-content')!
     const makeURL = (tenant: string) =>

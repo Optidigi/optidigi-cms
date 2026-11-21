@@ -40,7 +40,7 @@ test('an editor creates, saves and publishes a page that websites can read', asy
   expect((await published.json()).docs).toHaveLength(0)
 
   await page.getByRole('button', { name: /publiceren|publish/i }).first().click()
-  await expect(page.getByText(/gepubliceerd|published/i).first()).toBeVisible()
+  await expect(page.getByText(/gepubliceerd|published/i).locator('visible=true').first()).toBeVisible()
   await expect
     .poll(async () => (await (await request.get(`/api/pages?where[tenant.slug][equals]=e2e-${suffix}&depth=0`)).json()).docs.length)
     .toBe(1)
@@ -50,4 +50,29 @@ test('the assistant explains when no model is set up', async ({ page }) => {
   await login(page, user)
   await page.goto(`/admin/${site}/ai`)
   await expect(page.getByText(/niet ingesteld|not set up/i)).toBeVisible()
+})
+
+test('sections a website does not use are hidden and unreachable', async ({ page }) => {
+  await login(page, user)
+  await expect(page.getByRole('link', { name: /^(pagina’s|pages)$/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^portfolio$/i })).toHaveCount(0)
+  const response = await page.goto(`/admin/${site}/portfolio`)
+  expect(response?.status()).toBe(404)
+})
+
+test('website members see AI connections read-only and never a key', async ({ page }) => {
+  const settings = await payload.create({
+    collection: 'assistant-settings', overrideAccess: true,
+    data: { tenant: site, connections: [{ label: 'Team model', provider: 'anthropic', models: ['model-x'], apiKey: 'sk-e2e-secret' }] },
+  })
+  try {
+    await login(page, user)
+    await page.goto(`/admin/${site}/settings/ai`)
+    await expect(page.getByText('Team model')).toBeVisible()
+    await expect(page.getByText('model-x', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /koppeling toevoegen|add connection/i })).toHaveCount(0)
+    await expect(page.locator('body')).not.toContainText('sk-e2e-secret')
+  } finally {
+    await payload.delete({ collection: 'assistant-settings', overrideAccess: true, id: settings.id })
+  }
 })

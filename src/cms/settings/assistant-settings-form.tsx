@@ -181,12 +181,14 @@ export function AssistantSettingsForm({ site, editable, settings: initial }: { s
               </CardHeader>
               <CardContent>
                 <Select
-                  value={options.some(({ key }) => key === settings?.defaultModel) ? settings!.defaultModel : options[0].key}
+                  value={options.some(({ key }) => key === settings?.defaultModel) ? settings!.defaultModel : null}
                   onValueChange={(value) => value && setDefault(String(value))}
                   disabled={!editable}
                 >
                   <SelectTrigger className="w-full sm:w-80" aria-label={t('defaultModel')}>
-                    <SelectValue>{(value: string) => options.find(({ key }) => key === value)?.model}</SelectValue>
+                    <SelectValue>
+                      {(value: string | null) => options.find(({ key }) => key === value)?.model ?? t('firstModelDefault', { model: options[0].model })}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {connections.map((connection) => (
@@ -286,8 +288,14 @@ function ConnectionDialog({
       return stored
     } catch (error) {
       if (error instanceof APIError) {
-        // Payload names array fields by row (connections.0.baseURL); show them on this form's fields.
-        setErrors(Object.fromEntries(Object.entries(error.fields).map(([path, message]) => [path.split('.').at(-1)!, message])))
+        // Payload names array fields by row (connections.2.baseURL); show this row's errors on this form.
+        const index = saved ? rows.findIndex(({ id }) => id === saved.id) : rows.length - 1
+        const prefix = `connections.${index}.`
+        setErrors(
+          Object.fromEntries(
+            Object.entries(error.fields).flatMap(([path, message]) => (path.startsWith(prefix) ? [[path.slice(prefix.length), message]] : [])),
+          ),
+        )
       }
       throw error
     }
@@ -323,6 +331,12 @@ function ConnectionDialog({
       toast.error(t('saveFailed'))
     }
     setBusy(undefined)
+  }
+
+  function addManual() {
+    const id = manual.trim()
+    if (id && !models.includes(id)) setModels((current) => [...current, id])
+    setManual('')
   }
 
   const toggle = (id: string, on: boolean) =>
@@ -441,9 +455,7 @@ function ConnectionDialog({
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') {
                       event.preventDefault()
-                      const id = manual.trim()
-                      if (id && !models.includes(id)) setModels((current) => [...current, id])
-                      setManual('')
+                      addManual()
                     }
                   }}
                 />
@@ -451,11 +463,7 @@ function ConnectionDialog({
                   type="button"
                   variant="outline"
                   disabled={!manual.trim()}
-                  onClick={() => {
-                    const id = manual.trim()
-                    if (id && !models.includes(id)) setModels((current) => [...current, id])
-                    setManual('')
-                  }}
+                  onClick={addManual}
                 >
                   {t('add')}
                 </Button>

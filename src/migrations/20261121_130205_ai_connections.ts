@@ -35,6 +35,11 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   DELETE FROM "assistant_settings_texts" WHERE "path" = 'models';`)
 
   for (const settings of old as OldSettings[]) {
+    // An OpenAI-compatible connection without an address never worked; don't carry it over.
+    if (settings.provider === 'openai-compatible' && !settings.base_u_r_l) {
+      payload.logger.warn(`AI settings ${settings.id}: skipped an OpenAI-compatible connection without a base URL.`)
+      continue
+    }
     const models = (oldModels as { parent_id: number; text: string }[]).filter((row) => row.parent_id === settings.id).map((row) => row.text)
     await payload.update({
       collection: 'assistant-settings',

@@ -12,14 +12,15 @@ export default async function DocumentPage({
   searchParams,
 }: {
   params: Promise<{ site: string; section: string; id: string }>
-  searchParams: Promise<{ locale?: string }>
+  searchParams: Promise<{ locale?: string; preview?: string }>
 }) {
   const { site: siteParam, section, id: idParam } = await params
   if (!isSection(section)) notFound()
   const [{ payload, user, site }, t, language] = await Promise.all([requireSite(siteParam), getTranslator(), getLanguage()])
   if (!enabledSections(site).includes(section)) notFound()
   const { collection, label } = sections[section]
-  const locale = contentLocale((await searchParams).locale)
+  const query = await searchParams
+  const locale = contentLocale(query.locale)
   const id = idParam === 'new' ? undefined : relationID(idParam)
   if (idParam !== 'new' && !id) notFound()
 
@@ -85,6 +86,7 @@ export default async function DocumentPage({
         versions={versions}
         lock={lock}
         previewHref={previewHref}
+        previewOpen={query.preview === '1'}
       />
     </>
   )

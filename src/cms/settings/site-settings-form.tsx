@@ -7,7 +7,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,6 +19,7 @@ import { StatusBadge } from '../content/status-badge'
 import type { ContentLocale } from '../sections'
 
 export type SettingsPart = 'general' | 'navigation' | 'seo'
+export type PageLink = { title: string; href: string }
 type Values = {
   name: string
   contactEmail: string
@@ -32,12 +34,14 @@ export function SiteSettingsForm({
   locale,
   document,
   siteName,
+  pageLinks = [],
 }: {
   site: number
   part: SettingsPart
   locale: ContentLocale
   document?: Values & { id: number; status: string }
   siteName: string
+  pageLinks?: PageLink[]
 }) {
   const { t } = useI18n()
   const router = useRouter()
@@ -136,6 +140,7 @@ export function SiteSettingsForm({
           )}
           {part === 'navigation' && (
             <>
+              <FieldDescription>{t('linkDestinationHint')}</FieldDescription>
               {values.navigation.map((link, index) => (
                 <div key={index} className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                   <Field {...invalid(`navigation.${index}.label`)}>
@@ -145,7 +150,26 @@ export function SiteSettingsForm({
                   </Field>
                   <Field {...invalid(`navigation.${index}.href`)}>
                     <FieldLabel htmlFor={`nav-href-${index}`}>{t('linkDestination')}</FieldLabel>
-                    <Input id={`nav-href-${index}`} required placeholder="/" value={link.href} onChange={(event) => setLink(index, 'href', event.target.value)} />
+                    {/* Pick one of the website's pages, or type any path on the website. */}
+                    <Combobox
+                      items={pageLinks.map(({ href }) => href)}
+                      inputValue={link.href}
+                      onInputValueChange={(value) => setLink(index, 'href', value)}
+                      onValueChange={(value) => typeof value === 'string' && setLink(index, 'href', value)}
+                    >
+                      <ComboboxInput id={`nav-href-${index}`} required placeholder="/" className="w-full" />
+                      <ComboboxContent>
+                        <ComboboxEmpty>{t('noMatchingPages')}</ComboboxEmpty>
+                        <ComboboxList>
+                          {(href: string) => (
+                            <ComboboxItem key={href} value={href}>
+                              <span className="truncate">{pageLinks.find((page) => page.href === href)?.title}</span>
+                              <span className="ml-auto truncate text-xs text-muted-foreground">{href}</span>
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
                     <FieldError>{errors[`navigation.${index}.href`]}</FieldError>
                   </Field>
                   <ButtonGroup>
