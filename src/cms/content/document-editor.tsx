@@ -165,26 +165,29 @@ export function DocumentEditor({
 
   // Payload-native autosave: shortly after editing stops, the draft is saved with `autosave=true`
   // (the collections enable versions.drafts.autosave). Published content stays as it is until Publish.
+  const hasErrors = Object.values(errors).some(Boolean)
   useEffect(() => {
-    if (!dirty || !document || lockedByOther || saving) return
+    // Field errors from a failed save stay until the field is edited, so autosave waits for them.
+    if (!dirty || !document || lockedByOther || saving || hasErrors) return
     const edit = revision.current
     const timer = setTimeout(() => {
       setAutosave('saving')
-      const run = pending.current.then(() =>
-        api<{ doc: { updatedAt: string } }>(`${collection}/${document.id}${query({ depth: 0, locale, draft: true, autosave: true })}`, {
-          method: 'PATCH',
-          json: { ...values, _status: 'draft' },
-        }),
-      )
+      // Payload removes the lock on every save; taking it back is part of the same queued step.
+      const run = pending.current.then(async () => {
+        const result = await api<{ doc: { updatedAt: string } }>(
+          `${collection}/${document.id}${query({ depth: 0, locale, draft: true, autosave: true })}`,
+          { method: 'PATCH', json: { ...values, _status: 'draft' } },
+        )
+        await relock()
+        return result
+      })
       pending.current = run.catch(() => undefined)
       run.then(
-        async ({ doc }) => {
+        ({ doc }) => {
           if (revision.current === edit) setDirty(false)
-          setErrors({})
           setSaved({ status: 'draft', updatedAt: doc.updatedAt })
           setAutosave('saved')
           setPreviewRevision((current) => current + 1)
-          await relock()
         },
         (error) => {
           setAutosave('error')
@@ -193,7 +196,7 @@ export function DocumentEditor({
       )
     }, 1500)
     return () => clearTimeout(timer)
-  }, [dirty, values, document, lockedByOther, saving, collection, locale, relock])
+  }, [dirty, values, document, lockedByOther, saving, hasErrors, collection, locale, relock])
 
   function change<K extends keyof Values>(key: K, value: Values[K]) {
     revision.current++
@@ -220,17 +223,21 @@ export function DocumentEditor({
       draft: intent === 'draft' ? true : undefined,
     })
     try {
-      await pending.current
-      const result = await api<{ doc: { id: number; _status?: string; updatedAt: string } }>(
-        document ? `${collection}/${document.id}${params}` : `${collection}${params}`,
-        { method: document ? 'PATCH' : 'POST', json: data },
-      )
+      const run = pending.current.then(async () => {
+        const response = await api<{ doc: { id: number; _status?: string; updatedAt: string } }>(
+          document ? `${collection}/${document.id}${params}` : `${collection}${params}`,
+          { method: document ? 'PATCH' : 'POST', json: data },
+        )
+        if (document) await relock()
+        return response
+      })
+      pending.current = run.catch(() => undefined)
+      const result = await run
       setDirty(false)
       toast.success(intent === 'publish' ? t('publishedToast') : t('saved'))
       if (document) {
         setSaved({ status: result.doc._status ?? (intent === 'publish' ? 'published' : 'draft'), updatedAt: result.doc.updatedAt })
         setPreviewRevision((current) => current + 1)
-        await relock()
         router.refresh()
       } else {
         router.replace(`/admin/${site}/${section}/${result.doc.id}?locale=${locale}`)
@@ -258,6 +265,13 @@ export function DocumentEditor({
     if (dirty) setLeaveTo(href)
     else router.push(href)
   }
+
+  // The preview grant lasts 30 minutes; re-render the page for a fresh one while the preview is open.
+  useEffect(() => {
+    if (!previewOpen && !previewSheet) return
+    const timer = setInterval(() => router.refresh(), 25 * 60_000)
+    return () => clearInterval(timer)
+  }, [previewOpen, previewSheet, router])
 
   function togglePreview() {
     if (!wide) return setPreviewSheet(true)
@@ -369,7 +383,8 @@ export function DocumentEditor({
         </Alert>
       )}
       {/* While someone else edits, the form is read-only. */}
-      <fieldset disabled={lockedByOther} className="contents">
+      {/* While someone else edits, or while a save runs, the form is read-only. */}
+      <fieldset disabled={lockedByOther || Boolean(saving)} className="contents">
         <Card>
           <CardContent>
             <FieldGroup>
@@ -407,7 +422,7 @@ export function DocumentEditor({
               </Field>
               <Field {...field('body')}>
                 <FieldLabel htmlFor="body">{t('body')}</FieldLabel>
-                <RichTextEditor id="body" label={t('body')} site={site} editable={!lockedByOther} value={values.body} onChange={(value) => change('body', value)} />
+                <RichTextEditor id="body" label={t('body')} site={site} editable={!lockedByOther && !saving} value={values.body} onChange={(value) => change('body', value)} />
                 <FieldError>{errors.body}</FieldError>
               </Field>
             </FieldGroup>
@@ -499,7 +514,7 @@ export function DocumentEditor({
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel minSize="30">
-            <LivePreview src={previewHref} revision={previewRevision} onClose={togglePreview} />
+            <LivePreview key={previewHref} src={previewHref} revision={previewRevision} onClose={togglePreview} />
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
@@ -516,13 +531,14 @@ export function DocumentEditor({
               <SheetTitle>{t('livePreview')}</SheetTitle>
               <SheetDescription>{t('previewHint')}</SheetDescription>
             </SheetHeader>
-            <LivePreview src={previewHref} revision={previewRevision} onClose={() => setPreviewSheet(false)} />
+            <LivePreview key={previewHref} src={previewHref} revision={previewRevision} onClose={() => setPreviewSheet(false)} />
           </SheetContent>
         </Sheet>
       )}
 
       {document && (
         <VersionsSheet
+          onRestored={() => router.replace(`${editorHref()}&restored=${Date.now()}`)}
           open={versionsOpen}
           onOpenChange={setVersionsOpen}
           collection={collection}
@@ -579,6 +595,7 @@ function formatTime(value: string, language: string) {
 }
 
 function VersionsSheet({
+  onRestored,
   open,
   onOpenChange: setOpen,
   collection,
@@ -586,6 +603,7 @@ function VersionsSheet({
   language,
   disabled,
 }: {
+  onRestored: () => void
   open: boolean
   onOpenChange: (open: boolean) => void
   collection: EditorialCollection
@@ -594,7 +612,6 @@ function VersionsSheet({
   disabled: boolean
 }) {
   const { t } = useI18n()
-  const router = useRouter()
   const [restoring, setRestoring] = useState<string>()
 
   async function restore(id: string) {
@@ -604,7 +621,7 @@ function VersionsSheet({
       await api(`${collection}/versions/${id}${query({ draft: true, depth: 0 })}`, { method: 'POST' })
       toast.success(t('restored'))
       setOpen(false)
-      router.refresh()
+      onRestored()
     } catch {
       toast.error(t('restoreFailed'))
     }

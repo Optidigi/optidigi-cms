@@ -2,7 +2,7 @@
 
 import { ExternalLinkIcon, MonitorIcon, SmartphoneIcon, TabletIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -64,7 +64,7 @@ export function LivePreview({ src, revision, onClose }: { src: string; revision:
           <ToggleGroupItem value="tablet" aria-label={t('tablet')}>
             <TabletIcon />
           </ToggleGroupItem>
-          <ToggleGroupItem value="phone" aria-label={t('phone')}>
+          <ToggleGroupItem value="phone" aria-label={t('phoneWidth')}>
             <SmartphoneIcon />
           </ToggleGroupItem>
         </ToggleGroup>
@@ -81,6 +81,11 @@ export function LivePreview({ src, revision, onClose }: { src: string; revision:
         <Alert className="m-3 w-auto">
           <AlertTitle>{t('previewNotLiveTitle')}</AlertTitle>
           <AlertDescription>{t('previewNotLiveDescription')}</AlertDescription>
+          <AlertAction>
+            <a href={src} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              {t('openInNewTab')}
+            </a>
+          </AlertAction>
         </Alert>
       )}
       <div className="flex min-h-0 flex-1 justify-center overflow-auto p-3">
