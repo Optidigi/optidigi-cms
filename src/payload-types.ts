@@ -496,10 +496,18 @@ export interface Media {
 export interface AssistantSetting {
   id: number;
   tenant?: (number | null) | Tenant;
-  provider: 'anthropic' | 'openai' | 'openai-compatible';
-  baseURL?: string | null;
-  apiKey?: string | null;
-  models: string[];
+  connections?:
+    | {
+        label: string;
+        provider: 'anthropic' | 'openai' | 'google' | 'mistral' | 'gateway' | 'openai-compatible';
+        baseURL?: string | null;
+        apiKey?: string | null;
+        hasKey?: boolean | null;
+        models?: string[] | null;
+        id?: string | null;
+      }[]
+    | null;
+  defaultModel?: string | null;
   createdBy?: {
     relationTo: 'users';
     value: number | User;
@@ -907,10 +915,18 @@ export interface MediaSelect<T extends boolean = true> {
  */
 export interface AssistantSettingsSelect<T extends boolean = true> {
   tenant?: T;
-  provider?: T;
-  baseURL?: T;
-  apiKey?: T;
-  models?: T;
+  connections?:
+    | T
+    | {
+        label?: T;
+        provider?: T;
+        baseURL?: T;
+        apiKey?: T;
+        hasKey?: T;
+        models?: T;
+        id?: T;
+      };
+  defaultModel?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;

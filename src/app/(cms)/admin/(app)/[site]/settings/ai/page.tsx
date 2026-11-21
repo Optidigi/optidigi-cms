@@ -1,4 +1,3 @@
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { getTranslator, requireSite } from '@/cms/server'
 import { AssistantSettingsForm } from '@/cms/settings/assistant-settings-form'
 import { SettingsFrame } from '@/cms/settings/settings-layout'
@@ -24,15 +23,25 @@ export default async function AssistantSettingsPage({ params }: { params: Promis
       />
       <SettingsFrame site={site.id}>
         <PageTitle title={t('aiSettings')} description={t('assistantSettingsDescription')} />
-        {!editable && (
-          <Alert>
-            <AlertDescription>{t('platformOnlySettings')}</AlertDescription>
-          </Alert>
-        )}
         <AssistantSettingsForm
           site={site.id}
           editable={editable}
-          settings={settings ? { id: settings.id, provider: settings.provider, baseURL: settings.baseURL ?? '', models: settings.models ?? [] } : undefined}
+          settings={
+            settings
+              ? {
+                  id: settings.id,
+                  defaultModel: settings.defaultModel ?? '',
+                  connections: (settings.connections ?? []).map((row) => ({
+                    id: row.id ?? '',
+                    label: row.label,
+                    provider: row.provider,
+                    baseURL: row.baseURL ?? '',
+                    hasKey: Boolean(row.hasKey),
+                    models: row.models ?? [],
+                  })),
+                }
+              : undefined
+          }
         />
       </SettingsFrame>
     </>

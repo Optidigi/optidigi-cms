@@ -361,6 +361,8 @@ function Composer({
   const form = useRef<HTMLFormElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const models = assistant.setup.state === 'ready' ? assistant.setup.models : []
+  const selected = models.find(({ key }) => key === assistant.model)
+  const connections = [...new Set(models.map(({ connection }) => connection))]
   const ready = uploads.every(({ state }) => state !== 'uploading')
   const canSend = Boolean(text.trim()) && ready && !busy && !locked && assistant.setup.state === 'ready'
 
@@ -475,24 +477,28 @@ function Composer({
           {models.length > 1 ? (
             <DropdownMenu>
               <DropdownMenuTrigger render={<InputGroupButton size="sm" className="ml-auto" aria-label={t('model')} />}>
-                <span className="max-w-32 truncate">{assistant.model}</span>
+                <span className="max-w-32 truncate">{selected?.model}</span>
                 <ChevronDownIcon />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuRadioGroup value={assistant.model} onValueChange={(value) => assistant.setModel(String(value))}>
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel>{t('model')}</DropdownMenuLabel>
-                    {models.map((model) => (
-                      <DropdownMenuRadioItem key={model} value={model} closeOnClick>
-                        {model}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuGroup>
+                  {connections.map((connection) => (
+                    <DropdownMenuGroup key={connection}>
+                      <DropdownMenuLabel>{connection}</DropdownMenuLabel>
+                      {models
+                        .filter((option) => option.connection === connection)
+                        .map((option) => (
+                          <DropdownMenuRadioItem key={option.key} value={option.key} closeOnClick>
+                            {option.model}
+                          </DropdownMenuRadioItem>
+                        ))}
+                    </DropdownMenuGroup>
+                  ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <span className="ml-auto max-w-40 truncate text-xs text-muted-foreground">{assistant.model}</span>
+            <span className="ml-auto max-w-40 truncate text-xs text-muted-foreground">{selected?.model}</span>
           )}
           {busy ? (
             <InputGroupButton size="icon-sm" variant="default" className="rounded-full" aria-label={t('stop')} onClick={onStop}>

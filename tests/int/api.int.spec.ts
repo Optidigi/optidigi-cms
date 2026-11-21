@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getPayload, type Payload, type PayloadRequest } from 'payload'
 import config from '@/payload.config'
+import { modelEndpoints, pickModel } from '@/assistant/connections'
 import { assistantSiteHeader } from '@/assistant/scope'
 import { relationID } from '@/site/access'
 import { siteEndpoints } from '@/site/endpoints'
@@ -206,7 +207,7 @@ describe('tenant content', () => {
     })).user).toBeNull()
   })
 
-  it('keeps assistant chats private to their author and model keys unreadable', async () => {
+  it('keeps AI chats private to their author and connection keys unreadable', async () => {
     const thread = await payload.create({
       collection: 'assistant-threads', overrideAccess: false, user: actor,
       data: { tenant: tenantA, title: 'Mine', messages: [] },
@@ -220,14 +221,51 @@ describe('tenant content', () => {
     expect((await payload.find({ collection: 'assistant-threads', overrideAccess: false, user: actor })).docs.map(({ id }) => id)).toEqual([thread.id])
     const settings = await payload.create({
       collection: 'assistant-settings', overrideAccess: true,
-      data: { tenant: tenantA, provider: 'anthropic', models: ['model-a'], apiKey: 'secret-key' },
+      data: {
+        tenant: tenantA,
+        connections: [
+          { label: 'Claude', provider: 'anthropic', models: ['model-a'], apiKey: 'secret-key' },
+          { label: 'Router', provider: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', models: ['model-b'], apiKey: 'other-key' },
+        ],
+      },
     })
     const raw = await payload.findByID({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
-    expect(raw.apiKey).not.toBe('secret-key')
-    expect(payload.decrypt(raw.apiKey!)).toBe('secret-key')
+    expect(raw.connections![0].apiKey).not.toBe('secret-key')
+    expect(payload.decrypt(raw.connections![0].apiKey!)).toBe('secret-key')
+    expect(payload.decrypt(raw.connections![1].apiKey!)).toBe('other-key')
+    // Members of the website see the connections and their models, never a key.
     const visible = await payload.findByID({ collection: 'assistant-settings', id: settings.id, overrideAccess: false, user: actor })
-    expect(visible).not.toHaveProperty('apiKey')
-    expect(visible.models).toEqual(['model-a'])
+    expect(visible.connections!.map(({ label, hasKey, models }) => ({ label, hasKey, models }))).toEqual([
+      { label: 'Claude', hasKey: true, models: ['model-a'] },
+      { label: 'Router', hasKey: true, models: ['model-b'] },
+    ])
+    expect(visible.connections!.some((row) => 'apiKey' in row)).toBe(false)
+    // Only platform administrators change them.
+    await expect(payload.update({
+      collection: 'assistant-settings', id: settings.id, overrideAccess: false, user: actor, data: { defaultModel: 'x' },
+    })).rejects.toThrow()
+    // Saving rows without keys (as the admin does) keeps each row's own stored key, even reordered.
+    await payload.update({
+      collection: 'assistant-settings', id: settings.id, overrideAccess: true,
+      data: { connections: [...visible.connections!].reverse().map(({ id, label, provider, baseURL, models }) => ({ id, label, provider, baseURL, models })) },
+    })
+    const kept = await payload.findByID({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
+    expect(kept.connections!.map((row) => [row.label, payload.decrypt(row.apiKey!), row.hasKey])).toEqual([
+      ['Router', 'other-key', true],
+      ['Claude', 'secret-key', true],
+    ])
+    // The chat only ever uses an enabled model of a connection with a key.
+    expect(pickModel(kept, `${kept.connections![1].id}:model-a`)).toEqual({ connection: kept.connections![1].id, model: 'model-a' })
+    expect(pickModel(kept, `${kept.connections![1].id}:not-enabled`)).toEqual({ connection: kept.connections![0].id, model: 'model-b' })
+    expect(pickModel(kept, 'someone-else:model-x')?.model).not.toBe('model-x')
+    // Listing models is for platform administrators only.
+    const models = modelEndpoints[0]
+    const list = (user: PayloadRequest['user']) =>
+      models.handler(Object.assign(request('https://cms.optidigi.nl/api/assistant/models'), {
+        user, json: async () => ({ site: tenantA, connection: kept.connections![0].id }),
+      }) as unknown as PayloadRequest)
+    expect((await list(actor)).status).toBe(403)
+    expect((await list(null)).status).toBe(401)
     await payload.delete({ collection: 'assistant-threads', id: thread.id, overrideAccess: true })
     await payload.delete({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
     await payload.delete({ collection: 'users', id: other.id, overrideAccess: true })
