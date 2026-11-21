@@ -150,7 +150,7 @@ function AskBar() {
       className={cn(
         'pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]',
         // Below lg the editor has its own sticky save bar with an AI button instead.
-        assistant.bottomBar ? 'hidden lg:flex' : 'flex',
+        assistant.bottomBar === 'always' ? 'hidden' : assistant.bottomBar === 'small' ? 'hidden lg:flex' : 'flex',
       )}
     >
       <form onSubmit={send} className="pointer-events-auto w-full max-w-xl">

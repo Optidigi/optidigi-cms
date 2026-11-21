@@ -42,6 +42,8 @@ export const AssistantSettings: CollectionConfig = {
         {
           name: 'baseURL',
           type: 'text',
+          // It can carry a proxy token, so only platform administrators read it.
+          access: { read: platformOnly },
           validate: (value: unknown, { siblingData }: { siblingData: { provider?: string } }) => {
             if (value && !/^https?:\/\/\S+$/.test(String(value))) return 'Use an http(s) URL.'
             return siblingData?.provider === 'openai-compatible' && !value ? 'An OpenAI-compatible connection needs a base URL.' : true

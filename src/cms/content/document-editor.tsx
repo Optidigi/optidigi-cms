@@ -1,6 +1,6 @@
 'use client'
 
-import { ExternalLinkIcon, HistoryIcon, LockIcon, Trash2Icon } from 'lucide-react'
+import { CheckIcon, EllipsisIcon, ExternalLinkIcon, EyeIcon, HistoryIcon, LockIcon, Trash2Icon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -15,22 +15,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSet, FieldLegend } from '@/components/ui/field'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { cn } from '@/lib/utils'
 import { api, APIError, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useMediaQuery } from '../client/use-media-query'
+import type { MessageKey } from '../i18n'
 import { AssistantBottomBar, AssistantPageContext } from '../assistant/assistant-context'
 import { AskButton } from '../assistant/assistant-panel'
 import { RichTextEditor } from '../editor/rich-text'
 import type { ContentLocale, EditorialCollection, Section } from '../sections'
 import { DeleteDialog } from './delete-dialog'
+import { LivePreview } from './live-preview'
 import { StatusBadge, formatDate } from './status-badge'
 import { useDocumentLock } from './use-document-lock'
 
@@ -60,6 +76,19 @@ function slugify(value: string) {
     .slice(0, 150)
 }
 
+// Form fields by the path Payload uses in validation errors, for labels and focus.
+const fieldInputs: Record<string, { id: string; label: MessageKey }> = {
+  title: { id: 'title', label: 'title' },
+  slug: { id: 'slug', label: 'slug' },
+  heading: { id: 'heading', label: 'heading' },
+  description: { id: 'description', label: 'description' },
+  body: { id: 'body', label: 'body' },
+  'seo.title': { id: 'seo-title', label: 'seoTitle' },
+  'seo.description': { id: 'seo-description', label: 'seoDescription' },
+}
+
+type Saved = { status: string; updatedAt: string }
+
 export function DocumentEditor({
   site,
   section,
@@ -71,6 +100,7 @@ export function DocumentEditor({
   versions,
   lock,
   previewHref,
+  previewOpen,
 }: {
   site: number
   section: Section
@@ -82,18 +112,35 @@ export function DocumentEditor({
   versions: { id: string; updatedAt: string; status?: string | null }[]
   lock?: { email?: string }
   previewHref: string | null
+  previewOpen: boolean
 }) {
   const { t } = useI18n()
   const router = useRouter()
+  const wide = useMediaQuery('(min-width: 1024px)')
   const [values, setValues] = useState<Values>(document ?? empty)
   const [dirty, setDirty] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<'draft' | 'publish'>()
+  const [autosave, setAutosave] = useState<'saving' | 'saved' | 'error'>()
+  const [saved, setSaved] = useState<Saved | undefined>(document && { status: document.status, updatedAt: document.updatedAt })
+  const [previewRevision, setPreviewRevision] = useState(0)
+  const [previewSheet, setPreviewSheet] = useState(false)
+  const [versionsOpen, setVersionsOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [leaveTo, setLeaveTo] = useState<string>()
   const slugTouched = useRef(Boolean(document?.slug))
+  // Counts edits, so an autosave that finishes after newer typing doesn't mark the form clean.
+  const revision = useRef(0)
+  // Saves run one after another: a manual save waits for a running autosave.
+  const pending = useRef<Promise<unknown>>(Promise.resolve())
   const listHref = `/admin/${site}/${section}?locale=${locale}`
+  const editorHref = (next: { locale?: ContentLocale; preview?: boolean } = {}) =>
+    `/admin/${site}/${section}/${document?.id ?? 'new'}${query({
+      locale: next.locale ?? locale,
+      preview: (next.preview ?? previewOpen) ? 1 : undefined,
+    })}`
   const { lockedByOther, takeOver, relock } = useDocumentLock({ collection, id: document?.id, userID, lockedByOther: Boolean(lock) })
+  const split = previewOpen && wide && Boolean(previewHref)
 
   useEffect(() => {
     if (!dirty) return
@@ -116,7 +163,40 @@ export function DocumentEditor({
     }
   }, [dirty])
 
+  // Payload-native autosave: shortly after editing stops, the draft is saved with `autosave=true`
+  // (the collections enable versions.drafts.autosave). Published content stays as it is until Publish.
+  useEffect(() => {
+    if (!dirty || !document || lockedByOther || saving) return
+    const edit = revision.current
+    const timer = setTimeout(() => {
+      setAutosave('saving')
+      const run = pending.current.then(() =>
+        api<{ doc: { updatedAt: string } }>(`${collection}/${document.id}${query({ depth: 0, locale, draft: true, autosave: true })}`, {
+          method: 'PATCH',
+          json: { ...values, _status: 'draft' },
+        }),
+      )
+      pending.current = run.catch(() => undefined)
+      run.then(
+        async ({ doc }) => {
+          if (revision.current === edit) setDirty(false)
+          setErrors({})
+          setSaved({ status: 'draft', updatedAt: doc.updatedAt })
+          setAutosave('saved')
+          setPreviewRevision((current) => current + 1)
+          await relock()
+        },
+        (error) => {
+          setAutosave('error')
+          if (error instanceof APIError) setErrors(error.fields)
+        },
+      )
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [dirty, values, document, lockedByOther, saving, collection, locale, relock])
+
   function change<K extends keyof Values>(key: K, value: Values[K]) {
+    revision.current++
     setValues((current) => {
       const next = { ...current, [key]: value }
       if (key === 'title' && !slugTouched.current) next.slug = slugify(String(value))
@@ -140,20 +220,36 @@ export function DocumentEditor({
       draft: intent === 'draft' ? true : undefined,
     })
     try {
-      const result = await api<{ doc: { id: number } }>(document ? `${collection}/${document.id}${params}` : `${collection}${params}`, {
-        method: document ? 'PATCH' : 'POST',
-        json: data,
-      })
+      await pending.current
+      const result = await api<{ doc: { id: number; _status?: string; updatedAt: string } }>(
+        document ? `${collection}/${document.id}${params}` : `${collection}${params}`,
+        { method: document ? 'PATCH' : 'POST', json: data },
+      )
       setDirty(false)
       toast.success(intent === 'publish' ? t('publishedToast') : t('saved'))
       if (document) {
+        setSaved({ status: result.doc._status ?? (intent === 'publish' ? 'published' : 'draft'), updatedAt: result.doc.updatedAt })
+        setPreviewRevision((current) => current + 1)
         await relock()
         router.refresh()
+      } else {
+        router.replace(`/admin/${site}/${section}/${result.doc.id}?locale=${locale}`)
       }
-      else router.replace(`/admin/${site}/${section}/${result.doc.id}?locale=${locale}`)
     } catch (error) {
-      if (error instanceof APIError) setErrors(error.fields)
-      toast.error(error instanceof APIError && error.status === 423 ? t('lockedBySomeone') : t('saveFailed'))
+      if (error instanceof APIError) {
+        setErrors(error.fields)
+        const invalid = Object.keys(error.fields).filter((path) => fieldInputs[path])
+        if (invalid.length) window.document.getElementById(fieldInputs[invalid[0]].id)?.focus()
+        toast.error(
+          error.status === 423
+            ? t('lockedBySomeone')
+            : invalid.length
+              ? t('saveFailedFields', { fields: invalid.map((path) => t(fieldInputs[path].label)).join(', ') })
+              : t('saveFailed'),
+        )
+      } else {
+        toast.error(t('saveFailed'))
+      }
     }
     setSaving(undefined)
   }
@@ -163,40 +259,117 @@ export function DocumentEditor({
     else router.push(href)
   }
 
+  function togglePreview() {
+    if (!wide) return setPreviewSheet(true)
+    router.replace(editorHref({ preview: !previewOpen }), { scroll: false })
+  }
+
   const disabled = lockedByOther || Boolean(saving)
   const field = (key: string) => (errors[key] ? { 'data-invalid': true } : {})
+  // Nothing to publish when the published version is the latest and nothing changed since.
+  const upToDate = saved?.status === 'published' && !dirty
 
-  const actions = (
+  const saveButtons = (compact: boolean) => (
     <>
       <Button variant="outline" disabled={disabled} onClick={() => save('draft')}>
         {saving === 'draft' && <Spinner data-icon="inline-start" />}
         {t('saveDraft')}
       </Button>
-      <Button disabled={disabled} onClick={() => save('publish')}>
+      <Button disabled={disabled || upToDate} onClick={() => save('publish')}>
         {saving === 'publish' && <Spinner data-icon="inline-start" />}
-        {t('publish')}
+        {upToDate && !saving && <CheckIcon data-icon="inline-start" />}
+        {upToDate ? (compact || !saved ? t('publishedState') : t('publishedAt', { time: formatTime(saved.updatedAt, language) })) : t('publish')}
       </Button>
     </>
   )
 
-  return (
-    <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="flex min-w-0 flex-col gap-6">
-        {document && <AssistantPageContext value={{ collection, id: document.id, title: document.title }} />}
-        {lockedByOther && (
-          <Alert>
-            <LockIcon />
-            <AlertTitle>{lock?.email ? t('lockedBy', { email: lock.email }) : t('lockedBySomeone')}</AlertTitle>
-            <AlertDescription>{t('lockedDescription')}</AlertDescription>
-            <AlertAction>
-              <Button size="sm" variant="outline" onClick={takeOver}>
-                {t('takeOver')}
-              </Button>
-            </AlertAction>
-          </Alert>
+  const autosaveNote =
+    autosave === 'saving' ? t('autosaving') : autosave === 'error' ? t('autosaveFailed') : autosave === 'saved' && saved ? t('autosaved', { time: formatTime(saved.updatedAt, language) }) : dirty ? t('unsavedChanges') : undefined
+
+  // The "⋯" menu of the compact action bar: everything from the details card.
+  const moreMenu = document && (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label={t('more')} />}>
+        <EllipsisIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-56">
+        {previewHref && (
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={togglePreview}>
+              <EyeIcon />
+              {split ? t('closePreview') : t('livePreview')}
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<a href={previewHref} target="_blank" rel="noreferrer" />}>
+              <ExternalLinkIcon />
+              {t('openInNewTab')}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         )}
-        {/* While someone else edits, the form is read-only. */}
-        <fieldset disabled={lockedByOther} className="contents">
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('documentTranslation')}</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={locale} onValueChange={(value) => value !== locale && navigate(editorHref({ locale: value as ContentLocale }))}>
+            <DropdownMenuRadioItem value="nl">{t('dutch')}</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="en">{t('english')}</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem disabled={lockedByOther} onClick={() => setVersionsOpen(true)}>
+            <HistoryIcon />
+            {t('versions')}
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" disabled={lockedByOther} onClick={() => setDeleting(true)}>
+            <Trash2Icon />
+            {t('delete')}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
+  // Sticky bar at the bottom of the form: on small screens, and beside the live preview.
+  const actionBar = (
+    <div
+      className={cn(
+        'sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:-mx-6',
+        !split && 'lg:hidden',
+      )}
+    >
+      <AskButton />
+      {moreMenu}
+      <span className="sr-only" aria-live="polite">
+        {autosaveNote}
+      </span>
+      <div className="ml-auto flex gap-2">{saveButtons(true)}</div>
+    </div>
+  )
+
+  const form = (
+    <div className="flex min-w-0 flex-col gap-6">
+      {document && <AssistantPageContext value={{ collection, id: document.id, title: document.title }} />}
+      {split ? <AssistantBottomBar always /> : <AssistantBottomBar />}
+      {/* The details card is beside the form only on wide screens without the preview. */}
+      {saved && (
+        <div className={cn('flex flex-wrap items-center gap-2 text-sm text-muted-foreground', !split && 'lg:hidden')}>
+          <StatusBadge status={saved.status} t={t} hint />
+          <span>{autosaveNote ?? `${t('updated')}: ${formatDate(saved.updatedAt, language)}`}</span>
+        </div>
+      )}
+      {lockedByOther && (
+        <Alert>
+          <LockIcon />
+          <AlertTitle>{lock?.email ? t('lockedBy', { email: lock.email }) : t('lockedBySomeone')}</AlertTitle>
+          <AlertDescription>{t('lockedDescription')}</AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="outline" onClick={takeOver}>
+              {t('takeOver')}
+            </Button>
+          </AlertAction>
+        </Alert>
+      )}
+      {/* While someone else edits, the form is read-only. */}
+      <fieldset disabled={lockedByOther} className="contents">
         <Card>
           <CardContent>
             <FieldGroup>
@@ -217,16 +390,19 @@ export function DocumentEditor({
                     change('slug', event.target.value)
                   }}
                 />
+                <FieldDescription>{t('slugHint')}</FieldDescription>
                 <FieldError>{errors.slug}</FieldError>
               </Field>
               <Field {...field('heading')}>
                 <FieldLabel htmlFor="heading">{t('heading')}</FieldLabel>
-                <Input id="heading" value={values.heading} onChange={(event) => change('heading', event.target.value)} />
+                <Input id="heading" value={values.heading} aria-invalid={Boolean(errors.heading) || undefined} onChange={(event) => change('heading', event.target.value)} />
+                <FieldDescription>{t('headingHint')}</FieldDescription>
                 <FieldError>{errors.heading}</FieldError>
               </Field>
               <Field {...field('description')}>
                 <FieldLabel htmlFor="description">{t('description')}</FieldLabel>
-                <Textarea id="description" value={values.description} onChange={(event) => change('description', event.target.value)} />
+                <Textarea id="description" value={values.description} aria-invalid={Boolean(errors.description) || undefined} onChange={(event) => change('description', event.target.value)} />
+                <FieldDescription>{t('descriptionHint')}</FieldDescription>
                 <FieldError>{errors.description}</FieldError>
               </Field>
               <Field {...field('body')}>
@@ -241,6 +417,7 @@ export function DocumentEditor({
           <CardContent>
             <FieldSet>
               <FieldLegend>{t('seo')}</FieldLegend>
+              <FieldDescription>{t('seoHint')}</FieldDescription>
               <FieldGroup>
                 <Field {...field('seo.title')}>
                   <FieldLabel htmlFor="seo-title">{t('seoTitle')}</FieldLabel>
@@ -256,65 +433,104 @@ export function DocumentEditor({
             </FieldSet>
           </CardContent>
         </Card>
-        </fieldset>
-        <AssistantBottomBar />
-        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:-mx-6 lg:hidden">
-          <div className="mr-auto">
-            <AskButton />
-          </div>
-          {actions}
-        </div>
-      </div>
+      </fieldset>
+      {actionBar}
+    </div>
+  )
 
-      <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between gap-2">
-              {t('details')}
-              {document && <StatusBadge status={document.status} t={t} />}
-            </CardTitle>
-            {document && <CardDescription>{t('updated')}: {formatDate(document.updatedAt, language)}</CardDescription>}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <Field>
-              <FieldLabel>{t('documentTranslation')}</FieldLabel>
-              <ToggleGroup
-                variant="outline"
-                value={[locale]}
-                aria-label={t('documentTranslation')}
-                onValueChange={(value) => {
-                  const next = value[0]
-                  if (next && next !== locale) {
-                    navigate(document ? `/admin/${site}/${section}/${document.id}?locale=${next}` : `/admin/${site}/${section}/new?locale=${next}`)
-                  }
-                }}
-              >
-                <ToggleGroupItem value="nl">{t('dutch')}</ToggleGroupItem>
-                <ToggleGroupItem value="en">{t('english')}</ToggleGroupItem>
-              </ToggleGroup>
-              {dirty && <FieldDescription>{t('unsavedChanges')}</FieldDescription>}
-            </Field>
-            <div className="hidden gap-2 lg:grid">{actions}</div>
-            <FieldDescription>{t('publishAllHint')}</FieldDescription>
-            {document && (
-              <div className="grid gap-2">
-                {previewHref && (
-                  <a href={previewHref} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'ghost', className: 'justify-start' })}>
-                    <ExternalLinkIcon data-icon="inline-start" />
-                    {t('preview')}
-                  </a>
-                )}
-                <VersionsSheet collection={collection} versions={versions} language={language} disabled={lockedByOther} />
-                <Button variant="ghost" className="justify-start text-destructive" disabled={lockedByOther} onClick={() => setDeleting(true)}>
-                  <Trash2Icon data-icon="inline-start" />
-                  {t('delete')}
+  const details = (
+    <aside className="hidden flex-col gap-4 lg:sticky lg:top-20 lg:flex lg:self-start">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            {t('details')}
+            {saved && <StatusBadge status={saved.status} t={t} hint />}
+          </CardTitle>
+          {saved && <CardDescription>{t('updated')}: {formatDate(saved.updatedAt, language)}</CardDescription>}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel>{t('documentTranslation')}</FieldLabel>
+            <ToggleGroup
+              variant="outline"
+              value={[locale]}
+              aria-label={t('documentTranslation')}
+              onValueChange={(value) => {
+                const next = value[0] as ContentLocale | undefined
+                if (next && next !== locale) navigate(editorHref({ locale: next }))
+              }}
+            >
+              <ToggleGroupItem value="nl">{t('dutch')}</ToggleGroupItem>
+              <ToggleGroupItem value="en">{t('english')}</ToggleGroupItem>
+            </ToggleGroup>
+            {autosaveNote && <FieldDescription aria-live="polite">{autosaveNote}</FieldDescription>}
+          </Field>
+          <div className="grid gap-2">{saveButtons(false)}</div>
+          <FieldDescription>{t('publishAllHint')}</FieldDescription>
+          {document && (
+            <div className="grid gap-2">
+              {previewHref && (
+                <Button variant="ghost" className="justify-start" onClick={togglePreview}>
+                  <EyeIcon data-icon="inline-start" />
+                  {t('livePreview')}
                 </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </aside>
+              )}
+              <Button variant="ghost" className="justify-start" disabled={lockedByOther} onClick={() => setVersionsOpen(true)}>
+                <HistoryIcon data-icon="inline-start" />
+                {t('versions')}
+              </Button>
+              <Button variant="ghost" className="justify-start text-destructive" disabled={lockedByOther} onClick={() => setDeleting(true)}>
+                <Trash2Icon data-icon="inline-start" />
+                {t('delete')}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </aside>
+  )
 
+  return (
+    <>
+      {split && previewHref ? (
+        <ResizablePanelGroup orientation="horizontal" className="h-[calc(100svh-4rem)] min-h-0">
+          <ResizablePanel defaultSize="45" minSize="30">
+            <div className="h-full overflow-y-auto px-4 pt-4 md:px-6 md:pt-6">{form}</div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel minSize="30">
+            <LivePreview src={previewHref} revision={previewRevision} onClose={togglePreview} />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          {form}
+          {details}
+        </div>
+      )}
+
+      {previewHref && !wide && (
+        <Sheet open={previewSheet} onOpenChange={setPreviewSheet}>
+          <SheetContent side="bottom" className="gap-0 p-0 data-[side=bottom]:h-svh" showCloseButton={false}>
+            <SheetHeader className="sr-only">
+              <SheetTitle>{t('livePreview')}</SheetTitle>
+              <SheetDescription>{t('previewHint')}</SheetDescription>
+            </SheetHeader>
+            <LivePreview src={previewHref} revision={previewRevision} onClose={() => setPreviewSheet(false)} />
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {document && (
+        <VersionsSheet
+          open={versionsOpen}
+          onOpenChange={setVersionsOpen}
+          collection={collection}
+          versions={versions}
+          language={language}
+          disabled={lockedByOther}
+        />
+      )}
       {document && (
         <DeleteDialog
           open={deleting}
@@ -354,16 +570,24 @@ export function DocumentEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
 
+function formatTime(value: string, language: string) {
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'nl-NL', { timeStyle: 'short' }).format(new Date(value))
+}
+
 function VersionsSheet({
+  open,
+  onOpenChange: setOpen,
   collection,
   versions,
   language,
   disabled,
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   collection: EditorialCollection
   versions: { id: string; updatedAt: string; status?: string | null }[]
   language: string
@@ -371,7 +595,6 @@ function VersionsSheet({
 }) {
   const { t } = useI18n()
   const router = useRouter()
-  const [open, setOpen] = useState(false)
   const [restoring, setRestoring] = useState<string>()
 
   async function restore(id: string) {
@@ -390,10 +613,6 @@ function VersionsSheet({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="ghost" className="justify-start" />}>
-        <HistoryIcon data-icon="inline-start" />
-        {t('versions')}
-      </SheetTrigger>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{t('versions')}</SheetTitle>

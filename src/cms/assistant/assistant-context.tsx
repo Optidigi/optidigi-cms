@@ -9,8 +9,9 @@ import { useI18n } from '../client/i18n-provider'
 
 export type ThreadSummary = { id: number; title?: string | null; archived?: boolean | null; updatedAt: string }
 export type PageContext = { collection: string; id: number; title: string }
+type BottomBar = false | 'small' | 'always'
 // A model the chat can use: `key` is `connectionID:modelID`, as the chat endpoint expects.
-export type ModelOption = { key: string; model: string; connection: string }
+export type ModelOption = { key: string; model: string; connectionID: string; connection: string }
 type Setup = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; models: ModelOption[] }
 type SettingsDoc = {
   connections?: { id?: string | null; label: string; hasKey?: boolean | null; models?: string[] | null }[] | null
@@ -21,7 +22,7 @@ type SettingsDoc = {
 function modelOptions(settings?: SettingsDoc): ModelOption[] {
   return (settings?.connections ?? []).flatMap((connection) =>
     connection.id && connection.hasKey
-      ? (connection.models ?? []).map((model) => ({ key: `${connection.id}:${model}`, model, connection: connection.label }))
+      ? (connection.models ?? []).map((model) => ({ key: `${connection.id}:${model}`, model, connectionID: connection.id!, connection: connection.label }))
       : [],
   )
 }
@@ -37,9 +38,10 @@ type AssistantState = {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   context?: PageContext
   setContext: (context?: PageContext) => void
-  // True while the page shows its own sticky bottom bar (the editor's save bar on small screens).
-  bottomBar: boolean
-  setBottomBar: (value: boolean) => void
+  // Set while the page shows its own sticky bottom bar: 'small' below the lg breakpoint (the editor's
+  // save bar), 'always' when it shows one at every size (the editor beside the live preview).
+  bottomBar: BottomBar
+  setBottomBar: (value: BottomBar) => void
   threads: ThreadSummary[] | undefined
   refreshThreads: () => Promise<void>
   openThread: (id: number) => Promise<void>
@@ -135,7 +137,7 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
   const [model, setModel] = useState<string>()
   const [open, setOpen] = useState(false)
   const [context, setContext] = useState<PageContext>()
-  const [bottomBar, setBottomBar] = useState(false)
+  const [bottomBar, setBottomBar] = useState<BottomBar>(false)
   const [threads, setThreads] = useState<ThreadSummary[]>()
   const [thread, setThread] = useState<number>()
   const [request] = useState(() => new RequestStore({ site, language }))
@@ -222,11 +224,11 @@ export function AssistantPageContext({ value }: { value?: PageContext }) {
 }
 
 // Marks that the page has its own sticky bottom bar, so the floating AI bar steps aside for it.
-export function AssistantBottomBar() {
+export function AssistantBottomBar({ always = false }: { always?: boolean }) {
   const setBottomBar = useAssistant()?.setBottomBar
   useEffect(() => {
-    setBottomBar?.(true)
+    setBottomBar?.(always ? 'always' : 'small')
     return () => setBottomBar?.(false)
-  }, [setBottomBar])
+  }, [setBottomBar, always])
   return null
 }

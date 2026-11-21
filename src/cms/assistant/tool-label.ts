@@ -39,9 +39,8 @@ export function toolLabel(name: string, input: unknown, state: ToolState, t: Tra
   const labels = collectionLabels[slug as keyof typeof collectionLabels]
   const thing = labels && action ? labels[action.plural ? 'plural' : 'singular'][language].toLowerCase() : t('toolContent')
   // Done reads as past tense ("Changed a page"); everything else names the action ("Change a page").
-  const sentence = !action
-    ? t('toolOther', { tool: name })
-    : t(state === 'done' ? action.key : (`${action.key}Proposed` as MessageKey), { thing })
+  if (!action) return t(state === 'done' ? 'toolOther' : 'toolOtherProposed', { tool: name })
+  const sentence = t(state === 'done' ? action.key : (`${action.key}Proposed` as MessageKey), { thing })
   const text =
     state === 'done' || state === 'proposed'
       ? sentence

@@ -3,7 +3,7 @@ import { contentLocale } from '../sections'
 import { SiteHeader } from '../shell/site-header'
 import { PageTitle } from '../shell/page'
 import { SettingsFrame } from './settings-layout'
-import { SiteSettingsForm, type SettingsPart } from './site-settings-form'
+import { SiteSettingsForm, type PageLink, type SettingsPart } from './site-settings-form'
 
 const titles = {
   general: ['general', 'generalDescription'],
@@ -25,6 +25,21 @@ export async function SiteSettingsPage({ site: siteParam, locale: localeParam, p
     user,
     where: { tenant: { equals: site.id } },
   })
+  // Navigation links can point at the website's own pages, using its preview path pattern.
+  const pageLinks: PageLink[] = []
+  if (part === 'navigation') {
+    const [tenant, { docs: pages }] = await Promise.all([
+      payload.findByID({ collection: 'tenants', id: site.id, depth: 0, overrideAccess: false, user, select: { previewPaths: true } }),
+      payload.find({
+        collection: 'pages', depth: 0, draft: true, limit: 200, locale, overrideAccess: false, user, sort: 'title',
+        select: { title: true, slug: true }, where: { tenant: { equals: site.id } },
+      }),
+    ])
+    const pattern = tenant.previewPaths?.pages || '/{slug}'
+    for (const page of pages) {
+      if (page.slug) pageLinks.push({ title: page.title ?? page.slug, href: pattern.replaceAll('{slug}', page.slug) })
+    }
+  }
   const [title, description] = titles[part]
   return (
     <>
@@ -56,6 +71,7 @@ export async function SiteSettingsPage({ site: siteParam, locale: localeParam, p
               : undefined
           }
           siteName={site.name}
+          pageLinks={pageLinks}
         />
       </SettingsFrame>
     </>
