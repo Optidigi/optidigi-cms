@@ -95,8 +95,8 @@ export default buildConfig({
   // Sends password-reset email when SMTP is configured; otherwise Payload logs email to the console.
   email: process.env.SMTP_HOST
     ? nodemailerAdapter({
-        defaultFromAddress: process.env.SMTP_FROM_ADDRESS ?? 'cms@optidigi.nl',
-        defaultFromName: process.env.SMTP_FROM_NAME ?? 'Optidigi CMS',
+        defaultFromAddress: process.env.SMTP_FROM_ADDRESS || 'cms@optidigi.nl',
+        defaultFromName: process.env.SMTP_FROM_NAME || 'Optidigi CMS',
         transportOptions: {
           host: process.env.SMTP_HOST,
           port: Number(process.env.SMTP_PORT ?? 587),

@@ -82,8 +82,3 @@ export async function requireSite(siteParam: string) {
   if (!site) notFound()
   return { ...session, site }
 }
-
-export function siteRole(user: User, site: number): 'admin' | 'editor' | undefined {
-  if (isPlatformAdmin(user)) return 'admin'
-  return user.tenants?.find(({ tenant }) => relationID(tenant) === site)?.role
-}

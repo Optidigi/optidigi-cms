@@ -13,6 +13,13 @@ services:
       DATABASE_URL: postgres://optidigi_cms:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/optidigi_cms
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?Set PAYLOAD_SECRET}
       PREVIEW_SIGNING_KEY_FILE: /run/secrets/preview_signing_key
+      # Optional SMTP for password-reset email. Without it, Payload writes email (including reset links) to the logs.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Optidigi CMS}
     secrets:
       - preview_signing_key
     volumes:

@@ -8,7 +8,7 @@ import config from '@/payload.config'
 import { assistantSiteHeader } from '@/assistant/scope'
 import { relationID } from '@/site/access'
 import { siteEndpoints } from '@/site/endpoints'
-import { previewURL } from '@/site/preview'
+import { previewGrantStrategy, previewURL } from '@/site/preview'
 
 const suffix = randomUUID().slice(0, 8)
 let payload: Payload
@@ -186,14 +186,24 @@ describe('tenant content', () => {
   it('signs a preview grant in as a read-only editor of its website only', async () => {
     const preview = await previewURL('pages', home, 'nl', request('https://cms.optidigi.nl/api'))
     const grant = new URL(preview!).searchParams.get('grant')!
-    const { user } = await payload.auth({ headers: new Headers({ authorization: `Bearer ${grant}` }) })
+    const headers = new Headers({ authorization: `Bearer ${grant}` })
+    const signIn = (method: string, url: string) =>
+      previewGrantStrategy.authenticate({ headers, payload, req: { method, url } as PayloadRequest })
+    const { user } = await signIn('GET', 'https://cms.optidigi.nl/api/pages?draft=true')
     expect(user?.id).toBe(actor.id)
+    // Only reads of website content: no writes, no requests without a method, no other API paths.
+    expect((await signIn('POST', 'https://cms.optidigi.nl/api/pages')).user).toBeNull()
+    expect((await signIn('GET', 'https://cms.optidigi.nl/api/users/me')).user).toBeNull()
+    expect((await signIn('GET', 'https://cms.optidigi.nl/api/assistant-threads')).user).toBeNull()
+    expect((await payload.auth({ headers })).user).toBeNull()
     expect(user?.tenants?.map(({ tenant }) => relationID(tenant))).toEqual([tenantA])
     const { docs } = await payload.find({ collection: 'pages', depth: 0, draft: true, locale: 'nl', overrideAccess: false, user })
     expect(docs.map(({ tenant }) => relationID(tenant))).toEqual([tenantA])
     expect(docs[0].heading).toBe('Draft only')
     const forged = grant.slice(0, -2) + (grant.endsWith('AA') ? 'BB' : 'AA')
-    expect((await payload.auth({ headers: new Headers({ authorization: `Bearer ${forged}` }) })).user).toBeNull()
+    expect((await previewGrantStrategy.authenticate({
+      headers: new Headers({ authorization: `Bearer ${forged}` }), payload, req: { method: 'GET', url: 'https://cms.optidigi.nl/api/pages' } as PayloadRequest,
+    })).user).toBeNull()
   })
 
   it('keeps assistant chats private to their author and model keys unreadable', async () => {
