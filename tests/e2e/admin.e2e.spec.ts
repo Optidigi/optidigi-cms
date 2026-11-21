@@ -112,8 +112,10 @@ test.describe('AI services', () => {
     await page.goto(`/admin/${site}/settings/ai`)
     await page.getByRole('button', { name: /koppeling toevoegen|add connection/i }).first().click()
     const dialog = page.getByRole('dialog')
-    // Step 1: the services as choice cards.
-    await dialog.getByRole('radio', { name: /^xAI \(Grok\)/ }).check()
+    // Step 1: the services as choice cards; xAI sits under "More services", folded by default.
+    await expect(dialog.getByRole('radio', { name: /^xAI \(Grok\)/ })).toHaveCount(0)
+    await dialog.getByRole('button', { name: /meer diensten|more services/i }).click()
+    await dialog.locator('label', { has: page.getByRole('radio', { name: /^xAI \(Grok\)/ }) }).click()
     await dialog.getByRole('button', { name: /^(doorgaan|continue)$/i }).click()
     // Step 2: the details, with the chosen service on top.
     await expect(dialog.locator('#connection-label')).toHaveValue('xAI (Grok)')
@@ -136,7 +138,7 @@ test.describe('AI services', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog.locator('#apiKey')).not.toHaveAttribute('required')
     await dialog.getByRole('button', { name: /^(wijzigen|change)$/i }).click()
-    await dialog.getByRole('radio', { name: /^DeepSeek/ }).check()
+    await dialog.locator('label', { has: page.getByRole('radio', { name: /^DeepSeek/ }) }).click()
     await dialog.getByRole('button', { name: /^(doorgaan|continue)$/i }).click()
     await expect(dialog.locator('#apiKey')).toHaveAttribute('required')
     await expect(dialog.getByText(/sleutel voor de nieuwe dienst|key for the new service/i)).toBeVisible()
@@ -206,13 +208,19 @@ test('the sidebar puts AI under the overview and settings at the bottom', async 
 
 test('appearance choices apply at once and survive a reload', async ({ page }) => {
   await login(page, user)
+  // The old address of this page redirects to Weergave.
   await page.goto('/admin/account/preferences')
+  await page.waitForURL('**/admin/account/appearance')
   const html = page.locator('html')
-  await page.getByRole('radio', { name: /^(blauw|blue)$/i }).check()
+  // Choice cards: the radio is only visually hidden, so pick the card.
+  const pick = (name: RegExp) => page.locator('label', { has: page.getByRole('radio', { name }) }).click()
+  await pick(/^(donker|dark) (blauw|blue)$/i)
   await expect(html).toHaveAttribute('data-accent', 'blue')
-  await page.getByRole('radio', { name: /^inter/i }).check()
+  await expect(html).toHaveClass(/dark/)
+  await expect(page.getByRole('radio', { name: /^(donker|dark) (blauw|blue)$/i })).toBeChecked()
+  await pick(/^inter/i)
   await expect(html).toHaveAttribute('data-font', 'inter')
-  await page.getByRole('radio', { name: /^(groot|large)$/i }).check()
+  await pick(/^(groot|large)$/i)
   await expect(html).toHaveAttribute('data-text-size', 'large')
   await page.getByRole('switch', { name: /minder beweging|reduce motion/i }).click()
   await expect(html).toHaveAttribute('data-reduce-motion', 'true')
@@ -226,5 +234,20 @@ test('appearance choices apply at once and survive a reload', async ({ page }) =
   await expect(html).toHaveAttribute('data-font', 'inter')
   await expect(html).toHaveAttribute('data-text-size', 'large')
   await expect(html).toHaveAttribute('data-reduce-motion', 'true')
+  await expect(html).toHaveClass(/dark/)
   expect(await html.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/inter/i)
+})
+
+test('the sign-in screen uses the split layout and switches language without signing in', async ({ page }) => {
+  await page.context().clearCookies()
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/admin/login')
+  await expect(page.getByRole('img', { name: 'Optidigi CMS' })).toBeVisible()
+  await page.getByRole('button', { name: /cms-taal|cms language/i }).click()
+  await page.getByRole('menuitemradio', { name: 'English' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/welcome back/i)
+  // The choice is kept in the language cookie for signed-out visitors.
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/welcome back/i)
+  await page.context().clearCookies()
 })

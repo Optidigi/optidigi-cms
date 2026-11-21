@@ -8,7 +8,7 @@ export default async function ProfilePage() {
   const [{ user }, t] = await Promise.all([requireUser(), getTranslator()])
   return (
     <>
-      <SiteHeader crumbs={[{ label: t('account') }, { label: t('profile') }]} />
+      <SiteHeader crumbs={[{ label: t('platform') }, { label: t('profile') }]} />
       <SettingsFrame>
         <PageTitle title={t('profile')} description={t('profileDescription')} />
         <ProfileForm id={user.id} email={user.email} />
