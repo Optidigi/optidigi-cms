@@ -1,6 +1,19 @@
 'use client'
 
-import { ChevronDownIcon, ExternalLinkIcon, KeyRoundIcon, PencilIcon, PlusIcon, RefreshCwIcon, SearchIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ExternalLinkIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
+  SparklesIcon,
+  StarIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -11,10 +24,12 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { PasswordInput } from '../auth/password-input'
@@ -23,6 +38,7 @@ import { useI18n } from '../client/i18n-provider'
 import { DeleteDialog } from '../content/delete-dialog'
 import type { Translate } from '../i18n'
 import { type Provider, type Service, serviceByID, serviceGroups, serviceOf, services } from './ai-services'
+import { ServiceLogo, ServiceTile } from './service-logo'
 
 
 export type ConnectionView = { id: string; label: string; provider: Provider; baseURL: string; hasKey: boolean; models: string[] }
@@ -122,47 +138,14 @@ export function AssistantSettingsForm({ site, editable, settings: initial }: { s
         <>
           <div className="grid gap-4">
             {connections.map((connection) => (
-              <Card key={connection.id}>
-                <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2">
-                    {connection.label}
-                    {serviceName(serviceOf(connection.provider, connection.baseURL), t) !== connection.label && (
-                      <Badge variant="secondary">{serviceName(serviceOf(connection.provider, connection.baseURL), t)}</Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-1.5">
-                    <KeyRoundIcon className="size-3.5" />
-                    {connection.hasKey ? t('keySaved') : t('noKey')}
-                    {connection.baseURL && !serviceOf(connection.provider, connection.baseURL).baseURL && (
-                      <span className="truncate">· {connection.baseURL}</span>
-                    )}
-                  </CardDescription>
-                  {editable && (
-                    <CardAction className="flex gap-1">
-                      <Button variant="ghost" size="icon-sm" aria-label={t('edit')} onClick={() => setEditing(connection)}>
-                        <PencilIcon />
-                      </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label={t('delete')} onClick={() => setRemoving(connection)}>
-                        <Trash2Icon />
-                      </Button>
-                    </CardAction>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {connection.models.length ? (
-                    <div className="flex flex-wrap gap-1.5">
-                    {connection.models.map((model) => (
-                      <Badge key={model} variant="outline">
-                        {model}
-                        {settings?.defaultModel === `${connection.id}:${model}` && ` · ${t('default')}`}
-                      </Badge>
-                    ))}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">{t('noModelsEnabled')}</span>
-                  )}
-                </CardContent>
-              </Card>
+              <ConnectionCard
+                key={connection.id}
+                connection={connection}
+                defaultModel={settings?.defaultModel}
+                editable={editable}
+                onEdit={() => setEditing(connection)}
+                onDelete={() => setRemoving(connection)}
+              />
             ))}
           </div>
           {editable && (
@@ -191,9 +174,12 @@ export function AssistantSettingsForm({ site, editable, settings: initial }: { s
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {connections.map((connection) => (
+                    {connections.filter((connection) => options.some((option) => option.connection === connection)).map((connection) => (
                       <SelectGroup key={connection.id}>
-                        <SelectLabel>{connection.label}</SelectLabel>
+                        <SelectLabel className="flex items-center gap-2">
+                          <ServiceLogo service={serviceOf(connection.provider, connection.baseURL)} className="size-3.5" />
+                          {connection.label}
+                        </SelectLabel>
                         {options
                           .filter((option) => option.connection === connection)
                           .map((option) => (
@@ -219,9 +205,15 @@ export function AssistantSettingsForm({ site, editable, settings: initial }: { s
           connections={connections}
           persist={persist}
           onClose={() => setEditing(undefined)}
+          onDelete={() => {
+            if (editing !== 'new') setRemoving(editing)
+            setEditing(undefined)
+          }}
         />
       )}
       <DeleteDialog
+        title={t('deleteConnectionTitle', { name: removing?.label ?? '' })}
+        description={t('deleteConnectionDescription')}
         open={Boolean(removing)}
         onOpenChange={(open) => !open && setRemoving(undefined)}
         onConfirm={async () => {
@@ -250,12 +242,14 @@ function ConnectionDialog({
   connections,
   persist,
   onClose,
+  onDelete,
 }: {
   site: number
   connection?: ConnectionView
   connections: ConnectionView[]
   persist: (data: Record<string, unknown>) => Promise<SettingsView>
   onClose: () => void
+  onDelete: () => void
 }) {
   const { t } = useI18n()
   const [saved, setSaved] = useState(connection)
@@ -286,6 +280,8 @@ function ConnectionDialog({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<'save' | 'load'>()
   const [loadError, setLoadError] = useState<string>()
+  // A new connection starts by choosing its service; an existing one opens on its details.
+  const [step, setStep] = useState<'service' | 'details'>(connection ? 'details' : 'service')
 
   const changed =
     !saved || Boolean(apiKey) || label !== saved.label || provider !== saved.provider || baseURL.trim() !== saved.baseURL
@@ -369,6 +365,50 @@ function ConnectionDialog({
     ...models.filter((model) => !listed?.some(({ id }) => id === model)).map((id) => ({ id, name: id })),
   ].filter(({ id, name }) => !query || id.toLowerCase().includes(query) || name.toLowerCase().includes(query))
 
+  if (step === 'service') {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{connection ? t('changeService') : t('addConnection')}</DialogTitle>
+            <DialogDescription>{t('chooseServiceDescription')}</DialogDescription>
+          </DialogHeader>
+          <RadioGroup value={service.id} onValueChange={(value) => chooseService(String(value))} aria-label={t('service')} className="gap-5">
+            {serviceGroups.map(({ group, label: groupLabel }) => (
+              <FieldSet key={group} className="gap-2">
+                <FieldLegend variant="label">{t(groupLabel)}</FieldLegend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {services
+                    .filter((item) => item.group === group)
+                    .map((item) => (
+                      <FieldLabel key={item.id} htmlFor={`service-${item.id}`}>
+                        <Field orientation="horizontal" className="items-center">
+                          <ServiceTile service={item} />
+                          <FieldContent className="min-w-0">
+                            <FieldTitle>{serviceName(item, t)}</FieldTitle>
+                            <FieldDescription className="line-clamp-2 text-xs">{t(item.description)}</FieldDescription>
+                          </FieldContent>
+                          <RadioGroupItem value={item.id} id={`service-${item.id}`} />
+                        </Field>
+                      </FieldLabel>
+                    ))}
+                </div>
+              </FieldSet>
+            ))}
+          </RadioGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={connection ? () => setStep('details') : onClose}>
+              {connection ? t('back') : t('cancel')}
+            </Button>
+            <Button type="button" onClick={() => setStep('details')}>
+              {t('continue')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-xl">
@@ -377,6 +417,17 @@ function ConnectionDialog({
             <DialogTitle>{connection ? t('editConnection') : t('addConnection')}</DialogTitle>
             <DialogDescription>{t('connectionDescription')}</DialogDescription>
           </DialogHeader>
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/40 p-3">
+            <ServiceTile service={service} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{serviceName(service, t)}</p>
+              <p className="line-clamp-2 text-xs text-muted-foreground">{t(service.description)}</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => setStep('service')}>
+              {t('change')}
+            </Button>
+          </div>
+          {errors.provider && <FieldError>{errors.provider}</FieldError>}
           <FieldGroup>
             <Field data-invalid={errors.label ? true : undefined}>
               <FieldLabel htmlFor="connection-label">{t('connectionName')}</FieldLabel>
@@ -390,33 +441,6 @@ function ConnectionDialog({
                 }}
               />
               <FieldError>{errors.label}</FieldError>
-            </Field>
-            <Field data-invalid={errors.provider ? true : undefined}>
-              <FieldLabel htmlFor="service">{t('service')}</FieldLabel>
-              <Select value={service.id} onValueChange={(value) => value && chooseService(String(value))}>
-                <SelectTrigger id="service" className="w-full">
-                  <SelectValue>{(value: string) => serviceName(serviceByID(value), t)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {serviceGroups.map(({ group, label: groupLabel }) => (
-                    <SelectGroup key={group}>
-                      <SelectLabel>{t(groupLabel)}</SelectLabel>
-                      {services
-                        .filter((item) => item.group === group)
-                        .map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            <span className="flex min-w-0 flex-col">
-                              <span>{serviceName(item, t)}</span>
-                              <span className="text-xs whitespace-normal text-muted-foreground">{t(item.description)}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldDescription>{t(service.description)}</FieldDescription>
-              <FieldError>{errors.provider}</FieldError>
             </Field>
             {service.id === 'custom' && (
               <Field data-invalid={errors.baseURL ? true : undefined}>
@@ -545,6 +569,12 @@ function ConnectionDialog({
             </FieldSet>
           </FieldGroup>
           <DialogFooter>
+            {saved && (
+              <Button type="button" variant="ghost" className="text-destructive hover:text-destructive sm:mr-auto" onClick={onDelete}>
+                <Trash2Icon data-icon="inline-start" />
+                {t('deleteConnection')}
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={onClose}>
               {t('cancel')}
             </Button>
@@ -556,5 +586,87 @@ function ConnectionDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// One connection: its service, whether a key is saved, and its enabled models (the default starred).
+function ConnectionCard({
+  connection,
+  defaultModel,
+  editable,
+  onEdit,
+  onDelete,
+}: {
+  connection: ConnectionView
+  defaultModel?: string
+  editable: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const { t } = useI18n()
+  const service = serviceOf(connection.provider, connection.baseURL)
+  const name = serviceName(service, t)
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex min-w-0 items-center gap-3">
+          <ServiceTile service={service} />
+          <div className="grid min-w-0 gap-1">
+            <CardTitle className="truncate">{connection.label}</CardTitle>
+            <CardDescription className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              {name !== connection.label && <span className="truncate">{name}</span>}
+              {connection.baseURL && !service.baseURL && <span className="truncate">{connection.baseURL}</span>}
+              {connection.hasKey ? (
+                <Badge variant="secondary">
+                  <CheckIcon data-icon="inline-start" className="text-green-600 dark:text-green-400" />
+                  {t('keySaved')}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-amber-700 dark:text-amber-400">
+                  <TriangleAlertIcon data-icon="inline-start" />
+                  {t('noKey')}
+                </Badge>
+              )}
+            </CardDescription>
+          </div>
+        </div>
+        {editable && (
+          <CardAction className="self-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('connectionActions', { name: connection.label })} />}>
+                <MoreHorizontalIcon />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>
+                  <PencilIcon />
+                  {t('edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2Icon />
+                  {t('delete')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent>
+        {connection.models.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {connection.models.map((model) => {
+              const isDefault = defaultModel === `${connection.id}:${model}`
+              return (
+                <Badge key={model} variant={isDefault ? 'secondary' : 'outline'}>
+                  {isDefault && <StarIcon data-icon="inline-start" className="fill-current" aria-label={t('default')} />}
+                  {model}
+                </Badge>
+              )
+            })}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">{t('noModelsEnabled')}</span>
+        )}
+      </CardContent>
+    </Card>
   )
 }

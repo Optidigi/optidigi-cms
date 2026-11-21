@@ -509,7 +509,7 @@ export function DocumentEditor({
     <>
       {split && previewHref ? (
         // A fixed height below the header: the form scrolls inside its panel and the preview stays in view.
-        <ResizablePanelGroup orientation="horizontal" className="sticky top-16 overflow-hidden" style={{ height: 'calc(100svh - 4rem)', minHeight: 0 }}>
+        <ResizablePanelGroup orientation="horizontal" className="sticky top-16 overflow-hidden" style={{ height: 'calc(100svh - 4rem - var(--inset-gap))', minHeight: 0 }}>
           <ResizablePanel defaultSize="45" minSize="30">
             <div className="h-full overflow-y-auto px-4 pt-4 md:px-6 md:pt-6">{form}</div>
           </ResizablePanel>

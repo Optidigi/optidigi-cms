@@ -5,6 +5,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { I18nProvider } from '@/cms/client/i18n-provider'
 import { ThemeProvider } from '@/cms/client/theme-provider'
+import { atkinson, inter } from '@/cms/fonts'
+import { appearanceAttributes, defaultAppearance } from '@/cms/preferences'
 import { getLanguage, getPreferences, getSession } from '@/cms/server'
 import './admin.css'
 
@@ -13,9 +15,16 @@ export const metadata: Metadata = { title: { default: 'Optidigi CMS', template: 
 export default async function CMSRootLayout({ children }: { children: React.ReactNode }) {
   const language = await getLanguage()
   const { user } = await getSession()
-  const theme = user ? (await getPreferences()).theme : 'system'
+  // Signed-in users get their own appearance; the sign-in screens keep the default look.
+  const preferences = user ? await getPreferences() : undefined
+  const theme = preferences?.theme ?? 'system'
   return (
-    <html lang={language} className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html
+      lang={language}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${inter.variable} ${atkinson.variable}`}
+      {...appearanceAttributes(preferences ?? defaultAppearance)}
+      suppressHydrationWarning
+    >
       <body>
         <ThemeProvider attribute="class" defaultTheme={theme} enableSystem disableTransitionOnChange>
           <I18nProvider language={language}>

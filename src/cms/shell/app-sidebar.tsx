@@ -1,14 +1,14 @@
 'use client'
 
 import {
-  BookOpenIcon,
-  SparklesIcon,
   BriefcaseIcon,
+  ExternalLinkIcon,
   FileTextIcon,
   ImageIcon,
   LayoutDashboardIcon,
   NewspaperIcon,
   SettingsIcon,
+  SparklesIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
@@ -37,6 +37,7 @@ type NavItem = { key: MessageKey; path: string; icon: React.ReactNode; exact?: b
 
 const workspace: NavItem[] = [
   { key: 'overview', path: '', icon: <LayoutDashboardIcon />, exact: true },
+  { key: 'assistant', path: '/ai', icon: <SparklesIcon /> },
 ]
 const content: NavItem[] = [
   { key: 'pages', path: '/pages', icon: <FileTextIcon />, section: 'pages' },
@@ -44,12 +45,9 @@ const content: NavItem[] = [
   { key: 'portfolio', path: '/portfolio', icon: <BriefcaseIcon />, section: 'portfolio' },
   { key: 'media', path: '/media', icon: <ImageIcon /> },
 ]
-const tools: NavItem[] = [
-  { key: 'assistant', path: '/ai', icon: <SparklesIcon /> },
-  { key: 'settings', path: '/settings', icon: <SettingsIcon /> },
-]
 
-// Composition of the official shadcn sidebar-07 block.
+// Composition of the official shadcn sidebar blocks: sidebar-07's navigation in sidebar-08's inset
+// layout. Website work at the top, settings (which include the platform pages) at the bottom.
 export function AppSidebar({
   sites,
   fallbackSite,
@@ -100,31 +98,37 @@ export function AppSidebar({
     )
   }
 
+  // Website, account and platform settings share one settings area.
+  const settingsHref = site ? `/admin/${site.id}/settings` : platformAdmin ? '/admin/platform/websites' : '/admin/account/profile'
+  const inSettings =
+    (site && pathname.startsWith(`/admin/${site.id}/settings`)) || pathname.startsWith('/admin/platform') || pathname.startsWith('/admin/account')
+
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
         <SiteSwitcher sites={sites} current={site} />
       </SidebarHeader>
       <SidebarContent>
         {group(undefined, workspace)}
         {site && group('content', content.filter(({ section }) => !section || enabledSections(site).includes(section)))}
-        {group(undefined, tools)}
-        {platformAdmin && (
-          <SidebarGroup className="mt-auto">
-            <SidebarMenu>
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            {site && (
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={pathname.startsWith('/admin/platform')}
-                  tooltip={t('platform')}
-                  render={<Link href="/admin/platform/websites" />}
-                >
-                  <BookOpenIcon />
-                  <span>{t('platform')}</span>
+                <SidebarMenuButton tooltip={t('viewWebsite')} render={<a href={site.siteOrigin} target="_blank" rel="noreferrer" />}>
+                  <ExternalLinkIcon />
+                  <span>{t('viewWebsite')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
+            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton isActive={Boolean(inSettings)} tooltip={t('settings')} render={<Link href={settingsHref} />}>
+                <SettingsIcon />
+                <span>{t('settings')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <NavUser email={user.email} />

@@ -112,8 +112,10 @@ test.describe('AI services', () => {
     await page.goto(`/admin/${site}/settings/ai`)
     await page.getByRole('button', { name: /koppeling toevoegen|add connection/i }).first().click()
     const dialog = page.getByRole('dialog')
-    await dialog.getByRole('combobox', { name: /dienst|service/i }).click()
-    await page.getByRole('option', { name: /^xAI \(Grok\)/ }).click()
+    // Step 1: the services as choice cards.
+    await dialog.getByRole('radio', { name: /^xAI \(Grok\)/ }).check()
+    await dialog.getByRole('button', { name: /^(doorgaan|continue)$/i }).click()
+    // Step 2: the details, with the chosen service on top.
     await expect(dialog.locator('#connection-label')).toHaveValue('xAI (Grok)')
     await expect(dialog.locator('#baseURL')).toHaveCount(0)
     await expect(dialog.getByRole('link', { name: /console\.x\.ai/ })).toHaveAttribute('href', 'https://console.x.ai')
@@ -129,11 +131,13 @@ test.describe('AI services', () => {
   test('switching a saved connection to another service asks for a new key', async ({ page }) => {
     await login(page, admin)
     await page.goto(`/admin/${site}/settings/ai`)
-    await page.getByRole('button', { name: /bewerken|edit/i }).first().click()
+    await page.getByRole('button', { name: /acties voor|actions for/i }).first().click()
+    await page.getByRole('menuitem', { name: /bewerken|edit/i }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.locator('#apiKey')).not.toHaveAttribute('required')
-    await dialog.getByRole('combobox', { name: /dienst|service/i }).click()
-    await page.getByRole('option', { name: /^DeepSeek/ }).click()
+    await dialog.getByRole('button', { name: /^(wijzigen|change)$/i }).click()
+    await dialog.getByRole('radio', { name: /^DeepSeek/ }).check()
+    await dialog.getByRole('button', { name: /^(doorgaan|continue)$/i }).click()
     await expect(dialog.locator('#apiKey')).toHaveAttribute('required')
     await expect(dialog.getByText(/sleutel voor de nieuwe dienst|key for the new service/i)).toBeVisible()
   })
@@ -153,4 +157,74 @@ test.describe('AI services', () => {
     await page.getByRole('menuitemradio', { name: 'model-b' }).click()
     await expect(page.getByRole('button', { name: /^(model)$/i })).toContainText('model-b')
   })
+
+  test('a connection can be renamed, get a new key and be deleted after confirming', async ({ page }) => {
+    await login(page, admin)
+    await page.goto(`/admin/${site}/settings/ai`)
+    await page.getByRole('button', { name: /acties voor|actions for/i }).first().click()
+    await page.getByRole('menuitem', { name: /bewerken|edit/i }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.locator('#connection-label').fill('Team Grok')
+    await dialog.locator('#apiKey').fill('xai-new-key')
+    await dialog.getByRole('button', { name: /^(opslaan|save)$/i }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByText('Team Grok', { exact: true })).toBeVisible()
+
+    const before = (await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })).docs[0]
+    const connection = before.connections![0]
+    await payload.update({ collection: 'assistant-settings', overrideAccess: true, id: before.id, data: { defaultModel: `${connection.id}:model-a` } })
+    await page.reload()
+
+    await page.getByRole('button', { name: /acties voor team grok|actions for team grok/i }).click()
+    await page.getByRole('menuitem', { name: /verwijderen|delete/i }).click()
+    const confirm = page.getByRole('alertdialog')
+    await expect(confirm).toContainText(/team grok/i)
+    await expect(confirm).not.toContainText(/document/i)
+    await confirm.getByRole('button', { name: /^(verwijderen|delete)$/i }).click()
+    await expect(page.getByText('Team Grok', { exact: true })).toHaveCount(0)
+
+    const after = (await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })).docs[0]
+    expect(after.connections).toHaveLength(0)
+    expect(after.defaultModel ?? null).toBeNull()
+  })
+})
+
+test('the sidebar puts AI under the overview and settings at the bottom', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await login(page, user)
+  await page.goto(`/admin/${site}`)
+  const names = await page.locator('[data-sidebar="menu-button"]').evaluateAll((items) =>
+    items.map((item) => item.textContent?.trim() ?? '').filter(Boolean),
+  )
+  const order = names.slice(1, -1) // without the website switcher and the account menu
+  expect(order[0]).toMatch(/overzicht|overview/i)
+  expect(order[1]).toMatch(/^ai$/i)
+  expect(order.at(-1)).toMatch(/instellingen|settings/i)
+  expect(order.at(-2)).toMatch(/website bekijken|view website/i)
+  expect(order.some((name) => /^platform$/i.test(name))).toBe(false)
+})
+
+test('appearance choices apply at once and survive a reload', async ({ page }) => {
+  await login(page, user)
+  await page.goto('/admin/account/preferences')
+  const html = page.locator('html')
+  await page.getByRole('radio', { name: /^(blauw|blue)$/i }).check()
+  await expect(html).toHaveAttribute('data-accent', 'blue')
+  await page.getByRole('radio', { name: /^inter/i }).check()
+  await expect(html).toHaveAttribute('data-font', 'inter')
+  await page.getByRole('radio', { name: /^(groot|large)$/i }).check()
+  await expect(html).toHaveAttribute('data-text-size', 'large')
+  await page.getByRole('switch', { name: /minder beweging|reduce motion/i }).click()
+  await expect(html).toHaveAttribute('data-reduce-motion', 'true')
+  // Saves run in the background; wait until the last one is stored before reloading.
+  await expect.poll(async () => {
+    const { docs } = await payload.find({ collection: 'payload-preferences', overrideAccess: true, where: { key: { equals: 'cms' }, 'user.value': { equals: (await payload.find({ collection: 'users', overrideAccess: true, where: { email: { equals: user.email } } })).docs[0].id } } })
+    return (docs[0]?.value as { reduceMotion?: boolean } | undefined)?.reduceMotion
+  }).toBe(true)
+  await page.reload()
+  await expect(html).toHaveAttribute('data-accent', 'blue')
+  await expect(html).toHaveAttribute('data-font', 'inter')
+  await expect(html).toHaveAttribute('data-text-size', 'large')
+  await expect(html).toHaveAttribute('data-reduce-motion', 'true')
+  expect(await html.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/inter/i)
 })

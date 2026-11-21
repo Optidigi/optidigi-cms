@@ -10,7 +10,7 @@ export default async function AssistantThreadRoute({ params }: { params: Promise
   if (!thread) notFound()
   const [{ site }, t] = await Promise.all([requireSite(siteParam), getTranslator()])
   return (
-    <div className="flex h-svh flex-col">
+    <div className="flex h-[calc(100svh-var(--inset-gap)*2)] flex-col">
       <SiteHeader crumbs={[{ label: site.name, href: `/admin/${site.id}` }, { label: t('assistant'), href: `/admin/${site.id}/ai` }]} />
       <AssistantPage thread={thread} />
     </div>
