@@ -24,7 +24,7 @@ const eslintConfig = [
     },
   },
   {
-    files: ['src/admin/**/*.{ts,tsx}', 'src/app/(admin)/**/*.{ts,tsx}'],
+    files: ['src/cms/**/*.{ts,tsx}', 'src/app/(cms)/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',

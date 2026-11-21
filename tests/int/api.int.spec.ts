@@ -37,6 +37,7 @@ beforeAll(async () => {
   tenantC = c.id
   const user = await payload.create({
     collection: 'users', overrideAccess: true,
+    context: { bootstrapUser: true },
     data: {
       email: `user-${suffix}@example.test`, password: randomUUID(), role: 'customer',
       tenants: [{ tenant: a.id, role: 'admin' }, { tenant: b.id, role: 'editor' }],
@@ -96,6 +97,55 @@ describe('tenant content', () => {
     })
     expect(docs.map(({ tenant }) => tenant).sort()).toEqual([tenantA, tenantB].sort())
     expect(docs.find(({ id }) => id === home)?.heading).toBe('Draft only')
+  })
+
+  it('allows the same slug on different websites but not twice on one website', async () => {
+    const admin = { ...actor, role: 'platform-admin' as const }
+    const created = await Promise.all([tenantA, tenantB].map((tenant) => payload.create({
+      collection: 'articles', locale: 'nl', overrideAccess: false, user: admin,
+      data: { tenant, slug: `shared-${suffix}`, title: 'Shared', _status: 'published' },
+    })))
+    expect(created.map(({ slug }) => slug)).toEqual([`shared-${suffix}`, `shared-${suffix}`])
+    await expect(payload.create({
+      collection: 'articles', locale: 'nl', overrideAccess: false, user: admin,
+      data: { tenant: tenantA, slug: `shared-${suffix}`, title: 'Again', _status: 'published' },
+    })).rejects.toThrow()
+    await payload.delete({ collection: 'articles', overrideAccess: true, where: { slug: { equals: `shared-${suffix}` } } })
+  })
+
+  it('refuses first-user registration outside the bootstrap command', async () => {
+    await expect(payload.create({
+      collection: 'users', overrideAccess: true,
+      data: { email: `unauthorized-${suffix}@example.test`, password: randomUUID(), role: 'platform-admin' },
+    })).rejects.toThrow()
+  })
+
+  it('keeps versions, drafts and private tenant fields away from anonymous readers', async () => {
+    await expect(payload.findVersions({ collection: 'pages', overrideAccess: false })).rejects.toThrow()
+    const draftOnly = await payload.create({
+      collection: 'articles', locale: 'nl', overrideAccess: true, draft: true,
+      data: { tenant: tenantA, slug: `draft-${suffix}`, title: 'Draft', _status: 'draft' },
+    })
+    await expect(payload.findByID({
+      collection: 'articles', id: draftOnly.id, draft: true, overrideAccess: false,
+    })).rejects.toThrow()
+    await expect(payload.find({
+      collection: 'tenants', overrideAccess: false, where: { siteOrigin: { equals: 'https://optidigi.nl' } },
+    })).rejects.toThrow()
+    await payload.delete({ collection: 'articles', id: draftOnly.id, overrideAccess: true })
+  })
+
+  it('serves published site settings to anonymous readers', async () => {
+    await payload.create({
+      collection: 'site-settings', locale: 'nl', overrideAccess: true,
+      data: { tenant: tenantA, name: 'Site A', _status: 'published' },
+    })
+    const { docs } = await payload.find({
+      collection: 'site-settings', overrideAccess: false, depth: 0,
+      where: { 'tenant.slug': { equals: `test-a-${suffix}` } },
+    })
+    expect(docs.map(({ name }) => name)).toEqual(['Site A'])
+    await payload.delete({ collection: 'site-settings', overrideAccess: true, where: { tenant: { equals: tenantA } } })
   })
 
   it('serves published content and only returns drafts under a tenant-bound grant', async () => {
