@@ -2,6 +2,7 @@ import * as migration_20261119_171717_initial_schema from './20261119_171717_ini
 import * as migration_20261120_171819_assistant_chat from './20261120_171819_assistant_chat';
 import * as migration_20261120_194003_assistant_model_catalog from './20261120_194003_assistant_model_catalog';
 import * as migration_20261121_004035_native_content_access from './20261121_004035_native_content_access';
+import * as migration_20261121_010848_assistant from './20261121_010848_assistant';
 
 export const migrations = [
   {
@@ -22,6 +23,11 @@ export const migrations = [
   {
     up: migration_20261121_004035_native_content_access.up,
     down: migration_20261121_004035_native_content_access.down,
-    name: '20261121_004035_native_content_access'
+    name: '20261121_004035_native_content_access',
+  },
+  {
+    up: migration_20261121_010848_assistant.up,
+    down: migration_20261121_010848_assistant.down,
+    name: '20261121_010848_assistant'
   },
 ];

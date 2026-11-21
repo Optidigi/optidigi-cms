@@ -139,21 +139,22 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_CE828650".
+ * via the `definition` "LexicalNodes_B7489929".
  */
-export type LexicalNodes_CE828650 =
+export type LexicalNodes_B7489929 =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_CE828650>
+  | SerializedParagraphNode<LexicalNodes_B7489929>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedAutoLinkNode<LexicalNodes_CE828650, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_CE828650, LexicalLinkFields>
-  | SerializedQuoteNode<LexicalNodes_CE828650>
-  | SerializedListNode<LexicalNodes_CE828650>
-  | SerializedListItemNode<LexicalNodes_CE828650>
-  | SerializedHeadingNode<LexicalNodes_CE828650, 'h2' | 'h3' | 'h4'>;
+  | SerializedUploadNode<'assistant-files'>
+  | SerializedAutoLinkNode<LexicalNodes_B7489929, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_B7489929, LexicalLinkFields>
+  | SerializedQuoteNode<LexicalNodes_B7489929>
+  | SerializedListNode<LexicalNodes_B7489929>
+  | SerializedListItemNode<LexicalNodes_B7489929>
+  | SerializedHeadingNode<LexicalNodes_B7489929, 'h2' | 'h3' | 'h4'>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -180,6 +181,9 @@ export interface Config {
     projects: Project;
     'site-settings': SiteSetting;
     media: Media;
+    'assistant-settings': AssistantSetting;
+    'assistant-threads': AssistantThread;
+    'assistant-files': AssistantFile;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -195,6 +199,9 @@ export interface Config {
     projects: ProjectsSelect<false> | ProjectsSelect<true>;
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'assistant-settings': AssistantSettingsSelect<false> | AssistantSettingsSelect<true>;
+    'assistant-threads': AssistantThreadsSelect<false> | AssistantThreadsSelect<true>;
+    'assistant-files': AssistantFilesSelect<false> | AssistantFilesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -325,7 +332,7 @@ export interface Page {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_CE828650> | null;
+  body?: LexicalRichText<LexicalNodes_B7489929> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -353,7 +360,7 @@ export interface Article {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_CE828650> | null;
+  body?: LexicalRichText<LexicalNodes_B7489929> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -381,7 +388,7 @@ export interface Project {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_CE828650> | null;
+  body?: LexicalRichText<LexicalNodes_B7489929> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -474,6 +481,97 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-settings".
+ */
+export interface AssistantSetting {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  provider: 'anthropic' | 'openai' | 'openai-compatible';
+  baseURL?: string | null;
+  apiKey?: string | null;
+  models: string[];
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-threads".
+ */
+export interface AssistantThread {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title?: string | null;
+  archived?: boolean | null;
+  messages?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-files".
+ */
+export interface AssistantFile {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  _stored?: boolean | null;
+  _transforms?: UploadTransforms;
+  original?: {
+    filename?: string | null;
+    url?: string | null;
+    mimeType?: string | null;
+    filesize?: number | null;
+    width?: number | null;
+    height?: number | null;
+    prefix?: string | null;
+    _objectKey?: string | null;
+    _stored?: boolean | null;
+  };
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -523,6 +621,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'assistant-settings';
+        value: number | AssistantSetting;
+      } | null)
+    | ({
+        relationTo: 'assistant-threads';
+        value: number | AssistantThread;
+      } | null)
+    | ({
+        relationTo: 'assistant-files';
+        value: number | AssistantFile;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -774,6 +884,70 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-settings_select".
+ */
+export interface AssistantSettingsSelect<T extends boolean = true> {
+  tenant?: T;
+  provider?: T;
+  baseURL?: T;
+  apiKey?: T;
+  models?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-threads_select".
+ */
+export interface AssistantThreadsSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  archived?: T;
+  messages?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "assistant-files_select".
+ */
+export interface AssistantFilesSelect<T extends boolean = true> {
+  tenant?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  _stored?: T;
+  _transforms?: T;
+  original?:
+    | T
+    | {
+        filename?: T;
+        url?: T;
+        mimeType?: T;
+        filesize?: T;
+        width?: T;
+        height?: T;
+        prefix?: T;
+        _objectKey?: T;
+        _stored?: T;
+      };
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -855,7 +1029,17 @@ export interface CollectionsWidget {
 export interface CollectionQueryWidget {
   data?: {
     title?: string | null;
-    relatedCollection: 'users' | 'tenants' | 'pages' | 'articles' | 'projects' | 'site-settings' | 'media';
+    relatedCollection:
+      | 'users'
+      | 'tenants'
+      | 'pages'
+      | 'articles'
+      | 'projects'
+      | 'site-settings'
+      | 'media'
+      | 'assistant-settings'
+      | 'assistant-threads'
+      | 'assistant-files';
     where?:
       | {
           [k: string]: unknown;
@@ -878,7 +1062,19 @@ export interface CollectionQueryWidget {
 export interface ActivityWidget {
   data?: {
     excludedCollections?:
-      ('users' | 'tenants' | 'pages' | 'articles' | 'projects' | 'site-settings' | 'media')[] | null;
+      | (
+          | 'users'
+          | 'tenants'
+          | 'pages'
+          | 'articles'
+          | 'projects'
+          | 'site-settings'
+          | 'media'
+          | 'assistant-settings'
+          | 'assistant-threads'
+          | 'assistant-files'
+        )[]
+      | null;
   };
   width: 'small' | 'medium' | 'large' | 'x-large' | 'full';
 }
@@ -888,7 +1084,7 @@ export interface ActivityWidget {
  */
 export interface UploadDropzoneWidget {
   data?: {
-    excludedCollections?: 'media'[] | null;
+    excludedCollections?: ('media' | 'assistant-files')[] | null;
   };
   width: 'x-small' | 'small' | 'medium' | 'large' | 'x-large' | 'full';
 }

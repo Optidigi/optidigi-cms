@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getPayload, type Payload, type PayloadRequest } from 'payload'
 import config from '@/payload.config'
+import { assistantSiteHeader } from '@/assistant/scope'
+import { relationID } from '@/site/access'
 import { siteEndpoints } from '@/site/endpoints'
 import { previewURL } from '@/site/preview'
 
@@ -146,6 +148,56 @@ describe('tenant content', () => {
     })
     expect(docs.map(({ name }) => name)).toEqual(['Site A'])
     await payload.delete({ collection: 'site-settings', overrideAccess: true, where: { tenant: { equals: tenantA } } })
+  })
+
+  it('limits AI requests to the chat website even when the user belongs to more websites', async () => {
+    const req = request('https://cms.optidigi.nl/api/mcp')
+    req.headers.set(assistantSiteHeader, String(tenantA))
+    const { docs } = await payload.find({ collection: 'pages', depth: 0, draft: true, overrideAccess: false, req })
+    expect(docs.map(({ tenant }) => tenant)).toEqual([tenantA])
+    const { docs: [other] } = await payload.find({
+      collection: 'pages', depth: 0, overrideAccess: true, where: { tenant: { equals: tenantB } },
+    })
+    await expect(payload.update({
+      collection: 'pages', id: other.id, data: { heading: 'Changed by AI' }, overrideAccess: false, req,
+    })).rejects.toThrow()
+    await expect(payload.create({
+      collection: 'articles', locale: 'nl', overrideAccess: false, req,
+      data: { tenant: tenantB, slug: `ai-${suffix}`, title: 'Wrong site' },
+    })).rejects.toThrow()
+    const created = await payload.create({
+      collection: 'articles', locale: 'nl', overrideAccess: false, req,
+      data: { slug: `ai-${suffix}`, title: 'Right site' } as never,
+    })
+    expect(relationID(created.tenant)).toBe(tenantA)
+    await payload.delete({ collection: 'articles', id: created.id, overrideAccess: true })
+  })
+
+  it('keeps assistant chats private to their author and model keys unreadable', async () => {
+    const thread = await payload.create({
+      collection: 'assistant-threads', overrideAccess: false, user: actor,
+      data: { tenant: tenantA, title: 'Mine', messages: [] },
+    })
+    const other = await payload.create({
+      collection: 'users', overrideAccess: true, context: { bootstrapUser: true },
+      data: { email: `other-${suffix}@example.test`, password: randomUUID(), role: 'customer', tenants: [{ tenant: tenantA, role: 'admin' }] },
+    })
+    const otherUser = { ...other, collection: 'users' as const }
+    expect((await payload.find({ collection: 'assistant-threads', overrideAccess: false, user: otherUser })).docs).toHaveLength(0)
+    expect((await payload.find({ collection: 'assistant-threads', overrideAccess: false, user: actor })).docs.map(({ id }) => id)).toEqual([thread.id])
+    const settings = await payload.create({
+      collection: 'assistant-settings', overrideAccess: true,
+      data: { tenant: tenantA, provider: 'anthropic', models: ['model-a'], apiKey: 'secret-key' },
+    })
+    const raw = await payload.findByID({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
+    expect(raw.apiKey).not.toBe('secret-key')
+    expect(payload.decrypt(raw.apiKey!)).toBe('secret-key')
+    const visible = await payload.findByID({ collection: 'assistant-settings', id: settings.id, overrideAccess: false, user: actor })
+    expect(visible).not.toHaveProperty('apiKey')
+    expect(visible.models).toEqual(['model-a'])
+    await payload.delete({ collection: 'assistant-threads', id: thread.id, overrideAccess: true })
+    await payload.delete({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
+    await payload.delete({ collection: 'users', id: other.id, overrideAccess: true })
   })
 
   it('serves published content and only returns drafts under a tenant-bound grant', async () => {

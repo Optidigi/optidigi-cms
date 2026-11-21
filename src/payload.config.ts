@@ -24,6 +24,9 @@ import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
 import { buildConfig, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
+import { AssistantFiles, AssistantSettings, AssistantThreads } from './assistant/collections'
+import { assistantEndpoints } from './assistant/endpoint'
+import { keepAssistantWritesOnSite, limitToAssistantSite } from './assistant/scope'
 import { Media } from './collections/Media'
 import { Users } from './collections/Users'
 import { isPlatformAdmin, platformOnly } from './site/access'
@@ -62,7 +65,14 @@ export default buildConfig({
     importMap: { baseDir: dirname },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
-  collections: [Users, Tenants, ...content].map(withCollectionLabels),
+  collections: [
+    Users,
+    Tenants,
+    ...content.map(keepAssistantWritesOnSite),
+    AssistantSettings,
+    AssistantThreads,
+    AssistantFiles,
+  ].map(withCollectionLabels),
   csrf: origin ? [origin] : [],
   // The rich-text features the admin editor supports. Payload validates stored content against them.
   editor: lexicalEditor({
@@ -95,7 +105,7 @@ export default buildConfig({
         },
       })
     : undefined,
-  endpoints: siteEndpoints,
+  endpoints: [...siteEndpoints, ...assistantEndpoints],
   llmInstructions: { access: platformOnly },
   secret: process.env.PAYLOAD_SECRET ?? '',
   serverURL: origin ?? '',
@@ -123,11 +133,15 @@ export default buildConfig({
       cleanupAfterTenantDelete: false,
       i18n: { translations: { en: { 'nav-tenantSelector-label': 'Active website' }, nl: { 'nav-tenantSelector-label': 'Actieve website' } } },
       collections: {
-        pages: {},
-        articles: {},
-        projects: {},
-        'site-settings': { isGlobal: true },
-        media: {},
+        // AI requests are limited to their chat's website (see src/assistant/scope.ts).
+        pages: { accessResultOverride: limitToAssistantSite },
+        articles: { accessResultOverride: limitToAssistantSite },
+        projects: { accessResultOverride: limitToAssistantSite },
+        'site-settings': { accessResultOverride: limitToAssistantSite, isGlobal: true },
+        media: { accessResultOverride: limitToAssistantSite },
+        'assistant-settings': { isGlobal: true },
+        'assistant-threads': {},
+        'assistant-files': {},
       },
       tenantField: { access: { update: platformOnly } },
       tenantsArrayField: {
@@ -146,6 +160,9 @@ export default buildConfig({
         ])),
         users: { tools: noTools },
         tenants: { tools: noTools },
+        'assistant-settings': { tools: noTools },
+        'assistant-threads': { tools: noTools },
+        'assistant-files': { tools: noTools },
       },
     }),
   ],
