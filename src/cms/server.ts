@@ -11,8 +11,10 @@ import { preferencesKey, readPreferences, type Preferences } from './preferences
 // All reads in the admin go through Payload's Local API as the signed-in user, so Payload's
 // access control and the multi-tenant plugin apply exactly as they do for REST.
 export const getSession = cache(async () => {
+  // Read the request first: it makes every admin page dynamic, so the build never connects to Postgres.
+  const requestHeaders = await headers()
   const payload = await getPayload({ config })
-  const { user } = await payload.auth({ headers: await headers() })
+  const { user } = await payload.auth({ headers: requestHeaders })
   return { payload, user: user?.collection === 'users' ? (user as User & { collection: 'users' }) : null }
 })
 
