@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon, CheckIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -52,6 +52,8 @@ export function SiteSettingsForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<'draft' | 'publish'>()
   const localized = part !== 'general'
+  // Published and unchanged since: nothing to publish (the page remounts the form after each save).
+  const upToDate = document?.status === 'published' && JSON.stringify(values) === JSON.stringify(withoutMeta(document))
 
   // Each screen sends only its own fields, so neighbouring settings and translations stay intact.
   function fields() {
@@ -226,11 +228,16 @@ export function SiteSettingsForm({
           {saving === 'draft' && <Spinner data-icon="inline-start" />}
           {t('saveDraft')}
         </Button>
-        <Button disabled={Boolean(saving)} onClick={() => save('publish')}>
+        <Button disabled={Boolean(saving) || upToDate} onClick={() => save('publish')}>
           {saving === 'publish' && <Spinner data-icon="inline-start" />}
-          {t('publish')}
+          {upToDate && !saving && <CheckIcon data-icon="inline-start" />}
+          {upToDate ? t('publishedState') : t('publish')}
         </Button>
       </CardFooter>
     </Card>
   )
+}
+
+function withoutMeta({ id: _id, status: _status, ...values }: Values & { id: number; status: string }): Values {
+  return values
 }

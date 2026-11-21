@@ -20,7 +20,7 @@ export default async function CMSRootLayout({ children }: { children: React.Reac
         <ThemeProvider attribute="class" defaultTheme={theme} enableSystem disableTransitionOnChange>
           <I18nProvider language={language}>
             <TooltipProvider>{children}</TooltipProvider>
-            <Toaster />
+            <Toaster position="top-center" />
           </I18nProvider>
         </ThemeProvider>
       </body>

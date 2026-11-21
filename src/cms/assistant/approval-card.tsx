@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CodeBlock, CodeBlockContent } from '@/components/ui/code-block'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Item, ItemContent, ItemDescription, ItemFooter, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { collectionLabels } from '@/site/collection-labels'
 import { api, query } from '../client/api'
@@ -97,7 +97,7 @@ export function ApprovalCard({
   const loading = tool === 'updateDocument' && documentID !== undefined && current === undefined
 
   return (
-    <Item variant="outline" size="sm" className="flex-col items-stretch">
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border p-3">
       <div className="flex items-start gap-3">
         <ItemMedia variant="icon">
           <FileTextIcon />
@@ -107,7 +107,7 @@ export function ApprovalCard({
             {toolLabel(tool, input, 'proposed', t, language)}
             {current?.title && <span className="font-normal text-muted-foreground">“{current.title}”</span>}
           </ItemTitle>
-          <ItemDescription>{t('approveDescription')}</ItemDescription>
+          <p className="text-sm text-muted-foreground">{t('approveDescription')}</p>
         </ItemContent>
       </div>
       {(publishes || bulk) && (
@@ -139,7 +139,7 @@ export function ApprovalCard({
           </dl>
         )
       )}
-      <Collapsible>
+      <Collapsible className="min-w-0">
         <CollapsibleTrigger render={<Button variant="link" size="sm" className="h-auto px-0 text-muted-foreground" />}>
           {t('details')}
           <ChevronDownIcon data-icon="inline-end" />
@@ -152,14 +152,14 @@ export function ApprovalCard({
           </CodeBlock>
         </CollapsibleContent>
       </Collapsible>
-      <ItemFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
         <Button size="sm" variant="outline" disabled={disabled} onClick={() => onAnswer(false)}>
           {t('deny')}
         </Button>
         <Button size="sm" disabled={disabled} onClick={() => onAnswer(true)}>
           {t('approve')}
         </Button>
-      </ItemFooter>
-    </Item>
+      </div>
+    </div>
   )
 }
