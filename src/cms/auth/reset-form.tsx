@@ -6,13 +6,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from './password-input'
 import { Spinner } from '@/components/ui/spinner'
 import { api, APIError } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useHydrated } from '../client/use-hydrated'
 
 export function ResetForm({ token }: { token: string }) {
   const { t } = useI18n()
+  // Until React handles the submit, the button stays off so the browser never sends the form itself.
+  const hydrated = useHydrated()
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string>()
   const [pending, setPending] = useState(false)
@@ -37,8 +40,8 @@ export function ResetForm({ token }: { token: string }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('resetTitle')}</CardTitle>
+      <CardHeader className="text-center">
+        <CardTitle className="text-xl">{t('resetTitle')}</CardTitle>
         <CardDescription>{t('resetDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -47,15 +50,15 @@ export function ResetForm({ token }: { token: string }) {
             <AlertDescription>{t('passwordSaved')}</AlertDescription>
           </Alert>
         ) : (
-          <form onSubmit={submit}>
+          <form method="post" onSubmit={submit}>
             <FieldGroup>
               <Field data-invalid={error ? true : undefined}>
                 <FieldLabel htmlFor="password">{t('newPassword')}</FieldLabel>
-                <Input id="password" name="password" type="password" autoComplete="new-password" required aria-invalid={error ? true : undefined} />
+                <PasswordInput id="password" name="password" autoComplete="new-password" required aria-invalid={error ? true : undefined} />
                 {error && <FieldError>{error}</FieldError>}
               </Field>
               <Field>
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" disabled={pending || !hydrated}>
                   {pending && <Spinner data-icon="inline-start" />}
                   {t('savePassword')}
                 </Button>

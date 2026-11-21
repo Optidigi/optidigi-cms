@@ -10,9 +10,12 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useHydrated } from '../client/use-hydrated'
 
 export function ForgotForm() {
   const { t } = useI18n()
+  // Until React handles the submit, the button stays off so the browser never sends the form itself.
+  const hydrated = useHydrated()
   const [sent, setSent] = useState(false)
   const [pending, setPending] = useState(false)
 
@@ -30,8 +33,8 @@ export function ForgotForm() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('forgotTitle')}</CardTitle>
+      <CardHeader className="text-center">
+        <CardTitle className="text-xl">{t('forgotTitle')}</CardTitle>
         <CardDescription>{t('forgotDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -40,14 +43,14 @@ export function ForgotForm() {
             <AlertDescription>{t('resetLinkSent')}</AlertDescription>
           </Alert>
         ) : (
-          <form onSubmit={submit}>
+          <form method="post" onSubmit={submit}>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">{t('email')}</FieldLabel>
                 <Input id="email" name="email" type="email" autoComplete="username" required />
               </Field>
               <Field>
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" disabled={pending || !hydrated}>
                   {pending && <Spinner data-icon="inline-start" />}
                   {t('sendResetLink')}
                 </Button>

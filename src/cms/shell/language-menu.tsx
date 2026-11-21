@@ -24,7 +24,7 @@ export function LanguageMenu() {
 
   async function change(value: unknown) {
     if (!isLanguage(value) || value === language) return
-    await savePreferences({ ...preferences, language: value })
+    await savePreferences(preferences, { language: value })
     router.refresh()
   }
 
