@@ -26,7 +26,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { api, APIError, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
-import { AssistantPageContext } from '../assistant/assistant-context'
+import { AssistantBottomBar, AssistantPageContext } from '../assistant/assistant-context'
+import { AskButton } from '../assistant/assistant-panel'
 import { RichTextEditor } from '../editor/rich-text'
 import type { ContentLocale, EditorialCollection, Section } from '../sections'
 import { DeleteDialog } from './delete-dialog'
@@ -256,7 +257,13 @@ export function DocumentEditor({
           </CardContent>
         </Card>
         </fieldset>
-        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:-mx-6 lg:hidden">{actions}</div>
+        <AssistantBottomBar />
+        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:-mx-6 lg:hidden">
+          <div className="mr-auto">
+            <AskButton />
+          </div>
+          {actions}
+        </div>
       </div>
 
       <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">

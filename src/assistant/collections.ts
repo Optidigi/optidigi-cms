@@ -20,8 +20,8 @@ const encryptKey: FieldHook = ({ value, originalDoc, req }) => {
 export const AssistantSettings: CollectionConfig = {
   slug: 'assistant-settings',
   labels: {
-    singular: { en: 'Assistant settings', nl: 'Assistentinstellingen' },
-    plural: { en: 'Assistant settings', nl: 'Assistentinstellingen' },
+    singular: { en: 'AI settings', nl: 'AI-instellingen' },
+    plural: { en: 'AI settings', nl: 'AI-instellingen' },
   },
   access: { create: platformOnly, delete: platformOnly, read: signedIn, update: platformOnly },
   // No version history: it would keep extra copies of the encrypted key.
@@ -43,8 +43,8 @@ export const AssistantSettings: CollectionConfig = {
 export const AssistantThreads: CollectionConfig = {
   slug: 'assistant-threads',
   labels: {
-    singular: { en: 'Assistant chat', nl: 'Assistentgesprek' },
-    plural: { en: 'Assistant chats', nl: 'Assistentgesprekken' },
+    singular: { en: 'AI chat', nl: 'AI-gesprek' },
+    plural: { en: 'AI chats', nl: 'AI-gesprekken' },
   },
   admin: { useAsTitle: 'title' },
   access: { create: signedIn, delete: own, read: own, update: own },
@@ -75,8 +75,8 @@ export const AssistantThreads: CollectionConfig = {
 export const AssistantFiles: CollectionConfig = {
   slug: 'assistant-files',
   labels: {
-    singular: { en: 'Assistant file', nl: 'Assistentbestand' },
-    plural: { en: 'Assistant files', nl: 'Assistentbestanden' },
+    singular: { en: 'AI chat file', nl: 'AI-chatbestand' },
+    plural: { en: 'AI chat files', nl: 'AI-chatbestanden' },
   },
   // Chat images are never edited; uploads are replaced instead.
   access: { create: signedIn, delete: own, read: own, update: () => false },

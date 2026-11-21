@@ -1,23 +1,25 @@
 'use client'
 
-import { BotIcon, HistoryIcon, Maximize2Icon, PlusIcon, XIcon } from 'lucide-react'
+import { ArrowUpIcon, FileTextIcon, HistoryIcon, Maximize2Icon, PlusIcon, SparklesIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Badge } from '@/components/ui/badge'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
 import { useAssistant } from './assistant-context'
 import { ChatHistory } from './chat-history'
 import { Conversation } from './conversation'
 
 function onAssistantPage(pathname: string) {
-  return /^\/admin\/\d+\/assistant(\/|$)/.test(pathname)
+  return /^\/admin\/\d+\/ai(\/|$)/.test(pathname)
 }
 
 // Lays the assistant panel next to the page so it pushes content aside instead of covering it.
@@ -48,7 +50,10 @@ export function AssistantFrame({ children }: { children: React.ReactNode }) {
   if (!assistant) return children
   return (
     <div className="flex min-h-svh w-full">
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {children}
+        {!visible && !onAssistantPage(pathname) && assistant.setup.state === 'ready' && <AskBar />}
+      </div>
       {!mobile && visible && (
         <aside aria-label={t('assistantTitle')} className="sticky top-0 flex h-svh w-[24rem] shrink-0 flex-col border-l bg-background">
           <PanelHeader />
@@ -77,7 +82,7 @@ function PanelHeader() {
   const [history, setHistory] = useState(false)
   return (
     <div className="flex items-center gap-1 border-b px-3 py-2">
-      <BotIcon className="size-4 text-muted-foreground" />
+      <SparklesIcon className="size-4 text-muted-foreground" />
       <span className="flex-1 truncate text-sm font-medium">{t('assistantTitle')}</span>
       <Tooltip>
         <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('history')} onClick={() => setHistory(true)} />}>
@@ -95,7 +100,7 @@ function PanelHeader() {
         <TooltipTrigger
           render={
             <Link
-              href={`/admin/${assistant.site}/assistant`}
+              href={`/admin/${assistant.site}/ai`}
               aria-label={t('openFullPage')}
               className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
               onClick={() => assistant.setOpen(false)}
@@ -123,45 +128,74 @@ function PanelHeader() {
   )
 }
 
-// The "Ask AI… ⌘I" field in the header. Enter opens the panel and sends the question.
-export function AskField() {
-  const assistant = useAssistant()
-  const pathname = usePathname()
+// The floating "Ask AI…" bar at the bottom of the page. Sending opens the panel (or the drawer on
+// small screens) with the question; while the panel is open the bar steps aside.
+function AskBar() {
+  const assistant = useAssistant()!
   const { t } = useI18n()
   const [text, setText] = useState('')
-  if (!assistant || onAssistantPage(pathname)) return null
+  const idle = assistant.chat.status === 'ready' || assistant.chat.status === 'error'
+
+  function send(event: React.FormEvent) {
+    event.preventDefault()
+    const question = text.trim()
+    assistant.setOpen(true)
+    if (!question || !idle) return
+    assistant.chat.sendMessage({ text: question })
+    setText('')
+  }
+
   return (
-    <>
-      <InputGroup className="hidden w-64 md:flex">
-        <InputGroupAddon>
-          <BotIcon />
-        </InputGroupAddon>
-        <InputGroupInput
-          aria-label={t('askAI')}
-          placeholder={t('askAI')}
-          value={text}
-          onFocus={() => assistant.setup.state !== 'ready' && assistant.setOpen(true)}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            const idle = assistant.chat.status === 'ready' || assistant.chat.status === 'error'
-            if (event.key === 'Enter' && text.trim() && assistant.setup.state === 'ready' && idle) {
-              event.preventDefault()
-              assistant.setOpen(true)
-              assistant.chat.sendMessage({ text: text.trim() })
-              setText('')
-            }
-          }}
-        />
-        <InputGroupAddon align="inline-end">
-          <KbdGroup>
-            <Kbd>⌘</Kbd>
-            <Kbd>I</Kbd>
-          </KbdGroup>
-        </InputGroupAddon>
-      </InputGroup>
-      <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label={t('askAI')} onClick={() => assistant.setOpen(true)}>
-        <BotIcon />
-      </Button>
-    </>
+    <div
+      className={cn(
+        'pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]',
+        // Below lg the editor has its own sticky save bar with an AI button instead.
+        assistant.bottomBar ? 'hidden lg:flex' : 'flex',
+      )}
+    >
+      <form onSubmit={send} className="pointer-events-auto w-full max-w-xl">
+        <InputGroup className="h-11 rounded-full bg-background shadow-lg">
+          <InputGroupAddon className="pl-3">
+            <SparklesIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            aria-label={t('askAI')}
+            placeholder={t('askAI')}
+            value={text}
+            enterKeyHint="send"
+            onChange={(event) => setText(event.target.value)}
+          />
+          <InputGroupAddon align="inline-end" className="gap-2 pr-1.5">
+            {assistant.context && (
+              <Badge variant="secondary" className="hidden max-w-40 sm:inline-flex">
+                <FileTextIcon data-icon="inline-start" />
+                <span className="truncate">{assistant.context.title}</span>
+              </Badge>
+            )}
+            {!text && (
+              <KbdGroup className="hidden md:inline-flex">
+                <Kbd>⌘</Kbd>
+                <Kbd>I</Kbd>
+              </KbdGroup>
+            )}
+            <InputGroupButton type="submit" size="icon-sm" variant="default" className="rounded-full" aria-label={t('send')}>
+              <ArrowUpIcon />
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+      </form>
+    </div>
+  )
+}
+
+// An AI button for pages with their own sticky bottom bar (the editor on small screens).
+export function AskButton() {
+  const assistant = useAssistant()
+  const { t } = useI18n()
+  if (assistant?.setup.state !== 'ready') return null
+  return (
+    <Button variant="outline" size="icon" aria-label={t('askAI')} onClick={() => assistant.setOpen(true)}>
+      <SparklesIcon />
+    </Button>
   )
 }

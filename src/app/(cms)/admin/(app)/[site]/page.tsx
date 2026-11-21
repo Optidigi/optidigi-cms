@@ -1,4 +1,4 @@
-import { BotIcon, ExternalLinkIcon } from 'lucide-react'
+import { SparklesIcon, ExternalLinkIcon } from 'lucide-react'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -73,8 +73,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
                 <ExternalLinkIcon data-icon="inline-start" />
                 {t('openWebsite')}
               </a>
-              <Link href={`/admin/${site.id}/assistant`} className={buttonVariants()}>
-                <BotIcon data-icon="inline-start" />
+              <Link href={`/admin/${site.id}/ai`} className={buttonVariants()}>
+                <SparklesIcon data-icon="inline-start" />
                 {t('askAssistant')}
               </Link>
             </>

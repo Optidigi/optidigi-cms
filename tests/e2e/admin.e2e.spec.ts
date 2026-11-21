@@ -48,6 +48,6 @@ test('an editor creates, saves and publishes a page that websites can read', asy
 
 test('the assistant explains when no model is set up', async ({ page }) => {
   await login(page, user)
-  await page.goto(`/admin/${site}/assistant`)
+  await page.goto(`/admin/${site}/ai`)
   await expect(page.getByText(/niet ingesteld|not set up/i)).toBeVisible()
 })

@@ -2,7 +2,7 @@
 
 import {
   BookOpenIcon,
-  BotIcon,
+  SparklesIcon,
   BriefcaseIcon,
   FileTextIcon,
   ImageIcon,
@@ -44,7 +44,7 @@ const content: NavItem[] = [
   { key: 'media', path: '/media', icon: <ImageIcon /> },
 ]
 const tools: NavItem[] = [
-  { key: 'assistant', path: '/assistant', icon: <BotIcon /> },
+  { key: 'assistant', path: '/ai', icon: <SparklesIcon /> },
   { key: 'settings', path: '/settings', icon: <SettingsIcon /> },
 ]
 

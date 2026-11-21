@@ -22,6 +22,9 @@ type AssistantState = {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   context?: PageContext
   setContext: (context?: PageContext) => void
+  // True while the page shows its own sticky bottom bar (the editor's save bar on small screens).
+  bottomBar: boolean
+  setBottomBar: (value: boolean) => void
   threads: ThreadSummary[] | undefined
   refreshThreads: () => Promise<void>
   openThread: (id: number) => Promise<void>
@@ -117,6 +120,7 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
   const [model, setModel] = useState<string>()
   const [open, setOpen] = useState(false)
   const [context, setContext] = useState<PageContext>()
+  const [bottomBar, setBottomBar] = useState(false)
   const [threads, setThreads] = useState<ThreadSummary[]>()
   const [thread, setThread] = useState<number>()
   const [request] = useState(() => new RequestStore({ site, language }))
@@ -179,10 +183,10 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
 
   const value = useMemo(
     () => ({
-      site, chat, thread, setup, model, setModel, open, setOpen, context, setContext,
+      site, chat, thread, setup, model, setModel, open, setOpen, context, setContext, bottomBar, setBottomBar,
       threads, refreshThreads, openThread, newChat,
     }),
-    [site, chat, thread, setup, model, open, context, threads, refreshThreads, openThread, newChat],
+    [site, chat, thread, setup, model, open, context, bottomBar, threads, refreshThreads, openThread, newChat],
   )
   return <AssistantContext value={value}>{children}</AssistantContext>
 }
@@ -201,5 +205,15 @@ export function AssistantPageContext({ value }: { value?: PageContext }) {
     return () => setContext?.(undefined)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- compare by key
   }, [setContext, key])
+  return null
+}
+
+// Marks that the page has its own sticky bottom bar, so the floating AI bar steps aside for it.
+export function AssistantBottomBar() {
+  const setBottomBar = useAssistant()?.setBottomBar
+  useEffect(() => {
+    setBottomBar?.(true)
+    return () => setBottomBar?.(false)
+  }, [setBottomBar])
   return null
 }
