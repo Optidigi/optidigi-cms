@@ -46,7 +46,15 @@ type RequestState = { site: number; thread?: number; model?: string; context?: P
 
 // Holds what the next request should carry. The chat transport reads it when a message is sent.
 class RequestStore {
+  // Each new chat gets a generation; responses from a replaced chat are ignored.
+  private generation = 0
   constructor(private state: RequestState) {}
+  nextGeneration() {
+    return ++this.generation
+  }
+  isGeneration(generation: number) {
+    return this.generation === generation
+  }
   read = () => this.state
   update(changes: Partial<RequestState>) {
     this.state = { ...this.state, ...changes }
@@ -75,6 +83,7 @@ function createChat(
   request: () => RequestState,
   onThread: (id: number) => void,
   onFinish: () => void,
+  isCurrent: () => boolean = () => true,
 ) {
   return new Chat<UIMessage>({
     messages,
@@ -93,7 +102,7 @@ function createChat(
       fetch: async (input, init) => {
         const response = await fetch(input, init)
         const id = Number(response.headers.get('x-assistant-thread'))
-        if (id && id !== request().thread) onThread(id)
+        if (id && id !== request().thread && isCurrent()) onThread(id)
         return response
       },
     }),
@@ -145,21 +154,28 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
     }
   }, [site])
 
+  const replaceChat = useCallback(
+    (messages: UIMessage[], thread?: number) => {
+      chat.stop()
+      const generation = request.nextGeneration()
+      request.update({ thread })
+      setThread(thread)
+      setChat(
+        createChat(messages, readRequest, adoptThread, () => void refreshThreads(), () => request.isGeneration(generation)),
+      )
+    },
+    [chat, request, readRequest, adoptThread, refreshThreads],
+  )
+
   const openThread = useCallback(
     async (id: number) => {
       const doc = await api<{ messages?: UIMessage[] | null }>(`assistant-threads/${id}${query({ depth: 0 })}`)
-      request.update({ thread: id })
-      setThread(id)
-      setChat(createChat(doc.messages ?? [], readRequest, adoptThread, () => void refreshThreads()))
+      replaceChat(doc.messages ?? [], id)
     },
-    [request, readRequest, adoptThread, refreshThreads],
+    [replaceChat],
   )
 
-  const newChat = useCallback(() => {
-    request.update({ thread: undefined })
-    setThread(undefined)
-    setChat(createChat([], readRequest, adoptThread, () => void refreshThreads()))
-  }, [request, readRequest, adoptThread, refreshThreads])
+  const newChat = useCallback(() => replaceChat([]), [replaceChat])
 
   const value = useMemo(
     () => ({

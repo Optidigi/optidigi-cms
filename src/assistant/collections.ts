@@ -8,9 +8,12 @@ export const assistantProviders = ['anthropic', 'openai', 'openai-compatible'] a
 const own: Access = ({ req }) =>
   req.user?.collection === 'users' ? { 'createdBy.value': { equals: req.user.id } } : false
 
+// The key is never readable through the API, so a new value from a request is always plain text.
+// An unchanged value equals the stored ciphertext; null clears the key.
 const encryptKey: FieldHook = ({ value, originalDoc, req }) => {
-  if (typeof value !== 'string' || !value) return originalDoc?.apiKey
-  return value.startsWith('v1:') ? value : req.payload.encrypt(value)
+  if (value === null) return null
+  if (typeof value !== 'string' || !value || value === originalDoc?.apiKey) return originalDoc?.apiKey
+  return req.payload.encrypt(value)
 }
 
 // One per website (the multi-tenant plugin treats it as a per-tenant global).
@@ -50,8 +53,23 @@ export const AssistantThreads: CollectionConfig = {
   fields: [
     { name: 'title', type: 'text' },
     { name: 'archived', type: 'checkbox', defaultValue: false, index: true },
-    { name: 'messages', type: 'json' },
+    // Written only by the assistant endpoint after its checks, never directly through the API.
+    { name: 'messages', type: 'json', access: { update: () => false } },
   ],
+  hooks: {
+    // Remove the chat's uploaded images with the chat.
+    afterDelete: [
+      async ({ doc, req }) => {
+        const urls = JSON.stringify(doc.messages ?? '').match(/\/api\/assistant-files\/file\/[^"\\]+/g) ?? []
+        const filenames = [...new Set(urls.map((url) => decodeURIComponent(url.split('/').pop()!)))]
+        if (filenames.length) {
+          await req.payload.delete({
+            collection: 'assistant-files', overrideAccess: false, req, where: { filename: { in: filenames } },
+          })
+        }
+      },
+    ],
+  },
 }
 
 export const AssistantFiles: CollectionConfig = {

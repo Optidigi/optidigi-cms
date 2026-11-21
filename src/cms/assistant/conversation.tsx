@@ -77,10 +77,12 @@ export function Conversation({ className, compact = false }: { className?: strin
   const assistant = useAssistant()
   const { t } = useI18n()
   const { messages, sendMessage, regenerate, stop, status, error, addToolApprovalResponse } = useChat({ chat: assistant!.chat })
-  const [draft, setDraft] = useState<{ text: string; messageId?: string; key: number }>({ text: '', key: 0 })
+  const [draft, setDraft] = useState<{ text: string; files?: FileUIPart[]; messageId?: string; key: number }>({ text: '', key: 0 })
   if (!assistant) return null
   const { setup, context } = assistant
   const busy = status === 'submitted' || status === 'streaming'
+  // A pending approval must be answered before the conversation continues.
+  const awaitingApproval = messages.at(-1)?.parts.some((part) => isToolUIPart(part) && part.state === 'approval-requested') ?? false
 
   if (setup.state === 'missing') {
     return (
@@ -123,7 +125,7 @@ export function Conversation({ className, compact = false }: { className?: strin
                     message={message}
                     streaming={busy && index === messages.length - 1}
                     onRetry={() => regenerate({ messageId: message.id })}
-                    onEdit={(text) => setDraft((current) => ({ text, messageId: message.id, key: current.key + 1 }))}
+                    onEdit={(text, files) => setDraft((current) => ({ text, files, messageId: message.id, key: current.key + 1 }))}
                     onApprove={(id, approved) => addToolApprovalResponse({ id, approved })}
                     canAct={!busy}
                   />
@@ -132,7 +134,7 @@ export function Conversation({ className, compact = false }: { className?: strin
               {status === 'submitted' && <Spinner className="text-muted-foreground" />}
               {error && (
                 <Alert variant="destructive">
-                  <AlertDescription>{t('assistantError')}</AlertDescription>
+                  <AlertDescription>{serverMessage(error) ?? t('assistantError')}</AlertDescription>
                 </Alert>
               )}
             </MessageScrollerContent>
@@ -153,7 +155,9 @@ export function Conversation({ className, compact = false }: { className?: strin
         <Composer
           key={draft.key}
           initialText={draft.text}
+          initialFiles={draft.files}
           busy={busy}
+          locked={awaitingApproval}
           onStop={stop}
           onSend={async (text, files) => {
             const messageId = draft.messageId
@@ -164,6 +168,16 @@ export function Conversation({ className, compact = false }: { className?: strin
       </div>
     </div>
   )
+}
+
+// The endpoint answers errors as JSON { error }; show that text when it's there.
+function serverMessage(error: Error) {
+  try {
+    const parsed = JSON.parse(error.message) as { error?: unknown }
+    return typeof parsed.error === 'string' ? parsed.error : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function textOf(message: UIMessage) {
@@ -185,7 +199,7 @@ function ChatMessage({
   message: UIMessage
   streaming: boolean
   onRetry: () => void
-  onEdit: (text: string) => void
+  onEdit: (text: string, files: FileUIPart[]) => void
   onApprove: (id: string, approved: boolean) => void
   canAct: boolean
 }) {
@@ -200,8 +214,8 @@ function ChatMessage({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const files = message.parts.filter((part): part is FileUIPart => part.type === 'file')
   if (message.role === 'user') {
-    const files = message.parts.filter((part): part is FileUIPart => part.type === 'file')
     return (
       <Message align="end">
         <MessageContent>
@@ -224,7 +238,7 @@ function ChatMessage({
             <BubbleContent className="whitespace-pre-wrap">{text}</BubbleContent>
           </Bubble>
           <MessageFooter>
-            <Button variant="ghost" size="icon-sm" aria-label={t('editMessage')} disabled={!canAct} onClick={() => onEdit(text)}>
+            <Button variant="ghost" size="icon-sm" aria-label={t('editMessage')} disabled={!canAct} onClick={() => onEdit(text, files)}>
               <PencilIcon />
             </Button>
           </MessageFooter>
@@ -253,9 +267,14 @@ function ChatMessage({
                   <ItemMedia variant="icon">
                     <FileTextIcon />
                   </ItemMedia>
-                  <ItemContent>
+                  <ItemContent className="min-w-0">
                     <ItemTitle>{t('approveTitle', { tool })}</ItemTitle>
                     <ItemDescription>{t('approveDescription')}</ItemDescription>
+                    <CodeBlock size="sm" className="mt-2">
+                      <CodeBlockContent wrap className="max-h-64">
+                        {JSON.stringify(part.input, null, 2)}
+                      </CodeBlockContent>
+                    </CodeBlock>
                   </ItemContent>
                   <ItemActions>
                     <Button size="sm" variant="outline" onClick={() => onApprove(part.approval.id, false)}>
@@ -334,28 +353,34 @@ function ChatMessage({
   )
 }
 
-type Upload = { key: string; name: string; state: 'uploading' | 'done' | 'error'; file?: FileUIPart }
+type Upload = { key: string; name: string; state: 'uploading' | 'done' | 'error'; file?: FileUIPart; id?: number }
 
 function Composer({
   initialText,
+  initialFiles,
   busy,
+  locked,
   onSend,
   onStop,
 }: {
   initialText: string
+  initialFiles?: FileUIPart[]
   busy: boolean
+  locked: boolean
   onSend: (text: string, files: FileUIPart[]) => Promise<void>
   onStop: () => void
 }) {
   const assistant = useAssistant()!
   const { t } = useI18n()
   const [text, setText] = useState(initialText)
-  const [uploads, setUploads] = useState<Upload[]>([])
+  const [uploads, setUploads] = useState<Upload[]>(
+    (initialFiles ?? []).map((file, index) => ({ key: `initial-${index}`, name: file.filename ?? '', state: 'done', file })),
+  )
   const form = useRef<HTMLFormElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const models = assistant.setup.state === 'ready' ? assistant.setup.models : []
   const ready = uploads.every(({ state }) => state !== 'uploading')
-  const canSend = Boolean(text.trim()) && ready && !busy && assistant.setup.state === 'ready'
+  const canSend = Boolean(text.trim()) && ready && !busy && !locked && assistant.setup.state === 'ready'
 
   // Files go to the private assistant-files collection; the chat only carries their URL.
   async function attach(files: FileList | File[]) {
@@ -366,11 +391,11 @@ function Composer({
       body.append('file', file)
       body.append('_payload', JSON.stringify({ tenant: assistant.site }))
       try {
-        const { doc } = await api<{ doc: { url: string; mimeType: string; filename: string } }>('assistant-files', { method: 'POST', body })
+        const { doc } = await api<{ doc: { id: number; url: string; mimeType: string; filename: string } }>('assistant-files', { method: 'POST', body })
         const url = doc.url.startsWith('http') ? new URL(doc.url).pathname : doc.url
         setUploads((current) =>
           current.map((item) =>
-            item.key === key ? { ...item, state: 'done', file: { type: 'file', mediaType: doc.mimeType, url, filename: doc.filename } } : item,
+            item.key === key ? { ...item, state: 'done', id: doc.id, file: { type: 'file', mediaType: doc.mimeType, url, filename: doc.filename } } : item,
           ),
         )
       } catch {
@@ -417,7 +442,11 @@ function Composer({
                   <AttachmentActions>
                     <AttachmentAction
                       aria-label={`${t('removeAttachment')}: ${item.name}`}
-                      onClick={() => setUploads((current) => current.filter(({ key }) => key !== item.key))}
+                      onClick={() => {
+                        // Remove the private upload too, unless it already belongs to a sent message.
+                        if (item.id) api(`assistant-files/${item.id}`, { method: 'DELETE' }).catch(() => undefined)
+                        setUploads((current) => current.filter(({ key }) => key !== item.key))
+                      }}
                     >
                       <XIcon />
                     </AttachmentAction>

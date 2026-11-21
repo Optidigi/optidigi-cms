@@ -17,7 +17,7 @@ export default async function DocumentPage({
   const { site: siteParam, section, id: idParam } = await params
   if (!isSection(section)) notFound()
   const [{ payload, user, site }, t, language] = await Promise.all([requireSite(siteParam), getTranslator(), getLanguage()])
-  const { collection, label, preview } = sections[section]
+  const { collection, label } = sections[section]
   const locale = contentLocale((await searchParams).locale)
   const id = idParam === 'new' ? undefined : relationID(idParam)
   if (idParam !== 'new' && !id) notFound()
@@ -58,10 +58,8 @@ export default async function DocumentPage({
       updatedAt: version.updatedAt,
       status: version.version?._status,
     }))
-    if (preview) {
-      // The same preview function Payload's collection config uses (admin.preview).
-      previewHref = await previewURL('pages', id, locale, await createPayloadRequest({ payload, user }))
-    }
+    // The same preview function Payload's collection config uses (admin.preview).
+    previewHref = await previewURL(collection, id, locale, await createPayloadRequest({ payload, user }))
   }
 
   const title = document?.title || t('newDocument')

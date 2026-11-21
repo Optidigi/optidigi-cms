@@ -80,8 +80,16 @@ Decisions made while building, recorded here so reviews can check against them.
   - `assistant-settings` (one per website), `assistant-threads` (messages as JSON) and `assistant-files` (private images) are Payload collections with versions turned off.
   - Chats and files belong to their creator through Payload's `createdBy` authorship field.
   - Model keys are encrypted with `payload.encrypt`, and their field access never returns them.
-- **Assistant tools.** The tools come from Payload's own MCP server. Tools that are not read-only (anything except `find*`, `count*`, `get*`) wait for the editor's approval, and approvals are signed with the Payload secret.
+- **Assistant tools.** The tools come from Payload's own MCP server. A tool runs without asking only when the MCP plugin marks it `readOnlyHint: true`; every other tool waits for the editor's approval.
+  - The approval card shows the proposed change.
+  - Approvals are signed with a key derived from the Payload secret.
+  - The server copies only the approval answers onto its stored message; the client cannot rewrite tool calls or outputs.
 - **Message feedback.** Thumbs up/down is not built, because there is nowhere to store it. Copy, retry and edit-and-resend are built.
+- **Website preview (phase 5, CMS side).**
+  - The `preview-grant` auth strategy accepts the signed grant only on GET and HEAD requests, so it cannot write through REST, GraphQL or MCP.
+  - It signs in as the grant's user, limited to the grant's website as an editor.
+  - Each website has preview address patterns (`previewPaths`) and an optional refresh URL and secret. Published changes `POST { collection, slug, locale }` to that URL.
+  - The legacy `/api/site-content` and its grant check stay until every website has moved.
 - **Media IDs.** Payload 4 adds `createdBy` and `updatedBy` to every collection, so anonymous reads see numeric user IDs (never user data).
 
 ## Phases
