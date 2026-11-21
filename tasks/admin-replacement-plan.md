@@ -67,6 +67,23 @@ These all use Payload's own mechanisms. They were in place before the replacemen
 
 **Rich text.** Lexical, limited to the features enabled in the Payload editor config. The toolbar uses Toggle, ToggleGroup and ButtonGroup. Links and images open in Popover / Dialog.
 
+## Implementation notes
+
+Decisions made while building, recorded here so reviews can check against them.
+
+- **Assistant panel.** The panel is a right-hand column in the app layout, not a second `SidebarProvider`. Two providers would share the `⌘B` shortcut and the `sidebar_state` cookie. The column still pushes the page aside, and on mobile it is the official Drawer. `⌘I` toggles it.
+- **Content lists.** These use the official Table with a URL-driven toolbar (search, status, translation) and Payload doing the filtering and paging on the server. They do not use the client-side TanStack Data Table, because Payload already does that work. Sorting is newest first; there is no sort control yet.
+- **Publishing.** Publishing uses Payload's default, which validates and publishes every translation of the document, and the editor says so. Per-locale publishing would need `versions.drafts.localizeStatus`, which has not been decided.
+- **Version restore.** Restore uses Payload's native endpoint and brings back every translation as a draft.
+- **Assistant settings.** Website members can read the configured models. Only platform admins can change the provider, key or models (`assistant-settings` access). No new role rule was added.
+- **Assistant storage.**
+  - `assistant-settings` (one per website), `assistant-threads` (messages as JSON) and `assistant-files` (private images) are Payload collections with versions turned off.
+  - Chats and files belong to their creator through Payload's `createdBy` authorship field.
+  - Model keys are encrypted with `payload.encrypt`, and their field access never returns them.
+- **Assistant tools.** The tools come from Payload's own MCP server. Tools that are not read-only (anything except `find*`, `count*`, `get*`) wait for the editor's approval, and approvals are signed with the Payload secret.
+- **Message feedback.** Thumbs up/down is not built, because there is nowhere to store it. Copy, retry and edit-and-resend are built.
+- **Media IDs.** Payload 4 adds `createdBy` and `updatedBy` to every collection, so anonymous reads see numeric user IDs (never user data).
+
 ## Phases
 
 1. **Payload cleanup** (production stays on the current image). The old admin UI was removed in this phase too, because it cannot run without the old endpoints. The branch has no admin UI until phase 2 lands.

@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { api, APIError, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { AssistantPageContext } from '../assistant/assistant-context'
 import { RichTextEditor } from '../editor/rich-text'
 import type { ContentLocale, EditorialCollection, Section } from '../sections'
 import { DeleteDialog } from './delete-dialog'
@@ -180,6 +181,7 @@ export function DocumentEditor({
   return (
     <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="flex min-w-0 flex-col gap-6">
+        {document && <AssistantPageContext value={{ collection, id: document.id, title: document.title }} />}
         {lockedByOther && (
           <Alert>
             <LockIcon />
