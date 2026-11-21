@@ -91,13 +91,27 @@ export function DocumentEditor({
   const [leaveTo, setLeaveTo] = useState<string>()
   const slugTouched = useRef(Boolean(document?.slug))
   const listHref = `/admin/${site}/${section}?locale=${locale}`
-  const { lockedByOther, takeOver } = useDocumentLock({ collection, id: document?.id, userID, lockedByOther: Boolean(lock) })
+  const { lockedByOther, takeOver, relock } = useDocumentLock({ collection, id: document?.id, userID, lockedByOther: Boolean(lock) })
 
   useEffect(() => {
     if (!dirty) return
     const warn = (event: BeforeUnloadEvent) => event.preventDefault()
     window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
+    // Client-side navigation doesn't fire beforeunload, so ask before following in-app links.
+    const intercept = (event: MouseEvent) => {
+      const anchor = (event.target as HTMLElement | null)?.closest('a[href]')
+      if (!anchor || anchor.getAttribute('target') === '_blank' || event.metaKey || event.ctrlKey) return
+      const url = new URL(anchor.getAttribute('href')!, window.location.href)
+      if (url.origin !== window.location.origin) return
+      event.preventDefault()
+      event.stopPropagation()
+      setLeaveTo(url.pathname + url.search)
+    }
+    window.document.addEventListener('click', intercept, true)
+    return () => {
+      window.removeEventListener('beforeunload', warn)
+      window.document.removeEventListener('click', intercept, true)
+    }
   }, [dirty])
 
   function change<K extends keyof Values>(key: K, value: Values[K]) {
@@ -122,8 +136,6 @@ export function DocumentEditor({
       depth: 0,
       locale,
       draft: intent === 'draft' ? true : undefined,
-      // Publish only this translation; other translations keep their own drafts.
-      publishAllLocales: intent === 'publish' ? false : undefined,
     })
     try {
       const result = await api<{ doc: { id: number } }>(document ? `${collection}/${document.id}${params}` : `${collection}${params}`, {
@@ -132,7 +144,10 @@ export function DocumentEditor({
       })
       setDirty(false)
       toast.success(intent === 'publish' ? t('publishedToast') : t('saved'))
-      if (document) router.refresh()
+      if (document) {
+        await relock()
+        router.refresh()
+      }
       else router.replace(`/admin/${site}/${section}/${result.doc.id}?locale=${locale}`)
     } catch (error) {
       if (error instanceof APIError) setErrors(error.fields)
@@ -163,7 +178,7 @@ export function DocumentEditor({
   )
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 pb-24 md:p-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:pb-6">
+    <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="flex min-w-0 flex-col gap-6">
         {lockedByOther && (
           <Alert>
@@ -177,6 +192,8 @@ export function DocumentEditor({
             </AlertAction>
           </Alert>
         )}
+        {/* While someone else edits, the form is read-only. */}
+        <fieldset disabled={lockedByOther} className="contents">
         <Card>
           <CardContent>
             <FieldGroup>
@@ -211,7 +228,7 @@ export function DocumentEditor({
               </Field>
               <Field {...field('body')}>
                 <FieldLabel htmlFor="body">{t('body')}</FieldLabel>
-                <RichTextEditor id="body" label={t('body')} site={site} value={values.body} onChange={(value) => change('body', value)} />
+                <RichTextEditor id="body" label={t('body')} site={site} editable={!lockedByOther} value={values.body} onChange={(value) => change('body', value)} />
                 <FieldError>{errors.body}</FieldError>
               </Field>
             </FieldGroup>
@@ -236,6 +253,8 @@ export function DocumentEditor({
             </FieldSet>
           </CardContent>
         </Card>
+        </fieldset>
+        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:-mx-6 lg:hidden">{actions}</div>
       </div>
 
       <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
@@ -267,6 +286,7 @@ export function DocumentEditor({
               {dirty && <FieldDescription>{t('unsavedChanges')}</FieldDescription>}
             </Field>
             <div className="hidden gap-2 lg:grid">{actions}</div>
+            <FieldDescription>{t('publishAllHint')}</FieldDescription>
             {document && (
               <div className="grid gap-2">
                 {previewHref && (
@@ -285,8 +305,6 @@ export function DocumentEditor({
           </CardContent>
         </Card>
       </aside>
-
-      <div className="fixed inset-x-0 bottom-0 z-10 flex justify-end gap-2 border-t bg-background/95 p-3 backdrop-blur lg:hidden">{actions}</div>
 
       {document && (
         <DeleteDialog
