@@ -1,6 +1,6 @@
 'use client'
 
-import { KeyRoundIcon, PencilIcon, PlusIcon, RefreshCwIcon, SearchIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
+import { ChevronDownIcon, ExternalLinkIcon, KeyRoundIcon, PencilIcon, PlusIcon, RefreshCwIcon, SearchIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -20,20 +21,15 @@ import { PasswordInput } from '../auth/password-input'
 import { api, APIError } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import { DeleteDialog } from '../content/delete-dialog'
+import type { Translate } from '../i18n'
+import { type Provider, type Service, serviceByID, serviceGroups, serviceOf, services } from './ai-services'
 
-type Provider = 'anthropic' | 'openai' | 'google' | 'mistral' | 'gateway' | 'openai-compatible'
-const providers: Record<Provider, string> = {
-  anthropic: 'Anthropic',
-  openai: 'OpenAI',
-  google: 'Google Gemini',
-  mistral: 'Mistral',
-  gateway: 'Vercel AI Gateway',
-  'openai-compatible': 'OpenAI-compatible (OpenRouter, self-hosted)',
-}
 
 export type ConnectionView = { id: string; label: string; provider: Provider; baseURL: string; hasKey: boolean; models: string[] }
 export type SettingsView = { id: number; connections: ConnectionView[]; defaultModel: string }
 type Listed = { id: string; name: string; tools?: boolean }
+
+const serviceName = (service: Service, t: Translate) => service.name || t('customService')
 
 // The connection list sent back to Payload. Keys are never read, so other rows go without one and
 // keep their stored key; `change` adds a new key for one row.
@@ -130,12 +126,16 @@ export function AssistantSettingsForm({ site, editable, settings: initial }: { s
                 <CardHeader>
                   <CardTitle className="flex flex-wrap items-center gap-2">
                     {connection.label}
-                    <Badge variant="secondary">{providers[connection.provider]}</Badge>
+                    {serviceName(serviceOf(connection.provider, connection.baseURL), t) !== connection.label && (
+                      <Badge variant="secondary">{serviceName(serviceOf(connection.provider, connection.baseURL), t)}</Badge>
+                    )}
                   </CardTitle>
                   <CardDescription className="flex items-center gap-1.5">
                     <KeyRoundIcon className="size-3.5" />
                     {connection.hasKey ? t('keySaved') : t('noKey')}
-                    {connection.baseURL && <span className="truncate">· {connection.baseURL}</span>}
+                    {connection.baseURL && !serviceOf(connection.provider, connection.baseURL).baseURL && (
+                      <span className="truncate">· {connection.baseURL}</span>
+                    )}
                   </CardDescription>
                   {editable && (
                     <CardAction className="flex gap-1">
@@ -259,9 +259,25 @@ function ConnectionDialog({
 }) {
   const { t } = useI18n()
   const [saved, setSaved] = useState(connection)
-  const [label, setLabel] = useState(connection?.label ?? '')
-  const [provider, setProvider] = useState<Provider>(connection?.provider ?? 'anthropic')
-  const [baseURL, setBaseURL] = useState(connection?.baseURL ?? '')
+  const savedService = saved ? serviceOf(saved.provider, saved.baseURL) : undefined
+  const [service, setService] = useState<Service>(connection ? serviceOf(connection.provider, connection.baseURL) : services[0])
+  const [label, setLabel] = useState(connection?.label ?? serviceName(services[0], t))
+  // The name follows the chosen service until someone types their own.
+  const [autoLabel, setAutoLabel] = useState(!connection || connection.label === serviceName(service, t))
+  // A known service's fixed address, otherwise the typed one (a custom address, or a proxy).
+  const [typedURL, setTypedURL] = useState(connection && !service.baseURL ? connection.baseURL : '')
+  const provider: Provider = service.provider
+  const baseURL = service.baseURL ?? typedURL
+  // A saved key belongs to the service it was made for; another service needs a new one.
+  const serviceChanged = Boolean(savedService && savedService.id !== service.id)
+  const keyRequired = !saved?.hasKey || serviceChanged
+
+  function chooseService(id: string) {
+    const next = serviceByID(id)
+    setService(next)
+    if (next.id !== service.id) setTypedURL(next.id === savedService?.id && !next.baseURL ? (saved?.baseURL ?? '') : '')
+    if (autoLabel) setLabel(serviceName(next, t))
+  }
   const [apiKey, setApiKey] = useState('')
   const [models, setModels] = useState<string[]>(connection?.models ?? [])
   const [listed, setListed] = useState<Listed[]>()
@@ -305,6 +321,11 @@ function ConnectionDialog({
     setBusy('load')
     setLoadError(undefined)
     try {
+      if (serviceChanged && !apiKey) {
+        setLoadError(t('newKeyForService'))
+        setBusy(undefined)
+        return
+      }
       const stored = changed ? await save() : saved
       if (!stored?.hasKey) {
         setLoadError(t('keyNeeded'))
@@ -359,50 +380,102 @@ function ConnectionDialog({
           <FieldGroup>
             <Field data-invalid={errors.label ? true : undefined}>
               <FieldLabel htmlFor="connection-label">{t('connectionName')}</FieldLabel>
-              <Input id="connection-label" required value={label} placeholder="Anthropic" onChange={(event) => setLabel(event.target.value)} />
+              <Input
+                id="connection-label"
+                required
+                value={label}
+                onChange={(event) => {
+                  setLabel(event.target.value)
+                  setAutoLabel(false)
+                }}
+              />
               <FieldError>{errors.label}</FieldError>
             </Field>
-            <Field>
-              <FieldLabel htmlFor="provider">{t('provider')}</FieldLabel>
-              <Select value={provider} onValueChange={(value) => value && setProvider(value as Provider)}>
-                <SelectTrigger id="provider" className="w-full">
-                  <SelectValue>{(value: Provider) => providers[value]}</SelectValue>
+            <Field data-invalid={errors.provider ? true : undefined}>
+              <FieldLabel htmlFor="service">{t('service')}</FieldLabel>
+              <Select value={service.id} onValueChange={(value) => value && chooseService(String(value))}>
+                <SelectTrigger id="service" className="w-full">
+                  <SelectValue>{(value: string) => serviceName(serviceByID(value), t)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(providers) as Provider[]).map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {providers[value]}
-                    </SelectItem>
+                  {serviceGroups.map(({ group, label: groupLabel }) => (
+                    <SelectGroup key={group}>
+                      <SelectLabel>{t(groupLabel)}</SelectLabel>
+                      {services
+                        .filter((item) => item.group === group)
+                        .map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            <span className="flex min-w-0 flex-col">
+                              <span>{serviceName(item, t)}</span>
+                              <span className="text-xs whitespace-normal text-muted-foreground">{t(item.description)}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
+              <FieldDescription>{t(service.description)}</FieldDescription>
+              <FieldError>{errors.provider}</FieldError>
             </Field>
-            <Field data-invalid={errors.baseURL ? true : undefined}>
-              <FieldLabel htmlFor="baseURL">{t('baseURL')}</FieldLabel>
-              <Input
-                id="baseURL"
-                type="url"
-                required={provider === 'openai-compatible'}
-                placeholder={provider === 'openai-compatible' ? 'https://openrouter.ai/api/v1' : undefined}
-                value={baseURL}
-                onChange={(event) => setBaseURL(event.target.value)}
-              />
-              <FieldDescription>{t('baseURLDescription')}</FieldDescription>
-              <FieldError>{errors.baseURL}</FieldError>
-            </Field>
+            {service.id === 'custom' && (
+              <Field data-invalid={errors.baseURL ? true : undefined}>
+                <FieldLabel htmlFor="baseURL">{t('baseURL')}</FieldLabel>
+                <Input
+                  id="baseURL"
+                  type="url"
+                  required
+                  placeholder="http://localhost:11434/v1"
+                  value={typedURL}
+                  onChange={(event) => setTypedURL(event.target.value)}
+                />
+                <FieldDescription>{t('baseURLDescription')}</FieldDescription>
+                <FieldError>{errors.baseURL}</FieldError>
+              </Field>
+            )}
             <Field data-invalid={errors.apiKey ? true : undefined}>
               <FieldLabel htmlFor="apiKey">{t('apiKey')}</FieldLabel>
               <PasswordInput
                 id="apiKey"
                 autoComplete="off"
-                required={!saved?.hasKey}
+                required={keyRequired}
                 value={apiKey}
-                placeholder={saved?.hasKey ? t('keySavedPlaceholder') : undefined}
+                placeholder={keyRequired ? undefined : t('keySavedPlaceholder')}
                 onChange={(event) => setApiKey(event.target.value)}
               />
-              <FieldDescription>{t('apiKeyDescription')}</FieldDescription>
+              <FieldDescription>
+                {serviceChanged ? t('newKeyForService') : t(saved?.hasKey ? 'apiKeyDescription' : 'apiKeyNewDescription')}
+                {service.keyURL && (
+                  <>
+                    {' '}
+                    {t('getKeyAt')}{' '}
+                    <a href={service.keyURL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5">
+                      {new URL(service.keyURL).hostname}
+                      <ExternalLinkIcon className="size-3" aria-hidden />
+                    </a>
+                    .
+                  </>
+                )}
+                {service.id === 'custom' && <> {t('customKeyHint')}</>}
+              </FieldDescription>
               <FieldError>{errors.apiKey}</FieldError>
             </Field>
+            {!service.baseURL && service.id !== 'custom' && (
+              <Collapsible defaultOpen={Boolean(typedURL)}>
+                <CollapsibleTrigger render={<Button type="button" variant="link" size="sm" className="h-auto px-0 text-muted-foreground" />}>
+                  {t('advanced')}
+                  <ChevronDownIcon data-icon="inline-end" />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Field data-invalid={errors.baseURL ? true : undefined} className="pt-2">
+                    <FieldLabel htmlFor="baseURL">{t('proxyAddress')}</FieldLabel>
+                    <Input id="baseURL" type="url" value={typedURL} onChange={(event) => setTypedURL(event.target.value)} />
+                    <FieldDescription>{t('proxyDescription', { service: serviceName(service, t) })}</FieldDescription>
+                    <FieldError>{errors.baseURL}</FieldError>
+                  </Field>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             <FieldSet>
               <div className="flex items-center justify-between gap-2">
                 <FieldLegend variant="label">{t('models')}</FieldLegend>
@@ -412,6 +485,7 @@ function ConnectionDialog({
                 </Button>
               </div>
               <FieldDescription>{t('modelsDescription')}</FieldDescription>
+              {!service.reportsTools && <FieldDescription>{t('toolsUnknown')}</FieldDescription>}
               {loadError && (
                 <Alert variant="destructive">
                   <AlertDescription>{loadError}</AlertDescription>
