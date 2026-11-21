@@ -12,10 +12,8 @@ services:
       PUBLIC_SERVER_URL: https://cms.optidigi.nl
       DATABASE_URL: postgres://optidigi_cms:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/optidigi_cms
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?Set PAYLOAD_SECRET}
-      ASSISTANT_KEY_FILE: /run/secrets/assistant_key
       PREVIEW_SIGNING_KEY_FILE: /run/secrets/preview_signing_key
     secrets:
-      - assistant_key
       - preview_signing_key
     volumes:
       - uploads:/app/uploads
@@ -58,8 +56,6 @@ services:
       retries: 12
 
 secrets:
-  assistant_key:
-    file: ./secrets/assistant_key
   preview_signing_key:
     file: ./secrets/preview_signing_key
 

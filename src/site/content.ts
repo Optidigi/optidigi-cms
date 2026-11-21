@@ -86,8 +86,9 @@ function editorialCollection(slug: 'pages' | 'articles' | 'projects'): Collectio
     llmInstructions: 'Read the schema first. Save changes as drafts unless the editor explicitly asks to publish. Preserve unchanged translations.',
     fields: [
       { name: 'title', label: { en: 'Title', nl: 'Titel' }, type: 'text', required: true, localized: true },
-      // Unique per tenant through the index below, not globally.
-      { name: 'slug', type: 'slug', useAsSlug: 'title', unique: false },
+      // Unique per website through the (tenant, slug) index below. The native slug field checks
+      // uniqueness across all websites, so it doesn't fit a multi-tenant collection.
+      { name: 'slug', type: 'text', required: true, index: true },
       { name: 'heading', label: { en: 'Page heading', nl: 'Paginakop' }, type: 'text', localized: true },
       { name: 'description', label: { en: 'Description', nl: 'Beschrijving' }, type: 'textarea', localized: true },
       { name: 'body', label: { en: 'Body content', nl: 'Inhoud' }, type: 'richText', localized: true },

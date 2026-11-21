@@ -11,7 +11,6 @@ Run the following once from the stack directory as `serveradmin`, whose UID 1000
 ```sh
 umask 077
 mkdir -p secrets
-openssl rand -hex 32 > secrets/assistant_key
 openssl rand -hex 32 > secrets/preview_signing_key
 {
   printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 32)"

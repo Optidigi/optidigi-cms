@@ -20,6 +20,19 @@ Agreed with the owner on 2026-11-21. This plan replaces `admin-rebuild-plan.md`,
 3. **Website refresh hook.** `afterChange` / `afterDelete` notify the website after publish, modelled on the official website template.
 4. **Legacy `/api/site-content`.** Stays unchanged until every website has moved to native reads. It is removed after that, in a separate step.
 
+## Kept access rules and validators
+
+These all use Payload's own mechanisms. They were in place before the replacement and are kept on purpose.
+
+- **First-user guard.** `users` `beforeValidate` refuses creation unless the caller is a platform admin or the `bootstrap-operator` command. Without it, Payload's `/api/users/first-register` lets anyone create the first user on an empty database.
+- **Security validators.** `tenants.siteOrigin` must be an HTTPS origin, because preview URLs and the refresh hook use it. Site-settings navigation `href` must be a site-relative path, because websites render it as a link.
+- **Access choices.**
+  - Tenants and site settings cannot be deleted.
+  - Only website admins and platform admins can delete content (`tenantDelete`).
+  - Only platform admins can move a document to another website (`tenantField.update`).
+  - MCP tools for delete, duplicate and version restore are off.
+- **Public media.** Media is publicly readable, as in Payload's website template. This includes images used only in drafts. Anonymous reads of pages, articles, projects and site settings return published documents only.
+
 ## Decisions
 
 - **Edit conflicts:** Payload's built-in document locking.
@@ -56,7 +69,7 @@ Agreed with the owner on 2026-11-21. This plan replaces `admin-rebuild-plan.md`,
 
 ## Phases
 
-1. **Payload cleanup** (production stays on the current image).
+1. **Payload cleanup** (production stays on the current image). The old admin UI was removed in this phase too, because it cannot run without the old endpoints. The branch has no admin UI until phase 2 lands.
    - Remove `/api/cms-admin/*`, `src/site/admin/*` and the invented rules (including the home-page lock and the rich-text node allowlist).
    - Add public published-read access and email-nodemailer.
    - Add the migration that drops the old assistant collections.

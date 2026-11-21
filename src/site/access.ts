@@ -1,4 +1,4 @@
-import type { Access, FieldAccess, PayloadRequest, Where } from 'payload'
+import type { Access, FieldAccess, PayloadRequest } from 'payload'
 
 export function isPlatformAdmin(user: PayloadRequest['user']) {
   return user?.collection === 'users' && user.role === 'platform-admin'
@@ -37,8 +37,4 @@ export const tenantDelete: Access = ({ req }) => {
     return role === 'admin' && id !== undefined ? [id] : []
   })
   return ids.length ? { tenant: { in: ids } } : false
-}
-
-export function andFilter(access: true | Where, where: Where): Where {
-  return access === true ? where : { and: [access, where] }
 }
