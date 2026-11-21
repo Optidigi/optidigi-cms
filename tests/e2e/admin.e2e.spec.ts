@@ -76,3 +76,51 @@ test('website members see AI connections read-only and never a key', async ({ pa
     await payload.delete({ collection: 'assistant-settings', overrideAccess: true, id: settings.id })
   }
 })
+
+test.describe('AI services', () => {
+  test.describe.configure({ mode: 'serial' })
+  const admin = { email: `e2e-admin-${suffix}@example.test`, password: randomUUID() }
+
+  test.beforeAll(async () => {
+    await payload.create({
+      collection: 'users', overrideAccess: true, context: { bootstrapUser: true },
+      data: { ...admin, role: 'platform-admin', tenants: [{ tenant: site, role: 'admin' }] },
+    })
+  })
+
+  test.afterAll(async () => {
+    await payload.delete({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })
+    await payload.delete({ collection: 'users', overrideAccess: true, where: { email: { equals: admin.email } } })
+  })
+
+  test('choosing a named service fills in its address and shows its name', async ({ page }) => {
+    await login(page, admin)
+    await page.goto(`/admin/${site}/settings/ai`)
+    await page.getByRole('button', { name: /koppeling toevoegen|add connection/i }).first().click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('combobox', { name: /dienst|service/i }).click()
+    await page.getByRole('option', { name: /^xAI \(Grok\)/ }).click()
+    await expect(dialog.locator('#connection-label')).toHaveValue('xAI (Grok)')
+    await expect(dialog.locator('#baseURL')).toHaveCount(0)
+    await expect(dialog.getByRole('link', { name: /console\.x\.ai/ })).toHaveAttribute('href', 'https://console.x.ai')
+    await dialog.locator('#apiKey').fill('xai-e2e-key')
+    await dialog.getByRole('button', { name: /^(opslaan|save)$/i }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByText('xAI (Grok)', { exact: true }).last()).toBeVisible()
+
+    const { docs: [settings] } = await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })
+    expect(settings.connections?.[0]).toMatchObject({ provider: 'openai-compatible', baseURL: 'https://api.x.ai/v1', hasKey: true })
+  })
+
+  test('switching a saved connection to another service asks for a new key', async ({ page }) => {
+    await login(page, admin)
+    await page.goto(`/admin/${site}/settings/ai`)
+    await page.getByRole('button', { name: /bewerken|edit/i }).first().click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.locator('#apiKey')).not.toHaveAttribute('required')
+    await dialog.getByRole('combobox', { name: /dienst|service/i }).click()
+    await page.getByRole('option', { name: /^DeepSeek/ }).click()
+    await expect(dialog.locator('#apiKey')).toHaveAttribute('required')
+    await expect(dialog.getByText(/sleutel voor de nieuwe dienst|key for the new service/i)).toBeVisible()
+  })
+})
