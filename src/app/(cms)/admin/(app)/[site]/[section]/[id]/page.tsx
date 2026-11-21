@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createPayloadRequest } from 'payload'
 import { getLanguage, getTranslator, requireSite } from '@/cms/server'
-import { contentLocale, isSection, sections } from '@/cms/sections'
+import { contentLocale, enabledSections, isSection, sections } from '@/cms/sections'
 import { DocumentEditor, type EditorDocument } from '@/cms/content/document-editor'
 import { SiteHeader } from '@/cms/shell/site-header'
 import { relationID } from '@/site/access'
@@ -17,6 +17,7 @@ export default async function DocumentPage({
   const { site: siteParam, section, id: idParam } = await params
   if (!isSection(section)) notFound()
   const [{ payload, user, site }, t, language] = await Promise.all([requireSite(siteParam), getTranslator(), getLanguage()])
+  if (!enabledSections(site).includes(section)) notFound()
   const { collection, label } = sections[section]
   const locale = contentLocale((await searchParams).locale)
   const id = idParam === 'new' ? undefined : relationID(idParam)

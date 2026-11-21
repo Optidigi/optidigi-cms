@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { formatDate, StatusBadge } from '@/cms/content/status-badge'
 import { getLanguage, getTranslator, requireSite } from '@/cms/server'
-import { sections, type Section } from '@/cms/sections'
+import { enabledSections, sections, type Section } from '@/cms/sections'
 import { PageBody, PageTitle } from '@/cms/shell/page'
 import { SiteHeader } from '@/cms/shell/site-header'
 
@@ -18,7 +18,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
     getLanguage(),
   ])
   const lists = await Promise.all(
-    (Object.keys(sections) as Section[]).map(async (section) => {
+    enabledSections(site).map(async (section) => {
       const { docs, totalDocs } = await payload.find({
         collection: sections[section].collection,
         depth: 0,

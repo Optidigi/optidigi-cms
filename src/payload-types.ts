@@ -310,6 +310,7 @@ export interface Tenant {
   name: string;
   slug: string;
   siteOrigin: string;
+  sections?: ('articles' | 'projects')[] | null;
   /**
    * Path on the website for each collection, with {slug} for the document slug, e.g. /blog/{slug}.
    */
@@ -762,6 +763,7 @@ export interface TenantsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   siteOrigin?: T;
+  sections?: T;
   previewPaths?:
     | T
     | {

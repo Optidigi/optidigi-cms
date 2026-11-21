@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import type { Where } from 'payload'
 import { buttonVariants } from '@/components/ui/button'
 import { getLanguage, getTranslator, requireSite } from '@/cms/server'
-import { contentLocale, isSection, sections } from '@/cms/sections'
+import { contentLocale, enabledSections, isSection, sections } from '@/cms/sections'
 import { CollectionTable } from '@/cms/content/collection-table'
 import { CollectionToolbar } from '@/cms/content/collection-toolbar'
 import { ListPagination } from '@/cms/content/list-pagination'
@@ -24,6 +24,7 @@ export default async function CollectionPage({
   if (!isSection(section)) notFound()
   const search = await searchParams
   const [{ payload, user, site }, t, language] = await Promise.all([requireSite(siteParam), getTranslator(), getLanguage()])
+  if (!enabledSections(site).includes(section)) notFound()
   const { collection, label } = sections[section]
   const locale = contentLocale(search.locale)
   const page = Math.max(1, Math.min(1000, Number(search.page) || 1))

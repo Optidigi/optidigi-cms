@@ -29,6 +29,7 @@ export default async function WebsitePage({ params }: { params: Promise<{ id: st
                   name: tenant.name,
                   slug: tenant.slug,
                   siteOrigin: tenant.siteOrigin,
+                  sections: tenant.sections ?? [],
                   previewPaths: {
                     pages: tenant.previewPaths?.pages ?? '',
                     articles: tenant.previewPaths?.articles ?? '',
