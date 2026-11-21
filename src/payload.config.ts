@@ -2,7 +2,22 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import {
+  BlockquoteFeature,
+  BoldFeature,
+  HeadingFeature,
+  HorizontalRuleFeature,
+  InlineCodeFeature,
+  ItalicFeature,
+  LinkFeature,
+  OrderedListFeature,
+  ParagraphFeature,
+  StrikethroughFeature,
+  UnderlineFeature,
+  UnorderedListFeature,
+  UploadFeature,
+  lexicalEditor,
+} from '@payloadcms/richtext-lexical'
 import { en } from '@payloadcms/translations/languages/en'
 import { nl } from '@payloadcms/translations/languages/nl'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
@@ -49,7 +64,24 @@ export default buildConfig({
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
   collections: [Users, Tenants, ...content].map(withCollectionLabels),
   csrf: origin ? [origin] : [],
-  editor: lexicalEditor(),
+  // The rich-text features the admin editor supports. Payload validates stored content against them.
+  editor: lexicalEditor({
+    features: [
+      ParagraphFeature(),
+      HeadingFeature({ enabledHeadingSizes: ['h2', 'h3', 'h4'] }),
+      BoldFeature(),
+      ItalicFeature(),
+      UnderlineFeature(),
+      StrikethroughFeature(),
+      InlineCodeFeature(),
+      UnorderedListFeature(),
+      OrderedListFeature(),
+      BlockquoteFeature(),
+      LinkFeature({ enabledCollections: [] }),
+      UploadFeature(),
+      HorizontalRuleFeature(),
+    ],
+  }),
   // Sends password-reset email when SMTP is configured; otherwise Payload logs email to the console.
   email: process.env.SMTP_HOST
     ? nodemailerAdapter({
