@@ -52,7 +52,8 @@ export function MediaLibrary({ site, language, items }: { site: number; language
     if (!list.length) return
     const pending = list.map((file, index) => ({ key: `${Date.now()}-${index}`, name: file.name, state: 'uploading' as const }))
     setUploads((current) => [...pending, ...current])
-    let succeeded = 0
+    const saved: string[] = []
+    let failed = 0
     await Promise.all(
       list.map(async (file, index) => {
         // Payload's native upload: the file plus the document fields as `_payload`.
@@ -60,18 +61,21 @@ export function MediaLibrary({ site, language, items }: { site: number; language
         form.append('file', file)
         form.append('_payload', JSON.stringify({ alt: file.name.replace(/\.[^.]+$/, ''), tenant: site }))
         try {
-          await api('media', { method: 'POST', body: form })
-          succeeded++
+          // Payload renames a file whose name is taken; show the name it was stored under.
+          const { doc } = await api<{ doc: { filename?: string } }>('media', { method: 'POST', body: form })
+          saved.push(doc.filename ?? file.name)
           setUploads((current) => current.filter(({ key }) => key !== pending[index].key))
         } catch {
+          failed++
           setUploads((current) => current.map((item) => (item.key === pending[index].key ? { ...item, state: 'error' } : item)))
         }
       }),
     )
-    if (succeeded) {
-      toast.success(t('uploaded'))
+    if (saved.length) {
+      toast.success(t('uploaded'), { description: saved.join(', ') })
       router.refresh()
     }
+    if (failed) toast.error(t('uploadFailed'))
   }
 
   return (

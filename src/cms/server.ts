@@ -38,6 +38,8 @@ export const getPreferences = cache(async (): Promise<Preferences> => {
     depth: 0,
     limit: 1,
     overrideAccess: false,
+    // Newest first, in case an older duplicate row is still around.
+    sort: '-updatedAt',
     user,
     where: {
       key: { equals: preferencesKey },

@@ -71,7 +71,7 @@ export function AppSidebar({
   // Remember the last website so /admin and the account pages return to it.
   useEffect(() => {
     if (site && preferences.site !== site.id) {
-      savePreferences({ ...preferences, site: site.id }).catch(() => undefined)
+      savePreferences(preferences, { site: site.id }).catch(() => undefined)
     }
   }, [site, preferences])
 

@@ -28,7 +28,7 @@ export function PreferencesForm() {
     event.preventDefault()
     setSaving(true)
     try {
-      await savePreferences({ ...preferences, language, theme })
+      await savePreferences(preferences, { language, theme })
       setTheme(theme)
       toast.success(t('savedToast'))
       router.refresh()

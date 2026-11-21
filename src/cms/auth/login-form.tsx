@@ -6,12 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from './password-input'
 import { Spinner } from '@/components/ui/spinner'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useHydrated } from '../client/use-hydrated'
 
 export function LoginForm({ destination }: { destination: string }) {
   const { t } = useI18n()
+  // Until React handles the submit, the button stays off so the browser never sends the form itself.
+  const hydrated = useHydrated()
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
 
@@ -32,12 +36,12 @@ export function LoginForm({ destination }: { destination: string }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('signInTitle')}</CardTitle>
+      <CardHeader className="text-center">
+        <CardTitle className="text-xl">{t('signInTitle')}</CardTitle>
         <CardDescription>{t('signInDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={submit}>
+        <form method="post" onSubmit={submit}>
           <FieldGroup>
             <Field data-invalid={error || undefined}>
               <FieldLabel htmlFor="email">{t('email')}</FieldLabel>
@@ -50,11 +54,11 @@ export function LoginForm({ destination }: { destination: string }) {
                   {t('forgotPassword')}
                 </Link>
               </div>
-              <Input id="password" name="password" type="password" autoComplete="current-password" required aria-invalid={error || undefined} />
+              <PasswordInput id="password" name="password" autoComplete="current-password" required aria-invalid={error || undefined} />
               {error && <FieldError>{t('signInFailed')}</FieldError>}
             </Field>
             <Field>
-              <Button type="submit" disabled={pending}>
+              <Button type="submit" disabled={pending || !hydrated}>
                 {pending && <Spinner data-icon="inline-start" />}
                 {t('signIn')}
               </Button>
