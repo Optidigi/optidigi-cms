@@ -6,7 +6,6 @@ import {
   ArrowUpIcon,
   SparklesIcon,
   CheckIcon,
-  ChevronDownIcon,
   CopyIcon,
   FileTextIcon,
   ImageIcon,
@@ -34,15 +33,6 @@ import { Badge } from '@/components/ui/badge'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Button } from '@/components/ui/button'
 import { CodeBlock, CodeBlockContent } from '@/components/ui/code-block'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group'
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message'
@@ -70,6 +60,7 @@ import { useI18n } from '../client/i18n-provider'
 import type { MessageKey } from '../i18n'
 import { ApprovalCard } from './approval-card'
 import { useAssistant } from './assistant-context'
+import { ModelMenu } from './model-menu'
 import { toolLabel } from './tool-label'
 
 // Chat composition from the shadcn AI Elements docs (Chat, Message, Tool, Confirmation,
@@ -362,7 +353,6 @@ function Composer({
   const input = useRef<HTMLInputElement>(null)
   const models = assistant.setup.state === 'ready' ? assistant.setup.models : []
   const selected = models.find(({ key }) => key === assistant.model)
-  const connections = [...new Map(models.map((option) => [option.connectionID, option.connection]))]
   const ready = uploads.every(({ state }) => state !== 'uploading')
   const canSend = Boolean(text.trim()) && ready && !busy && !locked && assistant.setup.state === 'ready'
 
@@ -475,28 +465,7 @@ function Composer({
             }}
           />
           {models.length > 1 ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<InputGroupButton size="sm" className="ml-auto" aria-label={t('model')} />}>
-                <span className="max-w-32 truncate">{selected?.model}</span>
-                <ChevronDownIcon />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuRadioGroup value={assistant.model} onValueChange={(value) => assistant.setModel(String(value))}>
-                  {connections.map(([id, label]) => (
-                    <DropdownMenuGroup key={id}>
-                      <DropdownMenuLabel>{label}</DropdownMenuLabel>
-                      {models
-                        .filter((option) => option.connectionID === id)
-                        .map((option) => (
-                          <DropdownMenuRadioItem key={option.key} value={option.key} closeOnClick>
-                            {option.model}
-                          </DropdownMenuRadioItem>
-                        ))}
-                    </DropdownMenuGroup>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ModelMenu className="ml-auto" />
           ) : (
             <span className="ml-auto max-w-40 truncate text-xs text-muted-foreground">{selected?.model}</span>
           )}

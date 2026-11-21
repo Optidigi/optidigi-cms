@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         />
         {/* min-w-0 lets wide content (tables, chat suggestions) scroll inside the page instead of widening it. */}
         <SidebarInset className="min-w-0">
-          <AssistantFrame>{children}</AssistantFrame>
+          <AssistantFrame platformAdmin={isPlatformAdmin(user)}>{children}</AssistantFrame>
         </SidebarInset>
       </SidebarProvider>
       </AssistantProvider>
