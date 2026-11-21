@@ -18,7 +18,6 @@ export const bootstrapOperator = defineCLICommand({
 
     await payload.create({
       collection: 'users',
-      context: { bootstrapUser: true },
       data: { email, password, role: 'platform-admin' },
       overrideAccess: true,
     })
