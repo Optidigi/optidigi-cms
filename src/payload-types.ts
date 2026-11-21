@@ -139,17 +139,16 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "LexicalNodes_9F6C2123".
+ * via the `definition` "LexicalNodes_0B9F8754".
  */
-export type LexicalNodes_9F6C2123 =
+export type LexicalNodes_0B9F8754 =
   | SerializedTextNode
   | SerializedTabNode
   | SerializedLineBreakNode
-  | SerializedParagraphNode<LexicalNodes_9F6C2123>
+  | SerializedParagraphNode<LexicalNodes_0B9F8754>
   | SerializedHorizontalRuleNode
   | SerializedUploadNode<'media'>
-  | SerializedUploadNode<'assistant-uploads'>
-  | SerializedQuoteNode<LexicalNodes_9F6C2123>
+  | SerializedQuoteNode<LexicalNodes_0B9F8754>
   | SerializedRelationshipNode<
       | 'users'
       | 'tenants'
@@ -157,20 +156,16 @@ export type LexicalNodes_9F6C2123 =
       | 'articles'
       | 'projects'
       | 'site-settings'
-      | 'assistant-credentials'
-      | 'assistant-delete-receipts'
-      | 'assistant-threads'
-      | 'assistant-messages'
       | 'payload-kv'
       | 'payload-locked-documents'
       | 'payload-preferences'
       | 'payload-migrations'
     >
-  | SerializedAutoLinkNode<LexicalNodes_9F6C2123, LexicalLinkFields>
-  | SerializedLinkNode<LexicalNodes_9F6C2123, LexicalLinkFields>
-  | SerializedListNode<LexicalNodes_9F6C2123>
-  | SerializedListItemNode<LexicalNodes_9F6C2123>
-  | SerializedHeadingNode<LexicalNodes_9F6C2123>;
+  | SerializedAutoLinkNode<LexicalNodes_0B9F8754, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_0B9F8754, LexicalLinkFields>
+  | SerializedListNode<LexicalNodes_0B9F8754>
+  | SerializedListItemNode<LexicalNodes_0B9F8754>
+  | SerializedHeadingNode<LexicalNodes_0B9F8754>;
 /**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
@@ -197,11 +192,6 @@ export interface Config {
     projects: Project;
     'site-settings': SiteSetting;
     media: Media;
-    'assistant-credentials': AssistantCredential;
-    'assistant-delete-receipts': AssistantDeleteReceipt;
-    'assistant-threads': AssistantThread;
-    'assistant-messages': AssistantMessage;
-    'assistant-uploads': AssistantUpload;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -217,11 +207,6 @@ export interface Config {
     projects: ProjectsSelect<false> | ProjectsSelect<true>;
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    'assistant-credentials': AssistantCredentialsSelect<false> | AssistantCredentialsSelect<true>;
-    'assistant-delete-receipts': AssistantDeleteReceiptsSelect<false> | AssistantDeleteReceiptsSelect<true>;
-    'assistant-threads': AssistantThreadsSelect<false> | AssistantThreadsSelect<true>;
-    'assistant-messages': AssistantMessagesSelect<false> | AssistantMessagesSelect<true>;
-    'assistant-uploads': AssistantUploadsSelect<false> | AssistantUploadsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -352,7 +337,7 @@ export interface Page {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_9F6C2123> | null;
+  body?: LexicalRichText<LexicalNodes_0B9F8754> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -380,7 +365,7 @@ export interface Article {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_9F6C2123> | null;
+  body?: LexicalRichText<LexicalNodes_0B9F8754> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -408,7 +393,7 @@ export interface Project {
   slug: string;
   heading?: string | null;
   description?: string | null;
-  body?: LexicalRichText<LexicalNodes_9F6C2123> | null;
+  body?: LexicalRichText<LexicalNodes_0B9F8754> | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -501,146 +486,6 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-credentials".
- */
-export interface AssistantCredential {
-  id: number;
-  tenant: number;
-  provider: 'anthropic' | 'openai' | 'openai-compatible';
-  model: string;
-  baseURL?: string | null;
-  catalog?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  ciphertext: string;
-  createdBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-delete-receipts".
- */
-export interface AssistantDeleteReceipt {
-  id: number;
-  nonce: string;
-  createdBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-threads".
- */
-export interface AssistantThread {
-  id: number;
-  owner?: (number | null) | User;
-  tenant?: (number | null) | Tenant;
-  title: string;
-  archived?: boolean | null;
-  createdBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-messages".
- */
-export interface AssistantMessage {
-  id: number;
-  thread: number | AssistantThread;
-  messageId: string;
-  message:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  createdBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-uploads".
- */
-export interface AssistantUpload {
-  id: number;
-  owner?: (number | null) | User;
-  tenant?: (number | null) | Tenant;
-  thread: number | AssistantThread;
-  createdBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedBy?: {
-    relationTo: 'users';
-    value: number | User;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  _stored?: boolean | null;
-  _transforms?: UploadTransforms;
-  original?: {
-    filename?: string | null;
-    url?: string | null;
-    mimeType?: string | null;
-    filesize?: number | null;
-    width?: number | null;
-    height?: number | null;
-    prefix?: string | null;
-    _objectKey?: string | null;
-    _stored?: boolean | null;
-  };
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -690,14 +535,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
-      } | null)
-    | ({
-        relationTo: 'assistant-credentials';
-        value: number | AssistantCredential;
-      } | null)
-    | ({
-        relationTo: 'assistant-delete-receipts';
-        value: number | AssistantDeleteReceipt;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -918,97 +755,6 @@ export interface SiteSettingsSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   tenant?: T;
   alt?: T;
-  createdBy?: T;
-  updatedBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  _stored?: T;
-  _transforms?: T;
-  original?:
-    | T
-    | {
-        filename?: T;
-        url?: T;
-        mimeType?: T;
-        filesize?: T;
-        width?: T;
-        height?: T;
-        prefix?: T;
-        _objectKey?: T;
-        _stored?: T;
-      };
-  focalX?: T;
-  focalY?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-credentials_select".
- */
-export interface AssistantCredentialsSelect<T extends boolean = true> {
-  tenant?: T;
-  provider?: T;
-  model?: T;
-  baseURL?: T;
-  catalog?: T;
-  ciphertext?: T;
-  createdBy?: T;
-  updatedBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-delete-receipts_select".
- */
-export interface AssistantDeleteReceiptsSelect<T extends boolean = true> {
-  nonce?: T;
-  createdBy?: T;
-  updatedBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-threads_select".
- */
-export interface AssistantThreadsSelect<T extends boolean = true> {
-  owner?: T;
-  tenant?: T;
-  title?: T;
-  archived?: T;
-  createdBy?: T;
-  updatedBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-messages_select".
- */
-export interface AssistantMessagesSelect<T extends boolean = true> {
-  thread?: T;
-  messageId?: T;
-  message?: T;
-  createdBy?: T;
-  updatedBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "assistant-uploads_select".
- */
-export interface AssistantUploadsSelect<T extends boolean = true> {
-  owner?: T;
-  tenant?: T;
-  thread?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;

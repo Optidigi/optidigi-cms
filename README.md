@@ -1,6 +1,6 @@
 # Optidigi CMS
 
-A shared headless CMS for independently deployed sites. The shadcn admin at `/admin` uses Payload HTTP APIs for sessions, editorial content, and the assistant. Payload renders its OAuth consent and account recovery views. The public sites render published content on their own domains.
+A shared headless CMS for independently deployed sites. The shadcn admin at `/admin` uses Payload's own REST and Local APIs. Payload's MCP plugin renders its OAuth consent page. Websites read published content through Payload's standard REST API and render it on their own domains. See [the admin replacement plan](tasks/admin-replacement-plan.md).
 
 ## Local development
 
@@ -27,7 +27,7 @@ npm run payload -- bootstrap-operator
 npm run dev
 ```
 
-Open [the local admin](http://localhost:3000/admin). To try assistant credential storage or draft preview, generate a separate 32-byte hex key for each feature with `openssl rand -hex 32`. Store the keys in separate local files and set their paths in `.env`.
+Open [the local admin](http://localhost:3000/admin). To try draft preview, generate a 32-byte hex key with `openssl rand -hex 32`, store it in a local file and set `PREVIEW_SIGNING_KEY_FILE` in `.env`. Set the `SMTP_*` variables to send password-reset email; without them Payload writes email to the console.
 
 Run `npm run lint`, `npx tsc --noEmit`, `npm run test:int`, and `npm run test:e2e` to check the app against the migrated local database.
 

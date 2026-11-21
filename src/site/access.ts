@@ -4,8 +4,14 @@ export function isPlatformAdmin(user: PayloadRequest['user']) {
   return user?.collection === 'users' && user.role === 'platform-admin'
 }
 
+export const anyone: Access = () => true
 export const platformOnly: Access & FieldAccess = ({ req }) => isPlatformAdmin(req.user)
-export const signedIn: Access = ({ req }) => req.user?.collection === 'users'
+export const signedIn: Access & FieldAccess = ({ req }) => req.user?.collection === 'users'
+
+// Payload's website template pattern: signed-in users read everything their tenants allow, everyone
+// else reads published documents only. The multi-tenant plugin adds the tenant filter for users.
+export const signedInOrPublished: Access = ({ req }) =>
+  req.user?.collection === 'users' || { _status: { equals: 'published' } }
 
 export function relationID(value: unknown): number | undefined {
   if (typeof value === 'object' && value !== null && 'id' in value) {

@@ -1,5 +1,5 @@
-import { APIError, type CollectionConfig, type Field } from 'payload'
-import { isPlatformAdmin, platformOnly, relationID, signedIn, tenantDelete } from './access'
+import type { CollectionConfig, Field } from 'payload'
+import { anyone, platformOnly, signedIn, signedInOrPublished, tenantDelete } from './access'
 import { previewURL } from './preview'
 
 const drafts = { drafts: { autosave: true } }
@@ -7,14 +7,16 @@ const drafts = { drafts: { autosave: true } }
 export const Tenants: CollectionConfig = {
   slug: 'tenants',
   admin: { useAsTitle: 'name' },
-  access: { create: platformOnly, delete: () => false, read: signedIn, update: platformOnly },
+  // Websites read published content by tenant slug, so the slug is public. Other fields stay private.
+  access: { create: platformOnly, delete: () => false, read: anyone, update: platformOnly },
   fields: [
-    { name: 'name', label: { en: 'Name', nl: 'Naam' }, type: 'text', required: true },
-    { name: 'slug', type: 'text', required: true, unique: true, validate: (value: unknown) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || 'Use lowercase words separated by hyphens.' },
+    { name: 'name', label: { en: 'Name', nl: 'Naam' }, type: 'text', required: true, access: { read: signedIn } },
+    { name: 'slug', type: 'slug', useAsSlug: 'name' },
     {
       name: 'siteOrigin', label: { en: 'Website URL', nl: 'Website-URL' },
       type: 'text',
       required: true,
+      access: { read: signedIn },
       validate: (value: unknown) => {
         try {
           const url = new URL(typeof value === 'string' ? value : '')
@@ -30,7 +32,7 @@ export const Tenants: CollectionConfig = {
 const editorAccess: CollectionConfig['access'] = {
   create: signedIn,
   delete: tenantDelete,
-  read: signedIn,
+  read: signedInOrPublished,
   readVersions: signedIn,
   update: signedIn,
 }
@@ -82,19 +84,10 @@ function editorialCollection(slug: 'pages' | 'articles' | 'projects'): Collectio
     indexes: [{ fields: ['tenant', 'slug'], unique: true }],
     versions: drafts,
     llmInstructions: 'Read the schema first. Save changes as drafts unless the editor explicitly asks to publish. Preserve unchanged translations.',
-    hooks: {
-      beforeValidate: [
-        ({ data, operation, originalDoc, req }) => {
-          if (operation === 'update' && originalDoc && data?.tenant != null && relationID(data.tenant) !== relationID(originalDoc.tenant) && !isPlatformAdmin(req.user)) {
-            throw new APIError('Changing an existing document’s tenant requires a platform admin.', 403)
-          }
-          return data
-        },
-      ],
-    },
     fields: [
       { name: 'title', label: { en: 'Title', nl: 'Titel' }, type: 'text', required: true, localized: true },
-      { name: 'slug', type: 'text', required: true, validate: (value: unknown) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) || 'Use lowercase words separated by hyphens.' },
+      // Unique per tenant through the index below, not globally.
+      { name: 'slug', type: 'slug', useAsSlug: 'title', unique: false },
       { name: 'heading', label: { en: 'Page heading', nl: 'Paginakop' }, type: 'text', localized: true },
       { name: 'description', label: { en: 'Description', nl: 'Beschrijving' }, type: 'textarea', localized: true },
       { name: 'body', label: { en: 'Body content', nl: 'Inhoud' }, type: 'richText', localized: true },

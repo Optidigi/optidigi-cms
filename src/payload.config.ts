@@ -1,4 +1,5 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { mcpPlugin } from '@payloadcms/plugin-mcp'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
@@ -6,54 +7,19 @@ import { en } from '@payloadcms/translations/languages/en'
 import { nl } from '@payloadcms/translations/languages/nl'
 import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
-import { APIError, buildConfig, type CollectionConfig } from 'payload'
+import { buildConfig, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
-import { AssistantMessages, AssistantThreads, AssistantUploads } from './assistant/collections'
-import { AssistantCredentials, AssistantDeleteReceipts } from './assistant/credentials'
-import { assistantEndpoints } from './assistant/endpoints'
-import { getAssistantTenantScope } from './assistant/scope'
 import { Media } from './collections/Media'
 import { Users } from './collections/Users'
-import { andFilter, isPlatformAdmin, platformOnly, relationID } from './site/access'
+import { isPlatformAdmin, platformOnly } from './site/access'
 import { bootstrapOperator } from './site/bootstrap'
 import { collectionLabels } from './site/collection-labels'
 import { Articles, Pages, Projects, SiteSettings, Tenants } from './site/content'
 import { siteEndpoints } from './site/endpoints'
-import { adminEndpoints } from './site/admin/endpoints'
-import { checkSitePage } from './site/tools'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const origin = process.env.PUBLIC_SERVER_URL
 const content = [Pages, Articles, Projects, SiteSettings, Media]
-
-const tenantAccess: NonNullable<
-  NonNullable<Parameters<typeof multiTenantPlugin>[0]['collections']['pages']>['accessResultOverride']
-> = ({ accessKey, accessResult, req }) => {
-  const tenant = getAssistantTenantScope(req)
-  if (!accessResult || tenant === undefined || accessKey === 'create') return accessResult
-  const field = accessKey === 'readVersions' ? 'version.tenant' : 'tenant'
-  return andFilter(accessResult, { [field]: { equals: tenant } })
-}
-
-function enforceAssistantWrites(collection: CollectionConfig): CollectionConfig {
-  return {
-    ...collection,
-    hooks: {
-      ...collection.hooks,
-      beforeValidate: [
-        ({ data, operation, req }) => {
-          const tenant = getAssistantTenantScope(req)
-          if (!data || tenant === undefined) return data
-          if (data.tenant != null && relationID(data.tenant) !== tenant) {
-            throw new APIError('The document must stay in the active tenant.', 403)
-          }
-          return operation === 'create' ? { ...data, tenant } : data
-        },
-        ...(collection.hooks?.beforeValidate ?? []),
-      ],
-    },
-  }
-}
 
 function withCollectionLabels(collection: CollectionConfig): CollectionConfig {
   if (!Object.hasOwn(collectionLabels, collection.slug)) return collection
@@ -81,10 +47,22 @@ export default buildConfig({
     importMap: { baseDir: dirname },
   },
   cli: { commands: { 'bootstrap-operator': bootstrapOperator } },
-  collections: [Users, Tenants, ...content.map(enforceAssistantWrites), AssistantCredentials, AssistantDeleteReceipts, AssistantThreads, AssistantMessages, AssistantUploads].map(withCollectionLabels),
+  collections: [Users, Tenants, ...content].map(withCollectionLabels),
   csrf: origin ? [origin] : [],
   editor: lexicalEditor(),
-  endpoints: [...siteEndpoints, ...assistantEndpoints, ...adminEndpoints],
+  // Sends password-reset email when SMTP is configured; otherwise Payload logs email to the console.
+  email: process.env.SMTP_HOST
+    ? nodemailerAdapter({
+        defaultFromAddress: process.env.SMTP_FROM_ADDRESS ?? '',
+        defaultFromName: process.env.SMTP_FROM_NAME ?? 'Optidigi CMS',
+        transportOptions: {
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT ?? 587),
+          auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined,
+        },
+      })
+    : undefined,
+  endpoints: siteEndpoints,
   llmInstructions: { access: platformOnly },
   secret: process.env.PAYLOAD_SECRET ?? '',
   serverURL: origin ?? '',
@@ -112,11 +90,11 @@ export default buildConfig({
       cleanupAfterTenantDelete: false,
       i18n: { translations: { en: { 'nav-tenantSelector-label': 'Active website' }, nl: { 'nav-tenantSelector-label': 'Actieve website' } } },
       collections: {
-        pages: { accessResultOverride: tenantAccess },
-        articles: { accessResultOverride: tenantAccess },
-        projects: { accessResultOverride: tenantAccess },
-        'site-settings': { accessResultOverride: tenantAccess, isGlobal: true },
-        media: { accessResultOverride: tenantAccess },
+        pages: {},
+        articles: {},
+        projects: {},
+        'site-settings': { isGlobal: true },
+        media: {},
       },
       tenantField: { access: { update: platformOnly } },
       tenantsArrayField: {
@@ -135,13 +113,7 @@ export default buildConfig({
         ])),
         users: { tools: noTools },
         tenants: { tools: noTools },
-        'assistant-credentials': { tools: noTools },
-        'assistant-delete-receipts': { tools: noTools },
-        'assistant-threads': { tools: noTools },
-        'assistant-messages': { tools: noTools },
-        'assistant-uploads': { tools: noTools },
       },
-      tools: { checkSitePage },
     }),
   ],
   upload: {

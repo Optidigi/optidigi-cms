@@ -1,13 +1,14 @@
 import path from 'node:path'
 import type { CollectionConfig } from 'payload'
-import { signedIn, tenantDelete } from '../site/access'
+import { anyone, signedIn, tenantDelete } from '../site/access'
 
 export const Media: CollectionConfig = {
   slug: 'media',
   access: {
     create: signedIn,
     delete: tenantDelete,
-    read: signedIn,
+    // Website images are public, as in Payload's website template.
+    read: anyone,
     update: signedIn,
   },
   fields: [{ name: 'alt', label: { en: 'Alternative text', nl: 'Alternatieve tekst' }, type: 'text', required: true }],

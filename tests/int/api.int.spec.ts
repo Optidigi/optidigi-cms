@@ -5,7 +5,6 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getPayload, type Payload, type PayloadRequest } from 'payload'
 import config from '@/payload.config'
-import { assistantScopeHeader, createAssistantScope } from '@/assistant/scope'
 import { siteEndpoints } from '@/site/endpoints'
 import { previewURL } from '@/site/preview'
 
@@ -14,6 +13,7 @@ let payload: Payload
 let keyDirectory: string
 let tenantA: number
 let tenantB: number
+let tenantC: number
 let home: number
 let actor: NonNullable<PayloadRequest['user']>
 
@@ -28,22 +28,22 @@ beforeAll(async () => {
   keyDirectory = await mkdtemp(join(tmpdir(), 'optidigi-preview-'))
   process.env.PREVIEW_SIGNING_KEY_FILE = join(keyDirectory, 'key')
   await writeFile(process.env.PREVIEW_SIGNING_KEY_FILE, 'ab'.repeat(32), { mode: 0o600 })
-  const [a, b] = await Promise.all(['a', 'b'].map((key) => payload.create({
+  const [a, b, c] = await Promise.all(['a', 'b', 'c'].map((key) => payload.create({
     collection: 'tenants', overrideAccess: true,
     data: { name: key, slug: `test-${key}-${suffix}`, siteOrigin: 'https://optidigi.nl' },
   })))
   tenantA = a.id
   tenantB = b.id
+  tenantC = c.id
   const user = await payload.create({
     collection: 'users', overrideAccess: true,
-    context: { bootstrapUser: true },
     data: {
       email: `user-${suffix}@example.test`, password: randomUUID(), role: 'customer',
       tenants: [{ tenant: a.id, role: 'admin' }, { tenant: b.id, role: 'editor' }],
     },
   })
   actor = { ...user, collection: 'users' }
-  const [page] = await Promise.all([a, b].map((tenant) => payload.create({
+  const [page] = await Promise.all([a, b, c].map((tenant) => payload.create({
     collection: 'pages', locale: 'nl', overrideAccess: true,
     data: { tenant: tenant.id, slug: 'home', title: tenant.name, heading: 'Published', _status: 'published' },
   })))
@@ -56,7 +56,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (payload) {
-    const ids = [tenantA, tenantB].filter(Boolean)
+    const ids = [tenantA, tenantB, tenantC].filter(Boolean)
     if (ids.length) {
       await payload.delete({ collection: 'pages', overrideAccess: true, where: { tenant: { in: ids } } })
       if (actor) await payload.delete({ collection: 'users', overrideAccess: true, id: actor.id })
@@ -68,29 +68,34 @@ afterAll(async () => {
 })
 
 describe('tenant content', () => {
-  it('denies unauthenticated generic reads and scopes the assistant to the selected tenant', async () => {
-    await expect(payload.find({ collection: 'pages', overrideAccess: false })).rejects.toThrow()
-    const req = request('https://cms.optidigi.nl/api/mcp')
-    req.headers.set(assistantScopeHeader, createAssistantScope(req, tenantA))
-    const result = await payload.find({ collection: 'pages', depth: 0, overrideAccess: false, req })
-    expect(result.docs).toHaveLength(1)
-    expect(result.docs[0].tenant).toBe(tenantA)
-    // Payload strips tenant changes at field access before invoking collection hooks.
-    const updated = await payload.update({
-      collection: 'pages', id: home, data: { tenant: tenantB },
-      depth: 0, draft: true, overrideAccess: false, req,
+  it('lets anonymous readers see published content and public tenant fields only', async () => {
+    const where = { tenant: { equals: tenantA } }
+    const { docs } = await payload.find({ collection: 'pages', depth: 0, locale: 'nl', overrideAccess: false, where })
+    expect(docs).toHaveLength(1)
+    expect(docs[0].heading).toBe('Published')
+    // The newest version is a draft, so draft reads return nothing to anonymous readers.
+    expect((await payload.find({
+      collection: 'pages', depth: 0, draft: true, locale: 'nl', overrideAccess: false, where,
+    })).docs).toHaveLength(0)
+    const { docs: [tenant] } = await payload.find({
+      collection: 'tenants', depth: 0, overrideAccess: false,
+      where: { slug: { equals: `test-a-${suffix}` } },
     })
-    expect(updated.tenant).toBe(tenantA)
-    expect(await payload.find({
-      collection: 'pages', where: { tenant: { equals: tenantB } }, overrideAccess: false, req,
-    })).toMatchObject({ docs: [] })
+    expect(tenant.slug).toBe(`test-a-${suffix}`)
+    expect(tenant).not.toHaveProperty('siteOrigin')
+    expect(tenant).not.toHaveProperty('name')
+    expect((await payload.find({
+      collection: 'pages', depth: 0, overrideAccess: false,
+      where: { 'tenant.slug': { equals: `test-b-${suffix}` } },
+    })).docs).toHaveLength(1)
   })
 
-  it('blocks public first-user creation even through an access override', async () => {
-    await expect(payload.create({
-      collection: 'users', overrideAccess: true,
-      data: { email: `unauthorized-${suffix}@example.test`, password: randomUUID(), role: 'platform-admin' },
-    })).rejects.toThrow()
+  it('limits signed-in users to their own tenants, drafts included', async () => {
+    const { docs } = await payload.find({
+      collection: 'pages', depth: 0, draft: true, locale: 'nl', overrideAccess: false, user: actor,
+    })
+    expect(docs.map(({ tenant }) => tenant).sort()).toEqual([tenantA, tenantB].sort())
+    expect(docs.find(({ id }) => id === home)?.heading).toBe('Draft only')
   })
 
   it('serves published content and only returns drafts under a tenant-bound grant', async () => {
