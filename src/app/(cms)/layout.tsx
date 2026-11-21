@@ -5,12 +5,16 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { I18nProvider } from '@/cms/client/i18n-provider'
 import { ThemeProvider } from '@/cms/client/theme-provider'
+import { brandMark } from '@/cms/brand'
 import { atkinson, inter } from '@/cms/fonts'
 import { appearanceAttributes, defaultAppearance } from '@/cms/preferences'
 import { getLanguage, getPreferences, getSession } from '@/cms/server'
 import './admin.css'
 
-export const metadata: Metadata = { title: { default: 'Optidigi CMS', template: '%s · Optidigi CMS' } }
+export const metadata: Metadata = {
+  title: { default: 'Optidigi CMS', template: '%s · Optidigi CMS' },
+  icons: { icon: brandMark },
+}
 
 export default async function CMSRootLayout({ children }: { children: React.ReactNode }) {
   const language = await getLanguage()

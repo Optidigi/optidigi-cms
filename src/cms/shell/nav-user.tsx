@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronsUpDownIcon, LogOutIcon, SlidersHorizontalIcon, UserIcon } from 'lucide-react'
+import { ChevronsUpDownIcon, LogOutIcon, PaletteIcon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -61,9 +61,9 @@ export function NavUser({ email }: { email: string }) {
                 <UserIcon />
                 {t('profile')}
               </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href="/admin/account/preferences" />}>
-                <SlidersHorizontalIcon />
-                {t('preferences')}
+              <DropdownMenuItem render={<Link href="/admin/account/appearance" />}>
+                <PaletteIcon />
+                {t('appearance')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

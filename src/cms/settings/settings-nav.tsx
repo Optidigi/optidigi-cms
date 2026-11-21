@@ -22,34 +22,35 @@ type Group = { label: MessageKey; items: { label: MessageKey; href: string }[] }
 export function SettingsNav({ site, platformAdmin }: { site?: number; platformAdmin: boolean }) {
   const { t } = useI18n()
   const pathname = usePathname()
+  // App settings: the website's settings plus your own appearance. Platform: your profile, and
+  // for platform administrators the websites and users.
   const groups: Group[] = [
-    ...(site
-      ? [{
-          label: 'websiteSettings' as const,
-          items: [
-            { label: 'general' as const, href: `/admin/${site}/settings/general` },
-            { label: 'navigation' as const, href: `/admin/${site}/settings/navigation` },
-            { label: 'seo' as const, href: `/admin/${site}/settings/seo` },
-            { label: 'aiSettings' as const, href: `/admin/${site}/settings/ai` },
-          ],
-        }]
-      : []),
     {
-      label: 'account',
+      label: 'websiteSettings',
       items: [
-        { label: 'profile', href: '/admin/account/profile' },
-        { label: 'preferences', href: '/admin/account/preferences' },
+        ...(site
+          ? [
+              { label: 'general' as const, href: `/admin/${site}/settings/general` },
+              { label: 'navigation' as const, href: `/admin/${site}/settings/navigation` },
+              { label: 'seo' as const, href: `/admin/${site}/settings/seo` },
+              { label: 'aiSettings' as const, href: `/admin/${site}/settings/ai` },
+            ]
+          : []),
+        { label: 'appearance', href: '/admin/account/appearance' },
       ],
     },
-    ...(platformAdmin
-      ? [{
-          label: 'platform' as const,
-          items: [
-            { label: 'websites' as const, href: '/admin/platform/websites' },
-            { label: 'users' as const, href: '/admin/platform/users' },
-          ],
-        }]
-      : []),
+    {
+      label: 'platform',
+      items: [
+        { label: 'profile', href: '/admin/account/profile' },
+        ...(platformAdmin
+          ? [
+              { label: 'websites' as const, href: '/admin/platform/websites' },
+              { label: 'users' as const, href: '/admin/platform/users' },
+            ]
+          : []),
+      ],
+    },
   ]
   const active = groups.flatMap(({ items }) => items).find(({ href }) => pathname === href || pathname.startsWith(href + '/'))
 
