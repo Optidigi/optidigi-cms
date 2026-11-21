@@ -14,6 +14,13 @@ export function isSection(value: string): value is Section {
   return Object.hasOwn(sections, value)
 }
 
+// The sections a website uses: pages always, articles and portfolio when the website switched them on.
+export function enabledSections(site: { sections?: readonly string[] | null }): Section[] {
+  return (Object.keys(sections) as Section[]).filter(
+    (section) => section === 'pages' || (site.sections ?? []).includes(sections[section].collection),
+  )
+}
+
 export const contentLocales = ['nl', 'en'] as const
 export type ContentLocale = (typeof contentLocales)[number]
 

@@ -13,7 +13,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
 import { useI18n } from '../client/i18n-provider'
 
-export type SiteSummary = { id: number; name: string; siteOrigin: string }
+export type SiteSummary = { id: number; name: string; siteOrigin: string; sections?: string[] | null }
 
 // The team switcher from the official sidebar-07 block, listing websites.
 export function SiteSwitcher({ sites, current }: { sites: SiteSummary[]; current?: SiteSummary }) {

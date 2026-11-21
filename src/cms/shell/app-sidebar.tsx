@@ -28,19 +28,20 @@ import {
 import type { MessageKey } from '../i18n'
 import type { Preferences } from '../preferences'
 import { useI18n } from '../client/i18n-provider'
+import { enabledSections, type Section } from '../sections'
 import { savePreferences } from '../client/preferences'
 import { NavUser } from './nav-user'
 import { SiteSwitcher, type SiteSummary } from './site-switcher'
 
-type NavItem = { key: MessageKey; path: string; icon: React.ReactNode; exact?: boolean }
+type NavItem = { key: MessageKey; path: string; icon: React.ReactNode; exact?: boolean; section?: Section }
 
 const workspace: NavItem[] = [
   { key: 'overview', path: '', icon: <LayoutDashboardIcon />, exact: true },
 ]
 const content: NavItem[] = [
-  { key: 'pages', path: '/pages', icon: <FileTextIcon /> },
-  { key: 'articles', path: '/articles', icon: <NewspaperIcon /> },
-  { key: 'portfolio', path: '/portfolio', icon: <BriefcaseIcon /> },
+  { key: 'pages', path: '/pages', icon: <FileTextIcon />, section: 'pages' },
+  { key: 'articles', path: '/articles', icon: <NewspaperIcon />, section: 'articles' },
+  { key: 'portfolio', path: '/portfolio', icon: <BriefcaseIcon />, section: 'portfolio' },
   { key: 'media', path: '/media', icon: <ImageIcon /> },
 ]
 const tools: NavItem[] = [
@@ -106,7 +107,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         {group(undefined, workspace)}
-        {group('content', content)}
+        {site && group('content', content.filter(({ section }) => !section || enabledSections(site).includes(section)))}
         {group(undefined, tools)}
         {platformAdmin && (
           <SidebarGroup className="mt-auto">

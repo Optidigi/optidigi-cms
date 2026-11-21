@@ -28,6 +28,19 @@ export const Tenants: CollectionConfig = {
       },
     },
     {
+      // Optional content sections this website uses; pages are always on.
+      name: 'sections',
+      label: { en: 'Content sections', nl: 'Inhoudsonderdelen' },
+      type: 'select',
+      hasMany: true,
+      defaultValue: [],
+      access: { read: signedIn },
+      options: [
+        { label: { en: 'Articles', nl: 'Artikelen' }, value: 'articles' },
+        { label: { en: 'Portfolio', nl: 'Portfolio' }, value: 'projects' },
+      ],
+    },
+    {
       name: 'previewPaths',
       label: { en: 'Preview addresses', nl: 'Voorbeeldadressen' },
       type: 'group',

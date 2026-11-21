@@ -73,7 +73,7 @@ export const getSites = cache(async () => {
     pagination: false,
     sort: 'name',
     user,
-    select: { name: true, slug: true, siteOrigin: true },
+    select: { name: true, slug: true, siteOrigin: true, sections: true },
     where: isPlatformAdmin(user) ? undefined : { id: { in: ids } },
   })
   return docs

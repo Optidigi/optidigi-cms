@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -12,12 +13,14 @@ import { api, APIError } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 
 type Paths = { pages: string; articles: string; projects: string }
-type Website = { id: number; name: string; slug: string; siteOrigin: string; previewPaths: Paths; refreshUrl: string }
+type Optional = 'articles' | 'projects'
+type Website = { id: number; name: string; slug: string; siteOrigin: string; sections: Optional[]; previewPaths: Paths; refreshUrl: string }
 
 export function WebsiteForm({ website }: { website?: Website }) {
   const { t } = useI18n()
   const router = useRouter()
   const [values, setValues] = useState({ name: website?.name ?? '', slug: website?.slug ?? '', siteOrigin: website?.siteOrigin ?? 'https://' })
+  const [sections, setSections] = useState<Optional[]>(website?.sections ?? [])
   const [paths, setPaths] = useState<Paths>(website?.previewPaths ?? { pages: '', articles: '', projects: '' })
   const [refreshUrl, setRefreshUrl] = useState(website?.refreshUrl ?? '')
   const [refreshSecret, setRefreshSecret] = useState('')
@@ -33,6 +36,7 @@ export function WebsiteForm({ website }: { website?: Website }) {
       const json = {
         name: values.name,
         siteOrigin: values.siteOrigin,
+        sections,
         previewPaths: paths,
         refreshUrl: refreshUrl.trim() || null,
         ...(refreshSecret ? { refreshSecret } : {}),
@@ -69,6 +73,24 @@ export function WebsiteForm({ website }: { website?: Website }) {
             {field('name', t('name'), { required: true })}
             {field('slug', t('slug'))}
             {field('siteOrigin', t('websiteUrl'), { required: true, type: 'url' }, t('websiteUrlDescription'))}
+            <FieldSet>
+              <FieldLegend variant="label">{t('contentSections')}</FieldLegend>
+              <FieldDescription>{t('contentSectionsDescription')}</FieldDescription>
+              {(['articles', 'projects'] as const).map((key) => (
+                <Field key={key} orientation="horizontal">
+                  <Checkbox
+                    id={`section-${key}`}
+                    checked={sections.includes(key)}
+                    onCheckedChange={(checked) =>
+                      setSections((current) => (checked ? [...current, key] : current.filter((value) => value !== key)))
+                    }
+                  />
+                  <FieldLabel htmlFor={`section-${key}`} className="font-normal">
+                    {t(key === 'projects' ? 'portfolio' : key)}
+                  </FieldLabel>
+                </Field>
+              ))}
+            </FieldSet>
             <FieldSet>
               <FieldLegend variant="label">{t('previewPaths')}</FieldLegend>
               <FieldDescription>{t('previewPathsDescription')}</FieldDescription>
