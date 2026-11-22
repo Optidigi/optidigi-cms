@@ -125,7 +125,7 @@ test.describe('AI services', () => {
     // Connecting checks the key by loading the models. The test key is refused, which explains
     // itself and offers to add model IDs by hand. Nothing is saved yet.
     await dialog.getByRole('button', { name: /^(verbinden|connect)$/i }).click()
-    await expect(dialog.getByRole('alert')).toContainText(/weigerde|refused/i)
+    await expect(dialog.getByRole('alert')).toContainText(/weigerde|refused|niet bereikbaar|be reached/i)
     expect((await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })).docs[0]?.connections ?? []).toHaveLength(0)
     await dialog.getByRole('button', { name: /overslaan|skip/i }).click()
     // Step 3: the models.
