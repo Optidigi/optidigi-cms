@@ -13,6 +13,8 @@ const body = z.object({
   thread: z.number().int().positive().optional(),
   site: z.number().int().positive(),
   model: z.string().max(200).optional(),
+  // How hard the model thinks; the AI SDK maps it per provider and models without reasoning ignore it.
+  effort: z.enum(['low', 'medium', 'high']).optional(),
   locale: z.enum(['nl', 'en']).default('nl'),
   context: z.object({ collection: z.string().max(40), id: z.number().int().positive(), title: z.string().max(300) }).optional(),
   message: z.unknown(),
@@ -136,6 +138,7 @@ async function chat(req: PayloadRequest): Promise<Response> {
     const tools = await client.tools()
     const result = streamText({
       model,
+      ...(input.data.effort ? { reasoning: input.data.effort } : {}),
       system: [
         'You are the assistant inside a headless CMS. You help an editor with one website at a time.',
         `Answer in ${locale === 'en' ? 'English' : 'Dutch'}.`,

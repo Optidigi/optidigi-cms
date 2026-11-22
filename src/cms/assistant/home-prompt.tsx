@@ -2,25 +2,26 @@
 
 import { ArrowUpIcon, SparklesIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import type { MessageKey } from '../i18n'
 import { useI18n } from '../client/i18n-provider'
 import { useAssistant } from './assistant-context'
-import { ModelMenu } from './model-menu'
+import { EffortMenu, ModelMenu } from './model-menu'
 
 const suggestions: MessageKey[] = ['suggestionNewPage', 'suggestionDrafts', 'suggestionSEO']
 
-// The overview's large prompt: shadcn's Prompt Input with Suggestion buttons below it. It does what
-// the floating bar does on other pages: sending opens the AI panel (the drawer on small screens)
-// with the question, so the floating bar isn't shown on the overview.
+// The overview's large prompt: shadcn's Prompt Input (with the Model Selector menus) and Suggestion
+// buttons below it. Sending starts a new chat on the full AI page. The floating bar isn't shown on
+// the overview.
 export function HomePrompt({ platformAdmin }: { platformAdmin: boolean }) {
   const assistant = useAssistant()
   const { t } = useI18n()
+  const router = useRouter()
   const [text, setText] = useState('')
   if (!assistant || assistant.setup.state === 'loading') return <Skeleton className="h-32 w-full rounded-xl" />
   if (assistant.setup.state === 'missing') {
@@ -43,14 +44,12 @@ export function HomePrompt({ platformAdmin }: { platformAdmin: boolean }) {
       </Empty>
     )
   }
-  const idle = assistant.chat.status === 'ready' || assistant.chat.status === 'error'
-
   function send(question: string) {
     const trimmed = question.trim()
-    assistant!.setOpen(true)
-    if (!trimmed || !idle) return
-    assistant!.chat.sendMessage({ text: trimmed })
+    if (!trimmed) return
+    assistant!.startChat(trimmed)
     setText('')
+    router.push(`/admin/${assistant!.site}/ai`)
   }
 
   return (
@@ -80,14 +79,8 @@ export function HomePrompt({ platformAdmin }: { platformAdmin: boolean }) {
           <InputGroupAddon align="block-end">
             <SparklesIcon className="text-muted-foreground" />
             <ModelMenu className="ml-auto" />
-            <InputGroupButton
-              type="submit"
-              size="icon-sm"
-              variant="default"
-              className={cn('rounded-full', assistant.setup.models.length < 2 && 'ml-auto')}
-              aria-label={t('send')}
-              disabled={!text.trim() || !idle}
-            >
+            <EffortMenu />
+            <InputGroupButton type="submit" size="icon-sm" variant="default" className="rounded-full" aria-label={t('send')} disabled={!text.trim()}>
               <ArrowUpIcon />
             </InputGroupButton>
           </InputGroupAddon>
@@ -95,7 +88,7 @@ export function HomePrompt({ platformAdmin }: { platformAdmin: boolean }) {
       </form>
       <div className="flex scroll-fade-x gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none]">
         {suggestions.map((key) => (
-          <Button key={key} type="button" variant="outline" size="sm" className="shrink-0" disabled={!idle} onClick={() => send(t(key))}>
+          <Button key={key} type="button" variant="outline" size="sm" className="shrink-0" onClick={() => send(t(key))}>
             {t(key)}
           </Button>
         ))}

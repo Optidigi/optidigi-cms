@@ -224,11 +224,6 @@
     --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Everything is sized in rem, so the root size scales the whole interface. */
-[data-text-size='large'] {
-    font-size: 112.5%;
-}
-
 [data-radius='none'] {
     --radius: 0rem;
 }

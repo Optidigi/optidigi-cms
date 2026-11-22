@@ -14,15 +14,17 @@ import { InputGroupButton } from '@/components/ui/input-group'
 import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
 import { ServiceLogo } from '../settings/service-logo'
-import { useAssistant } from './assistant-context'
+import { efforts, useAssistant, type Effort } from './assistant-context'
+import type { MessageKey } from '../i18n'
 
-// The chat's model choice, grouped by connection. Shown only when the website has more than one
-// model; the panel, the full page and the floating bar share the same choice.
+// The chat's model choice, grouped by connection (shadcn's Model Selector). Shown whenever the
+// website has a model, so it's clear which one answers; the panel, the full page, the overview and
+// the floating bar share the same choice.
 export function ModelMenu({ className }: { className?: string }) {
   const assistant = useAssistant()
   const { t } = useI18n()
   const models = assistant?.setup.state === 'ready' ? assistant.setup.models : []
-  if (!assistant || models.length < 2) return null
+  if (!assistant || models.length === 0) return null
   const selected = models.find(({ key }) => key === assistant.model)
   const connections = [...new Map(models.map((option) => [option.connectionID, option]))]
   return (
@@ -49,6 +51,42 @@ export function ModelMenu({ className }: { className?: string }) {
             </DropdownMenuGroup>
           ))}
         </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+const effortLabels: Record<Effort, MessageKey> = {
+  default: 'effortDefault',
+  low: 'effortLow',
+  medium: 'effortMedium',
+  high: 'effortHigh',
+}
+
+// How hard the model thinks, the second menu of shadcn's Model Selector. "Default" leaves it to the
+// provider; models that can't reason ignore the setting.
+export function EffortMenu({ className }: { className?: string }) {
+  const assistant = useAssistant()
+  const { t } = useI18n()
+  if (!assistant || assistant.setup.state !== 'ready') return null
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<InputGroupButton size="sm" className={cn('min-w-0', className)} aria-label={t('effort')} />}>
+        <span className="hidden text-muted-foreground sm:inline">{t('effort')}</span>
+        <span className="truncate">{t(effortLabels[assistant.effort])}</span>
+        <ChevronDownIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('effort')}</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={assistant.effort} onValueChange={(value) => assistant.setEffort(value as Effort)}>
+            {efforts.map((effort) => (
+              <DropdownMenuRadioItem key={effort} value={effort} closeOnClick>
+                {t(effortLabels[effort])}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

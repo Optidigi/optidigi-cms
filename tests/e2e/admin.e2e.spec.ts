@@ -176,6 +176,12 @@ test.describe('AI services', () => {
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(1)
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveJSProperty('tagName', 'TEXTAREA')
     await expect(page.getByRole('button', { name: /seo/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^(denkniveau|effort)$/i })).toBeVisible()
+    // Sending starts a new chat on the full AI page.
+    await page.getByRole('textbox', { name: /vraag ai|ask ai/i }).fill('Hallo vanaf het overzicht')
+    await page.keyboard.press('Enter')
+    await page.waitForURL(`**/admin/${site}/ai`)
+    await expect(page.getByText('Hallo vanaf het overzicht')).toBeVisible()
   })
 
   test('a connection can be renamed, get a new key and be deleted after confirming', async ({ page }) => {
@@ -245,14 +251,15 @@ test('appearance choices apply at once and survive a reload', async ({ page }) =
   const html = page.locator('html')
   // Choice cards: the radio is only visually hidden, so pick the card.
   const pick = (name: RegExp) => page.locator('label', { has: page.getByRole('radio', { name }) }).click()
-  await pick(/^(donker|dark) (blauw|blue)$/i)
-  await expect(html).toHaveAttribute('data-accent', 'blue')
+  await pick(/^(donker|dark)$/i)
   await expect(html).toHaveClass(/dark/)
-  await expect(page.getByRole('radio', { name: /^(donker|dark) (blauw|blue)$/i })).toBeChecked()
+  await pick(/^(blauw|blue)$/i)
+  await expect(html).toHaveAttribute('data-accent', 'blue')
+  await expect(page.getByRole('radio', { name: /^(blauw|blue)$/i })).toBeChecked()
   await pick(/^inter/i)
   await expect(html).toHaveAttribute('data-font', 'inter')
-  await pick(/^(groot|large)$/i)
-  await expect(html).toHaveAttribute('data-text-size', 'large')
+  await pick(/^(rond|round)$/i)
+  await expect(html).toHaveAttribute('data-radius', 'round')
   await page.getByRole('switch', { name: /minder beweging|reduce motion/i }).click()
   await expect(html).toHaveAttribute('data-reduce-motion', 'true')
   // Saves run in the background; wait until the last one is stored before reloading.
@@ -263,7 +270,7 @@ test('appearance choices apply at once and survive a reload', async ({ page }) =
   await page.reload()
   await expect(html).toHaveAttribute('data-accent', 'blue')
   await expect(html).toHaveAttribute('data-font', 'inter')
-  await expect(html).toHaveAttribute('data-text-size', 'large')
+  await expect(html).toHaveAttribute('data-radius', 'round')
   await expect(html).toHaveAttribute('data-reduce-motion', 'true')
   await expect(html).toHaveClass(/dark/)
   expect(await html.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/inter/i)
