@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  BotMessageSquareIcon,
   BriefcaseIcon,
   ExternalLinkIcon,
   GlobeIcon,
@@ -8,7 +9,6 @@ import {
   LayoutDashboardIcon,
   NewspaperIcon,
   SettingsIcon,
-  SparklesIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
@@ -37,7 +37,7 @@ type NavItem = { key: MessageKey; path: string; icon: React.ReactNode; exact?: b
 
 const workspace: NavItem[] = [
   { key: 'overview', path: '', icon: <LayoutDashboardIcon />, exact: true },
-  { key: 'assistant', path: '/ai', icon: <SparklesIcon /> },
+  { key: 'assistant', path: '/ai', icon: <BotMessageSquareIcon /> },
 ]
 const content: NavItem[] = [
   { key: 'pages', path: '/pages', icon: <GlobeIcon />, section: 'pages' },

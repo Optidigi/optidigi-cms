@@ -317,7 +317,7 @@ function Toolbar() {
             <ImageIcon />
           </Button>
         }
-        onSelect={(id) =>
+        onSelect={({ id }) =>
           editor.update(() => {
             $insertNodes([$createUploadNode({ data: { fields: {}, relationTo: 'media', value: id } })])
           })

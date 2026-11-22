@@ -10,7 +10,7 @@ import type { Media } from '@/payload-types'
 import { api, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 
-type MediaSummary = Pick<Media, 'id' | 'alt' | 'url' | 'filename'>
+export type MediaSummary = Pick<Media, 'id' | 'alt' | 'url' | 'filename' | 'mimeType'>
 
 export function MediaPreview({ value }: { value: unknown }) {
   const [media, setMedia] = useState<MediaSummary | null>(
@@ -26,33 +26,54 @@ export function MediaPreview({ value }: { value: unknown }) {
   return <img src={media.url} alt={media.alt} className="my-3 max-h-80 max-w-full rounded-md border" />
 }
 
+// The website's media library as a grid to pick one image from. Opened by `trigger`, or controlled
+// with `open`/`onOpenChange` (from a menu item). `mimeTypes` limits the images shown.
 export function MediaPicker({
   site,
   trigger,
   onSelect,
+  open: controlled,
+  onOpenChange,
+  mimeTypes,
+  title,
+  description,
 }: {
   site: number
-  trigger: React.ReactElement
-  onSelect: (id: number) => void
+  trigger?: React.ReactElement
+  onSelect: (media: MediaSummary) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  mimeTypes?: string[]
+  title?: string
+  description?: string
 }) {
   const { t } = useI18n()
-  const [open, setOpen] = useState(false)
+  const [uncontrolled, setUncontrolled] = useState(false)
+  const open = controlled ?? uncontrolled
+  const setOpen = onOpenChange ?? setUncontrolled
   const [items, setItems] = useState<MediaSummary[] | undefined>()
+  const types = mimeTypes?.join(',')
 
   useEffect(() => {
     if (!open) return
     api<{ docs: MediaSummary[] }>(
-      `media${query({ 'where[tenant][equals]': site, limit: 60, sort: '-createdAt', depth: 0 })}`,
+      `media${query({
+        'where[tenant][equals]': site,
+        ...(types ? { 'where[mimeType][in]': types } : {}),
+        limit: 60,
+        sort: '-createdAt',
+        depth: 0,
+      })}`,
     ).then(({ docs }) => setItems(docs), () => setItems([]))
-  }, [open, site])
+  }, [open, site, types])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={trigger} />
+      {trigger && <DialogTrigger render={trigger} />}
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{t('insertImage')}</DialogTitle>
-          <DialogDescription>{t('chooseImage')}</DialogDescription>
+          <DialogTitle>{title ?? t('insertImage')}</DialogTitle>
+          <DialogDescription>{description ?? t('chooseImage')}</DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
           {items === undefined ? (
@@ -69,7 +90,7 @@ export function MediaPicker({
                   type="button"
                   className="overflow-hidden rounded-md border text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   onClick={() => {
-                    onSelect(item.id)
+                    onSelect(item)
                     setOpen(false)
                   }}
                 >

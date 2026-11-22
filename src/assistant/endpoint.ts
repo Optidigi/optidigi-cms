@@ -6,15 +6,17 @@ import path from 'node:path'
 import { APIError, type Endpoint, type PayloadRequest } from 'payload'
 import { z } from 'zod'
 import { isPlatformAdmin, relationID, tenantIDs } from '../site/access'
-import { choiceKey, connectionWithKey, languageModel, modelEndpoints, pickModel, settingsFor } from './connections'
+import { effortLevels } from './capabilities'
+import { choiceKey, connectionWithKey, languageModel, modelEndpoints, pickModel, settingsFor, websiteCapabilities } from './connections'
 import { assistantSiteHeader } from './scope'
 
 const body = z.object({
   thread: z.number().int().positive().optional(),
   site: z.number().int().positive(),
   model: z.string().max(200).optional(),
-  // How hard the model thinks; the AI SDK maps it per provider and models without reasoning ignore it.
-  effort: z.enum(['low', 'medium', 'high']).optional(),
+  // How hard the model thinks; the AI SDK maps it to each provider's own setting. Only sent when the
+  // model supports that level (checked below), so no provider gets a setting it rejects.
+  effort: z.enum(effortLevels).optional(),
   locale: z.enum(['nl', 'en']).default('nl'),
   context: z.object({ collection: z.string().max(40), id: z.number().int().positive(), title: z.string().max(300) }).optional(),
   message: z.unknown(),
@@ -27,28 +29,45 @@ function json(value: unknown, status: number) {
 }
 
 const filePrefix = '/api/assistant-files/file/'
+const mediaPrefix = '/api/media/file/'
 
-// Chat files are stored in the private assistant-files collection; the model gets their bytes inline.
-async function inlineFiles(req: PayloadRequest, messages: UIMessage[]): Promise<UIMessage[]> {
+// What the model gets for one stored upload: its bytes inline, never a URL it or the provider would fetch.
+async function inline(
+  req: PayloadRequest,
+  part: Extract<UIMessage['parts'][number], { type: 'file' }>,
+  collection: 'assistant-files' | 'media',
+  where: Record<string, unknown>,
+) {
+  const { docs: [file] } = await req.payload.find({ collection, depth: 0, limit: 1, overrideAccess: false, req, where: where as never })
+  if (!file?.filename) return [{ type: 'text' as const, text: '[The attached file is no longer available.]' }]
+  const dir = req.payload.collections[collection].config.upload.staticDir ?? ''
+  const data = await readFile(path.join(dir, path.basename(file.filename)))
+  const inlined = { ...part, url: `data:${file.mimeType};base64,${data.toString('base64')}` }
+  // A media library image keeps its ID, so the model can put it on a page.
+  return collection === 'media' ? [inlined, { type: 'text' as const, text: `[Attached from the media library: media item ${file.id}]` }] : [inlined]
+}
+
+// Chat uploads (the user's own, in the private assistant-files collection) and images from this
+// website's media library; anything else is refused.
+async function inlineFiles(req: PayloadRequest, site: number, messages: UIMessage[]): Promise<UIMessage[]> {
   return Promise.all(
     messages.map(async (message) => ({
       ...message,
-      parts: await Promise.all(
-        message.parts.map(async (part) => {
-          if (part.type !== 'file') return part
-          // Only the user's own chat uploads; never other URLs the model or provider would fetch.
-          if (!part.url.startsWith(filePrefix)) throw new APIError('Unsupported attachment.', 400, undefined, true)
-          const filename = decodeURIComponent(part.url.slice(filePrefix.length))
-          const { docs: [file] } = await req.payload.find({
-            collection: 'assistant-files', depth: 0, limit: 1, overrideAccess: false, req,
-            where: { filename: { equals: filename } },
-          })
-          if (!file?.filename) return { type: 'text' as const, text: '[The attached image is no longer available.]' }
-          const dir = req.payload.collections['assistant-files'].config.upload.staticDir ?? ''
-          const data = await readFile(path.join(dir, path.basename(file.filename)))
-          return { ...part, url: `data:${file.mimeType};base64,${data.toString('base64')}` }
-        }),
-      ),
+      parts: (
+        await Promise.all(
+          message.parts.map(async (part) => {
+            if (part.type !== 'file') return [part]
+            if (part.url.startsWith(filePrefix)) {
+              return inline(req, part, 'assistant-files', { filename: { equals: decodeURIComponent(part.url.slice(filePrefix.length)) } })
+            }
+            if (part.url.startsWith(mediaPrefix)) {
+              const filename = decodeURIComponent(part.url.slice(mediaPrefix.length))
+              return inline(req, part, 'media', { and: [{ filename: { equals: filename } }, { tenant: { equals: site } }] })
+            }
+            throw new APIError('Unsupported attachment.', 400, undefined, true)
+          }),
+        )
+      ).flat() as UIMessage['parts'],
     })),
   )
 }
@@ -97,6 +116,8 @@ async function chat(req: PayloadRequest): Promise<Response> {
     if (!settings || !choice) throw new APIError('AI is not set up for this website.', 409, undefined, true)
     const connection = await connectionWithKey(req, settings, choice.connection)
     const modelID = choice.model
+    const effort = input.data.effort
+    const reasoning = effort && (await websiteCapabilities(req, site, settings))[choiceKey(choice)]?.efforts.includes(effort) ? effort : undefined
 
     const thread = input.data.thread
       ? await req.payload.findByID({ collection: 'assistant-threads', id: input.data.thread, depth: 0, overrideAccess: false, req })
@@ -117,7 +138,7 @@ async function chat(req: PayloadRequest): Promise<Response> {
       return json({ error: 'Invalid message' }, 400)
     }
     const model = languageModel(connection, modelID)
-    const modelMessages = await convertToModelMessages(await inlineFiles(req, messages), { ignoreIncompleteToolCalls: true })
+    const modelMessages = await convertToModelMessages(await inlineFiles(req, site, messages), { ignoreIncompleteToolCalls: true })
     const record =
       thread ??
       (await req.payload.create({
@@ -138,7 +159,7 @@ async function chat(req: PayloadRequest): Promise<Response> {
     const tools = await client.tools()
     const result = streamText({
       model,
-      ...(input.data.effort ? { reasoning: input.data.effort } : {}),
+      ...(reasoning ? { reasoning } : {}),
       system: [
         'You are the assistant inside a headless CMS. You help an editor with one website at a time.',
         `Answer in ${locale === 'en' ? 'English' : 'Dutch'}.`,

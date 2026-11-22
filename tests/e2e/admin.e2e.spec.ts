@@ -164,6 +164,17 @@ test.describe('AI services', () => {
       collection: 'assistant-settings', overrideAccess: true, id: settings.id,
       data: { connections: [{ id: connection.id, label: connection.label, provider: connection.provider, baseURL: connection.baseURL, models: ['model-a', 'model-b'] }] },
     })
+    // What the providers would report: model-a thinks (low to high) and reads files, model-b doesn't.
+    await page.route('**/api/assistant/capabilities**', (route) =>
+      route.fulfill({
+        json: {
+          models: {
+            [`${connection.id}:model-a`]: { efforts: ['low', 'medium', 'high'], images: true, pdfs: true },
+            [`${connection.id}:model-b`]: { efforts: [], images: false, pdfs: false },
+          },
+        },
+      }),
+    )
     await page.setViewportSize({ width: 1280, height: 900 })
     await login(page, admin)
     await page.goto(`/admin/${site}/pages`)
@@ -171,17 +182,30 @@ test.describe('AI services', () => {
     await page.getByRole('button', { name: /^(model)$/i }).click()
     await page.getByRole('menuitemradio', { name: 'model-b' }).click()
     await expect(page.getByRole('button', { name: /^(model)$/i })).toContainText('model-b')
+    // model-b has no effort levels, so its menu is hidden.
+    await expect(page.getByRole('button', { name: /^(denkniveau|effort)$/i })).toHaveCount(0)
+    await page.getByRole('button', { name: /^(model)$/i }).click()
+    await page.getByRole('menuitemradio', { name: 'model-a' }).click()
     // The overview has the large prompt instead of the floating bar.
     await page.goto(`/admin/${site}`)
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(1)
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveJSProperty('tagName', 'TEXTAREA')
     await expect(page.getByRole('button', { name: /seo/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^(denkniveau|effort)$/i })).toBeVisible()
+    // The effort menu lists only model-a's levels and shows just the chosen one.
+    await page.getByRole('button', { name: /^(denkniveau|effort)$/i }).click()
+    await expect(page.getByRole('menuitemradio')).toHaveText([/standaard|default/i, /laag|low/i, /gemiddeld|medium/i, /hoog|high/i])
+    await page.getByRole('menuitemradio', { name: /^(hoog|high)$/i }).click()
+    await expect(page.getByRole('button', { name: /^(denkniveau|effort)$/i })).toHaveText(/^(hoog|high)$/i)
     // Sending starts a new chat on the full AI page.
     await page.getByRole('textbox', { name: /vraag ai|ask ai/i }).fill('Hallo vanaf het overzicht')
     await page.keyboard.press('Enter')
     await page.waitForURL(`**/admin/${site}/ai`)
     await expect(page.getByText('Hallo vanaf het overzicht')).toBeVisible()
+    // The + button opens a menu of what can be added; the media library opens its picker.
+    await page.getByRole('button', { name: /^(toevoegen|add)$/i }).click()
+    await expect(page.getByRole('menuitem', { name: /afbeelding of pdf uploaden|upload image or pdf/i })).toBeVisible()
+    await page.getByRole('menuitem', { name: /uit mediabibliotheek|from media library/i }).click()
+    await expect(page.getByRole('dialog', { name: /uit mediabibliotheek|from media library/i })).toBeVisible()
   })
 
   test('a connection can be renamed, get a new key and be deleted after confirming', async ({ page }) => {

@@ -6,14 +6,14 @@ import { useParams } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import type { EffortLevel, ModelCapabilities } from '@/assistant/efforts'
 import { type Provider, type Service, serviceOf } from '../settings/ai-services'
 
 export type ThreadSummary = { id: number; title?: string | null; archived?: boolean | null; updatedAt: string }
 export type PageContext = { collection: string; id: number; title: string }
 type BottomBar = false | 'small' | 'always'
-// How hard the model thinks. 'default' leaves it to the provider.
-export const efforts = ['default', 'low', 'medium', 'high'] as const
-export type Effort = (typeof efforts)[number]
+// How hard the model thinks. 'default' leaves it to the provider and sends nothing.
+export type Effort = 'default' | EffortLevel
 // A model the chat can use: `key` is `connectionID:modelID`, as the chat endpoint expects.
 export type ModelOption = { key: string; model: string; connectionID: string; connection: string; service: Service }
 type Setup = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; models: ModelOption[] }
@@ -46,8 +46,11 @@ type AssistantState = {
   setup: Setup
   model?: string
   setModel: (model: string) => void
+  // The chosen level when the selected model supports it, otherwise 'default'.
   effort: Effort
   setEffort: (effort: Effort) => void
+  // What the selected model supports; empty efforts and null files until they're known.
+  capabilities: ModelCapabilities
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   context?: PageContext
@@ -63,6 +66,8 @@ type AssistantState = {
   // Starts a new chat with this question; earlier chats stay in the history.
   startChat: (text: string) => void
 }
+
+const unknownModel: ModelCapabilities = { efforts: [], images: null, pdfs: null }
 
 const AssistantContext = createContext<AssistantState | null>(null)
 
@@ -152,7 +157,10 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
   const { language } = useI18n()
   const [setup, setSetup] = useState<Setup>({ state: 'loading' })
   const [model, setModel] = useState<string>()
-  const [effort, setEffort] = useState<Effort>('default')
+  const [chosenEffort, setEffort] = useState<Effort>('default')
+  const [capabilities, setCapabilities] = useState<Record<string, ModelCapabilities>>({})
+  const selected = (model && capabilities[model]) || unknownModel
+  const effort: Effort = chosenEffort !== 'default' && selected.efforts.includes(chosenEffort) ? chosenEffort : 'default'
   const [open, setOpen] = useState(false)
   const [context, setContext] = useState<PageContext>()
   const [bottomBar, setBottomBar] = useState<BottomBar>(false)
@@ -182,6 +190,12 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
         const models = modelOptions(settings)
         setSetup(models.length ? { state: 'ready', models } : { state: 'missing' })
         setModel((models.find(({ key }) => key === settings?.defaultModel) ?? models[0])?.key)
+        if (models.length) {
+          api<{ models: Record<string, ModelCapabilities> }>('assistant/capabilities' + query({ site })).then(
+            (result) => current && setCapabilities(result.models),
+            () => undefined,
+          )
+        }
       },
       () => current && setSetup({ state: 'missing' }),
     )
@@ -217,10 +231,10 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
 
   const value = useMemo(
     () => ({
-      site, chat, thread, setup, model, setModel, effort, setEffort, open, setOpen, context, setContext, bottomBar, setBottomBar,
-      threads, refreshThreads, openThread, newChat, startChat,
+      site, chat, thread, setup, model, setModel, effort, setEffort, capabilities: selected, open, setOpen, context, setContext,
+      bottomBar, setBottomBar, threads, refreshThreads, openThread, newChat, startChat,
     }),
-    [site, chat, thread, setup, model, effort, open, context, bottomBar, threads, refreshThreads, openThread, newChat, startChat],
+    [site, chat, thread, setup, model, effort, selected, open, context, bottomBar, threads, refreshThreads, openThread, newChat, startChat],
   )
   return <AssistantContext value={value}>{children}</AssistantContext>
 }
