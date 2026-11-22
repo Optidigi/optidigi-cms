@@ -59,7 +59,7 @@ test('the assistant explains when no model is set up', async ({ page }) => {
 
 test('sections a website does not use are hidden and unreachable', async ({ page }) => {
   await login(page, user)
-  await expect(page.getByRole('link', { name: /^(pagina’s|pages)$/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^website$/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /^portfolio$/i })).toHaveCount(0)
   const response = await page.goto(`/admin/${site}/portfolio`)
   expect(response?.status()).toBe(404)
@@ -117,17 +117,27 @@ test.describe('AI services', () => {
     await dialog.getByRole('button', { name: /meer diensten|more services/i }).click()
     await dialog.locator('label', { has: page.getByRole('radio', { name: /^xAI \(Grok\)/ }) }).click()
     await dialog.getByRole('button', { name: /^(doorgaan|continue)$/i }).click()
-    // Step 2: the details, with the chosen service on top.
+    // Step 2: name and key, with the chosen service on top.
     await expect(dialog.locator('#connection-label')).toHaveValue('xAI (Grok)')
     await expect(dialog.locator('#baseURL')).toHaveCount(0)
     await expect(dialog.getByRole('link', { name: /console\.x\.ai/ })).toHaveAttribute('href', 'https://console.x.ai')
     await dialog.locator('#apiKey').fill('xai-e2e-key')
+    // Connecting checks the key by loading the models. The test key is refused, which explains
+    // itself and offers to add model IDs by hand. Nothing is saved yet.
+    await dialog.getByRole('button', { name: /^(verbinden|connect)$/i }).click()
+    await expect(dialog.getByRole('alert')).toContainText(/weigerde|refused/i)
+    expect((await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })).docs[0]?.connections ?? []).toHaveLength(0)
+    await dialog.getByRole('button', { name: /overslaan|skip/i }).click()
+    // Step 3: the models.
+    await dialog.getByLabel(/model-id met de hand|model id by hand/i).fill('grok-e2e')
+    await dialog.getByRole('button', { name: /^(toevoegen|add)$/i }).click()
+    await expect(dialog.getByRole('checkbox', { name: 'grok-e2e' })).toBeChecked()
     await dialog.getByRole('button', { name: /^(opslaan|save)$/i }).click()
     await expect(dialog).toHaveCount(0)
     await expect(page.getByText('xAI (Grok)', { exact: true }).last()).toBeVisible()
 
     const { docs: [settings] } = await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })
-    expect(settings.connections?.[0]).toMatchObject({ provider: 'openai-compatible', baseURL: 'https://api.x.ai/v1', hasKey: true })
+    expect(settings.connections?.[0]).toMatchObject({ provider: 'openai-compatible', baseURL: 'https://api.x.ai/v1', hasKey: true, models: ['grok-e2e'] })
   })
 
   test('switching a saved connection to another service asks for a new key', async ({ page }) => {
@@ -136,6 +146,9 @@ test.describe('AI services', () => {
     await page.getByRole('button', { name: /acties voor|actions for/i }).first().click()
     await page.getByRole('menuitem', { name: /bewerken|edit/i }).click()
     const dialog = page.getByRole('dialog')
+    // An existing connection opens on its models; Change goes back to its name and key.
+    await expect(dialog.getByRole('checkbox', { name: 'grok-e2e' })).toBeChecked()
+    await dialog.getByRole('button', { name: /^(wijzigen|change)$/i }).click()
     await expect(dialog.locator('#apiKey')).not.toHaveAttribute('required')
     await dialog.getByRole('button', { name: /^(wijzigen|change)$/i }).click()
     await dialog.locator('label', { has: page.getByRole('radio', { name: /^DeepSeek/ }) }).click()
@@ -158,6 +171,11 @@ test.describe('AI services', () => {
     await page.getByRole('button', { name: /^(model)$/i }).click()
     await page.getByRole('menuitemradio', { name: 'model-b' }).click()
     await expect(page.getByRole('button', { name: /^(model)$/i })).toContainText('model-b')
+    // The overview has the large prompt instead of the floating bar.
+    await page.goto(`/admin/${site}`)
+    await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(1)
+    await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveJSProperty('tagName', 'TEXTAREA')
+    await expect(page.getByRole('button', { name: /seo/i })).toBeVisible()
   })
 
   test('a connection can be renamed, get a new key and be deleted after confirming', async ({ page }) => {
@@ -166,8 +184,11 @@ test.describe('AI services', () => {
     await page.getByRole('button', { name: /acties voor|actions for/i }).first().click()
     await page.getByRole('menuitem', { name: /bewerken|edit/i }).click()
     const dialog = page.getByRole('dialog')
+    await dialog.getByRole('button', { name: /^(wijzigen|change)$/i }).click()
     await dialog.locator('#connection-label').fill('Team Grok')
     await dialog.locator('#apiKey').fill('xai-new-key')
+    await dialog.getByRole('button', { name: /^(verbinden|connect)$/i }).click()
+    await dialog.getByRole('button', { name: /overslaan|skip/i }).click()
     await dialog.getByRole('button', { name: /^(opslaan|save)$/i }).click()
     await expect(dialog).toHaveCount(0)
     await expect(page.getByText('Team Grok', { exact: true })).toBeVisible()
@@ -176,6 +197,16 @@ test.describe('AI services', () => {
     const connection = before.connections![0]
     await payload.update({ collection: 'assistant-settings', overrideAccess: true, id: before.id, data: { defaultModel: `${connection.id}:model-a` } })
     await page.reload()
+
+    // Switching off the default model clears the default, so the chat doesn't point at it.
+    await page.getByRole('button', { name: /acties voor team grok|actions for team grok/i }).click()
+    await page.getByRole('menuitem', { name: /bewerken|edit/i }).click()
+    await dialog.getByRole('checkbox', { name: 'model-a' }).click()
+    await dialog.getByRole('button', { name: /^(opslaan|save)$/i }).click()
+    await expect(dialog).toHaveCount(0)
+    const unticked = (await payload.find({ collection: 'assistant-settings', overrideAccess: true, where: { tenant: { equals: site } } })).docs[0]
+    expect(unticked.connections![0].models).toEqual(['model-b'])
+    expect(unticked.defaultModel ?? null).toBeNull()
 
     await page.getByRole('button', { name: /acties voor team grok|actions for team grok/i }).click()
     await page.getByRole('menuitem', { name: /verwijderen|delete/i }).click()
@@ -202,7 +233,7 @@ test('the sidebar puts AI under the overview and settings at the bottom', async 
   expect(order[0]).toMatch(/overzicht|overview/i)
   expect(order[1]).toMatch(/^ai$/i)
   expect(order.at(-1)).toMatch(/instellingen|settings/i)
-  expect(order.at(-2)).toMatch(/website bekijken|view website/i)
+  expect(order.at(-2)).toMatch(/live site bekijken|view live site/i)
   expect(order.some((name) => /^platform$/i.test(name))).toBe(false)
 })
 
@@ -238,7 +269,7 @@ test('appearance choices apply at once and survive a reload', async ({ page }) =
   expect(await html.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/inter/i)
 })
 
-test('the sign-in screen uses the split layout and switches language without signing in', async ({ page }) => {
+test('the sign-in screen asks for the email, then the password, and switches language', async ({ page }) => {
   await page.context().clearCookies()
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/admin/login')
@@ -249,5 +280,13 @@ test('the sign-in screen uses the split layout and switches language without sig
   // The choice is kept in the language cookie for signed-out visitors.
   await page.reload()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/welcome back/i)
+  // Step two shows the address with a way back; the address is kept.
+  await page.locator('#email').fill('someone@example.test')
+  await page.getByRole('button', { name: /^continue$/i }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/enter your password/i)
+  await expect(page.getByText('someone@example.test')).toBeVisible()
+  await expect(page.locator('#password')).toBeFocused()
+  await page.getByRole('button', { name: /another email/i }).click()
+  await expect(page.locator('#email')).toHaveValue('someone@example.test')
   await page.context().clearCookies()
 })

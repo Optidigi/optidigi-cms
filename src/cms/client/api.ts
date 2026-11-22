@@ -5,13 +5,17 @@ export class APIError extends Error {
     message: string,
     readonly status: number,
     readonly fields: Record<string, string> = {},
+    readonly code?: string,
   ) {
     super(message)
   }
 }
 
+// Payload's own errors, or `{ error, code }` from the CMS's custom endpoints.
 type PayloadErrorBody = {
   errors?: { message?: string; data?: { errors?: { path?: string; message?: string }[] } }[]
+  error?: string
+  code?: string
 }
 
 export async function api<T = unknown>(
@@ -26,14 +30,15 @@ export async function api<T = unknown>(
   })
   const body: unknown = response.status === 204 ? null : await response.json().catch(() => null)
   if (!response.ok) {
-    const errors = (body as PayloadErrorBody | null)?.errors ?? []
+    const parsed = body as PayloadErrorBody | null
+    const errors = parsed?.errors ?? []
     const fields: Record<string, string> = {}
     for (const error of errors) {
       for (const field of error.data?.errors ?? []) {
         if (field.path && field.message) fields[field.path] = field.message
       }
     }
-    throw new APIError(errors[0]?.message ?? response.statusText, response.status, fields)
+    throw new APIError(errors[0]?.message ?? parsed?.error ?? response.statusText, response.status, fields, parsed?.code)
   }
   return body as T
 }

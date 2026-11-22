@@ -3,7 +3,7 @@
 import {
   BriefcaseIcon,
   ExternalLinkIcon,
-  FileTextIcon,
+  GlobeIcon,
   ImageIcon,
   LayoutDashboardIcon,
   NewspaperIcon,
@@ -40,7 +40,7 @@ const workspace: NavItem[] = [
   { key: 'assistant', path: '/ai', icon: <SparklesIcon /> },
 ]
 const content: NavItem[] = [
-  { key: 'pages', path: '/pages', icon: <FileTextIcon />, section: 'pages' },
+  { key: 'pages', path: '/pages', icon: <GlobeIcon />, section: 'pages' },
   { key: 'articles', path: '/articles', icon: <NewspaperIcon />, section: 'articles' },
   { key: 'portfolio', path: '/portfolio', icon: <BriefcaseIcon />, section: 'portfolio' },
   { key: 'media', path: '/media', icon: <ImageIcon /> },

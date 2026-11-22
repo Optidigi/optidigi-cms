@@ -11,7 +11,7 @@ import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import { useHydrated } from '../client/use-hydrated'
 
-export function ForgotForm() {
+export function ForgotForm({ email }: { email?: string }) {
   const { t } = useI18n()
   // Until React handles the submit, the button stays off so the browser never sends the form itself.
   const hydrated = useHydrated()
@@ -31,7 +31,7 @@ export function ForgotForm() {
   }
 
   return (
-    // The form of the official shadcn login-02 block: a centred heading above the fields.
+    // The form of the official shadcn login-04 block: a centred heading above the fields.
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-1 text-center">
         <h1 className="text-2xl font-bold">{t('forgotTitle')}</h1>
@@ -46,7 +46,7 @@ export function ForgotForm() {
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">{t('email')}</FieldLabel>
-                <Input id="email" name="email" type="email" autoComplete="username" required />
+                <Input id="email" name="email" type="email" autoComplete="username" required defaultValue={email} />
               </Field>
               <Field>
                 <Button type="submit" disabled={pending || !hydrated}>
@@ -57,7 +57,7 @@ export function ForgotForm() {
             </FieldGroup>
           </form>
         )}
-        <FieldDescription className="mt-6 text-center">
+        <FieldDescription className="text-center">
           <Link href="/admin/login">{t('backToSignIn')}</Link>
         </FieldDescription>
     </div>
