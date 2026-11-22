@@ -14,7 +14,7 @@ import { InputGroupButton } from '@/components/ui/input-group'
 import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
 import { ServiceLogo } from '../settings/service-logo'
-import { efforts, useAssistant, type Effort } from './assistant-context'
+import { useAssistant, type Effort } from './assistant-context'
 import type { MessageKey } from '../i18n'
 
 // The chat's model choice, grouped by connection (shadcn's Model Selector). Shown whenever the
@@ -58,21 +58,26 @@ export function ModelMenu({ className }: { className?: string }) {
 
 const effortLabels: Record<Effort, MessageKey> = {
   default: 'effortDefault',
+  none: 'effortNone',
+  minimal: 'effortMinimal',
   low: 'effortLow',
   medium: 'effortMedium',
   high: 'effortHigh',
+  xhigh: 'effortXhigh',
+  max: 'effortMax',
 }
 
-// How hard the model thinks, the second menu of shadcn's Model Selector. "Default" leaves it to the
-// provider; models that can't reason ignore the setting.
+// How hard the model thinks, the second menu of shadcn's Model Selector. Lists only the levels the
+// selected model supports, and is hidden for models with none (or not known yet). The trigger
+// shows just the level; the menu's heading names the setting.
 export function EffortMenu({ className }: { className?: string }) {
   const assistant = useAssistant()
   const { t } = useI18n()
-  if (!assistant || assistant.setup.state !== 'ready') return null
+  if (!assistant || assistant.setup.state !== 'ready' || !assistant.capabilities.efforts.length) return null
+  const options: Effort[] = ['default', ...assistant.capabilities.efforts]
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<InputGroupButton size="sm" className={cn('min-w-0', className)} aria-label={t('effort')} />}>
-        <span className="hidden text-muted-foreground sm:inline">{t('effort')}</span>
         <span className="truncate">{t(effortLabels[assistant.effort])}</span>
         <ChevronDownIcon />
       </DropdownMenuTrigger>
@@ -80,7 +85,7 @@ export function EffortMenu({ className }: { className?: string }) {
         <DropdownMenuGroup>
           <DropdownMenuLabel>{t('effort')}</DropdownMenuLabel>
           <DropdownMenuRadioGroup value={assistant.effort} onValueChange={(value) => assistant.setEffort(value as Effort)}>
-            {efforts.map((effort) => (
+            {options.map((effort) => (
               <DropdownMenuRadioItem key={effort} value={effort} closeOnClick>
                 {t(effortLabels[effort])}
               </DropdownMenuRadioItem>

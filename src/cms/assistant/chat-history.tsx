@@ -16,7 +16,7 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import { DeleteDialog } from '../content/delete-dialog'
@@ -54,10 +54,12 @@ export function ChatHistory({ onSelect }: { onSelect?: () => void }) {
         <PlusIcon data-icon="inline-start" />
         {t('newChat')}
       </Button>
-      <ToggleGroup variant="outline" size="sm" value={[view]} onValueChange={(value) => value[0] && setView(value[0] as typeof view)} aria-label={t('history')}>
-        <ToggleGroupItem value="recent" className="flex-1">{t('recent')}</ToggleGroupItem>
-        <ToggleGroupItem value="archived" className="flex-1">{t('archived')}</ToggleGroupItem>
-      </ToggleGroup>
+      <Tabs value={view} onValueChange={(value) => setView(value as typeof view)}>
+        <TabsList className="w-full" aria-label={t('history')}>
+          <TabsTrigger value="recent">{t('recent')}</TabsTrigger>
+          <TabsTrigger value="archived">{t('archived')}</TabsTrigger>
+        </TabsList>
+      </Tabs>
       {threads === undefined ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 4 }, (_, index) => (

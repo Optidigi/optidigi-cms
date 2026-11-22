@@ -104,13 +104,13 @@ export const AssistantFiles: CollectionConfig = {
     singular: { en: 'AI chat file', nl: 'AI-chatbestand' },
     plural: { en: 'AI chat files', nl: 'AI-chatbestanden' },
   },
-  // Chat images are never edited; uploads are replaced instead.
+  // Chat images and PDFs are never edited; uploads are replaced instead.
   access: { create: signedIn, delete: own, read: own, update: () => false },
   versions: false,
   fields: [],
   upload: {
     staticDir: path.join(process.env.UPLOADS_DIR ?? path.resolve('media'), 'assistant'),
-    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'],
     pasteURL: false,
   },
 }

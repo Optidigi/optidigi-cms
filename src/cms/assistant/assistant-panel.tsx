@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUpIcon, FileTextIcon, HistoryIcon, Maximize2Icon, PlusIcon, SparklesIcon, XIcon } from 'lucide-react'
+import { ArrowUpIcon, FileTextIcon, HistoryIcon, Maximize2Icon, PlusIcon, BotMessageSquareIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -105,7 +105,7 @@ function PanelHeader() {
   const [history, setHistory] = useState(false)
   return (
     <div className="flex items-center gap-1 border-b px-3 py-2">
-      <SparklesIcon className="size-4 text-muted-foreground" />
+      <BotMessageSquareIcon className="size-4 text-muted-foreground" />
       <span className="flex-1 truncate text-sm font-medium">{t('assistantTitle')}</span>
       <Tooltip>
         <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('history')} onClick={() => setHistory(true)} />}>
@@ -177,10 +177,8 @@ function AskBar() {
     >
       <form onSubmit={send} className="pointer-events-auto w-full max-w-xl">
         <InputGroup className="h-11 rounded-full bg-background shadow-lg">
-          <InputGroupAddon className="pl-3">
-            <SparklesIcon />
-          </InputGroupAddon>
           <InputGroupInput
+            className="pl-4"
             aria-label={t('askAI')}
             placeholder={t('askAI')}
             value={text}
@@ -219,7 +217,7 @@ function SetupBar() {
   return (
     <div className={cn('pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]', barVisibility(assistant.bottomBar))}>
       <div className="pointer-events-auto flex h-11 w-full max-w-xl items-center gap-2 rounded-full border bg-background pr-1.5 pl-3 text-sm text-muted-foreground shadow-lg">
-        <SparklesIcon className="size-4 shrink-0" aria-hidden />
+        <BotMessageSquareIcon className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">{t('aiNotSetUpYet')}</span>
         <Link href={`/admin/${assistant.site}/settings/ai`} className={cn(buttonVariants({ size: 'sm' }), 'rounded-full')}>
           {t('setUpAI')}
@@ -236,7 +234,7 @@ export function AskButton() {
   if (assistant?.setup.state !== 'ready') return null
   return (
     <Button variant="outline" size="icon" aria-label={t('askAI')} onClick={() => assistant.setOpen(true)}>
-      <SparklesIcon />
+      <BotMessageSquareIcon />
     </Button>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUpIcon, SparklesIcon } from 'lucide-react'
+import { ArrowUpIcon, BotMessageSquareIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -31,7 +31,7 @@ export function HomePrompt({ platformAdmin }: { platformAdmin: boolean }) {
       <Empty className="border border-dashed">
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <SparklesIcon />
+            <BotMessageSquareIcon />
           </EmptyMedia>
           <EmptyTitle>{t('aiNotSetUpYet')}</EmptyTitle>
           <EmptyDescription>{t('noConnectionsAdmin')}</EmptyDescription>
@@ -77,7 +77,6 @@ export function HomePrompt({ platformAdmin }: { platformAdmin: boolean }) {
             }}
           />
           <InputGroupAddon align="block-end">
-            <SparklesIcon className="text-muted-foreground" />
             <ModelMenu className="ml-auto" />
             <EffortMenu />
             <InputGroupButton type="submit" size="icon-sm" variant="default" className="rounded-full" aria-label={t('send')} disabled={!text.trim()}>

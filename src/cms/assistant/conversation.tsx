@@ -4,15 +4,17 @@ import { useChat } from '@ai-sdk/react'
 import { getToolName, isToolUIPart, type FileUIPart, type UIMessage } from 'ai'
 import {
   ArrowUpIcon,
-  SparklesIcon,
+  BotMessageSquareIcon,
   CheckIcon,
   CopyIcon,
   FileTextIcon,
   ImageIcon,
+  ImagesIcon,
   PencilIcon,
   PlusIcon,
   RefreshCcwIcon,
   SquareIcon,
+  UploadIcon,
   WrenchIcon,
   XIcon,
 } from 'lucide-react'
@@ -33,6 +35,14 @@ import { Badge } from '@/components/ui/badge'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Button } from '@/components/ui/button'
 import { CodeBlock, CodeBlockContent } from '@/components/ui/code-block'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group'
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message'
@@ -58,6 +68,7 @@ import { cn } from '@/lib/utils'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import type { MessageKey } from '../i18n'
+import { MediaPicker } from '../editor/media-picker'
 import { ApprovalCard } from './approval-card'
 import { useAssistant } from './assistant-context'
 import { EffortMenu, ModelMenu } from './model-menu'
@@ -81,7 +92,7 @@ export function Conversation({ className, compact = false }: { className?: strin
       <Empty className={className}>
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <SparklesIcon />
+            <BotMessageSquareIcon />
           </EmptyMedia>
           <EmptyTitle>{t('notSetUp')}</EmptyTitle>
           <EmptyDescription>{t('notSetUpDescription')}</EmptyDescription>
@@ -104,7 +115,7 @@ export function Conversation({ className, compact = false }: { className?: strin
                 <Empty>
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
-                      <SparklesIcon />
+                      <BotMessageSquareIcon />
                     </EmptyMedia>
                     <EmptyTitle>{t('assistantTitle')}</EmptyTitle>
                     <EmptyDescription>{t('assistantDescription')}</EmptyDescription>
@@ -211,10 +222,16 @@ function ChatMessage({
             <AttachmentGroup>
               {files.map((file, index) => (
                 <Attachment key={index} size="sm">
-                  <AttachmentMedia variant="image">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- private chat file served by Payload */}
-                    <img src={file.url} alt={file.filename ?? ''} />
-                  </AttachmentMedia>
+                  {file.mediaType.startsWith('image/') ? (
+                    <AttachmentMedia variant="image">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- chat file or media image served by Payload */}
+                      <img src={file.url} alt={file.filename ?? ''} />
+                    </AttachmentMedia>
+                  ) : (
+                    <AttachmentMedia>
+                      <FileTextIcon />
+                    </AttachmentMedia>
+                  )}
                   <AttachmentContent>
                     <AttachmentTitle>{file.filename}</AttachmentTitle>
                   </AttachmentContent>
@@ -326,7 +343,11 @@ function ChatMessage({
   )
 }
 
-type Upload = { key: string; name: string; state: 'uploading' | 'done' | 'error'; file?: FileUIPart; id?: number }
+// Images every provider reads; the media library's AVIF images are left out.
+const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+// `id` is set for the user's own chat uploads (removed again when taken off); media library images have none.
+type Upload = { key: string; name: string; state: 'uploading' | 'done' | 'error'; pdf?: boolean; file?: FileUIPart; id?: number }
 
 function Composer({
   initialText,
@@ -347,18 +368,30 @@ function Composer({
   const { t } = useI18n()
   const [text, setText] = useState(initialText)
   const [uploads, setUploads] = useState<Upload[]>(
-    (initialFiles ?? []).map((file, index) => ({ key: `initial-${index}`, name: file.filename ?? '', state: 'done', file })),
+    (initialFiles ?? []).map((file, index) => ({
+      key: `initial-${index}`,
+      name: file.filename ?? '',
+      state: 'done',
+      pdf: file.mediaType === 'application/pdf',
+      file,
+    })),
   )
   const form = useRef<HTMLFormElement>(null)
   const input = useRef<HTMLInputElement>(null)
+  const [picking, setPicking] = useState(false)
+  // What the selected model reads; unknown counts as yes, and a refusal is shown by the chat.
+  const images = assistant.capabilities.images !== false
+  const pdfs = assistant.capabilities.pdfs !== false
+  const accept = [...(images ? imageTypes : []), ...(pdfs ? ['application/pdf'] : [])]
   const ready = uploads.every(({ state }) => state !== 'uploading')
   const canSend = Boolean(text.trim()) && ready && !busy && !locked && assistant.setup.state === 'ready'
 
   // Files go to the private assistant-files collection; the chat only carries their URL.
   async function attach(files: FileList | File[]) {
-    for (const file of [...files].filter((candidate) => candidate.type.startsWith('image/')).slice(0, 4)) {
+    for (const file of [...files].filter((candidate) => accept.includes(candidate.type)).slice(0, 4)) {
       const key = `${Date.now()}-${file.name}`
-      setUploads((current) => [...current, { key, name: file.name, state: 'uploading' }])
+      const pdf = file.type === 'application/pdf'
+      setUploads((current) => [...current, { key, name: file.name, state: 'uploading', pdf }])
       const body = new FormData()
       body.append('file', file)
       body.append('_payload', JSON.stringify({ tenant: assistant.site }))
@@ -407,7 +440,9 @@ function Composer({
             <AttachmentGroup>
               {uploads.map((item) => (
                 <Attachment key={item.key} size="sm" state={item.state === 'done' ? 'done' : item.state}>
-                  <AttachmentMedia>{item.state === 'uploading' ? <Spinner /> : <ImageIcon />}</AttachmentMedia>
+                  <AttachmentMedia>
+                    {item.state === 'uploading' ? <Spinner /> : item.pdf ? <FileTextIcon /> : <ImageIcon />}
+                  </AttachmentMedia>
                   <AttachmentContent>
                     <AttachmentTitle>{item.name}</AttachmentTitle>
                   </AttachmentContent>
@@ -448,13 +483,45 @@ function Composer({
           }}
         />
         <InputGroupAddon align="block-end">
-          <InputGroupButton size="icon-sm" variant="outline" className="rounded-full" aria-label={t('attach')} onClick={() => input.current?.click()}>
-            <PlusIcon />
-          </InputGroupButton>
+          {/* The Prompt Input's action menu (AI Elements): what can be added to the message. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<InputGroupButton size="icon-sm" variant="outline" className="rounded-full" aria-label={t('attach')} />}>
+              <PlusIcon />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-auto">
+              <DropdownMenuGroup>
+                {!accept.length && <DropdownMenuLabel className="max-w-56 font-normal">{t('modelNoFiles')}</DropdownMenuLabel>}
+                <DropdownMenuItem disabled={!accept.length} onClick={() => input.current?.click()}>
+                  <UploadIcon />
+                  {t(images && pdfs ? 'uploadFile' : images ? 'uploadImage' : 'uploadPDF')}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!images} onClick={() => setPicking(true)}>
+                  <ImagesIcon />
+                  {t('fromMediaLibrary')}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <MediaPicker
+            site={assistant.site}
+            open={picking}
+            onOpenChange={setPicking}
+            mimeTypes={imageTypes}
+            title={t('fromMediaLibrary')}
+            description={t('chooseChatImage')}
+            onSelect={(media) => {
+              if (!media.url || !media.filename || !media.mimeType) return
+              const url = media.url.startsWith('http') ? new URL(media.url).pathname : media.url
+              setUploads((current) => [
+                ...current,
+                { key: `media-${media.id}-${Date.now()}`, name: media.filename!, state: 'done', file: { type: 'file', mediaType: media.mimeType!, url, filename: media.filename! } },
+              ])
+            }}
+          />
           <input
             ref={input}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept={accept.join(',')}
             multiple
             hidden
             onChange={(event) => {

@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  BotMessageSquareIcon,
   CheckIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
@@ -8,7 +9,6 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  SparklesIcon,
   StarIcon,
   Trash2Icon,
   TriangleAlertIcon,
@@ -121,7 +121,7 @@ export function AssistantSettingsForm({ site, editable, settings: initial }: { s
         <Empty className="border border-dashed">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <SparklesIcon />
+              <BotMessageSquareIcon />
             </EmptyMedia>
             <EmptyTitle>{t('noConnections')}</EmptyTitle>
             <EmptyDescription>{t(editable ? 'noConnectionsAdmin' : 'noConnectionsMember')}</EmptyDescription>
