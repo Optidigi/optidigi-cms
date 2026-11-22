@@ -152,19 +152,19 @@ function PanelHeader() {
 }
 
 // The floating "Ask AI…" bar at the bottom of the page. Sending opens the panel (or the drawer on
-// small screens) with the question; while the panel is open the bar steps aside.
+// small screens) with the question as a new chat; while the panel is open the bar steps aside.
 function AskBar() {
   const assistant = useAssistant()!
   const { t } = useI18n()
   const [text, setText] = useState('')
-  const idle = assistant.chat.status === 'ready' || assistant.chat.status === 'error'
 
+  // A typed question starts a new chat; sending an empty bar just reopens the last one.
   function send(event: React.FormEvent) {
     event.preventDefault()
     const question = text.trim()
     assistant.setOpen(true)
-    if (!question || !idle) return
-    assistant.chat.sendMessage({ text: question })
+    if (!question) return
+    assistant.startChat(question)
     setText('')
   }
 

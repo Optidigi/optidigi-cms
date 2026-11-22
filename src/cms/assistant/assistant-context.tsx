@@ -11,6 +11,9 @@ import { type Provider, type Service, serviceOf } from '../settings/ai-services'
 export type ThreadSummary = { id: number; title?: string | null; archived?: boolean | null; updatedAt: string }
 export type PageContext = { collection: string; id: number; title: string }
 type BottomBar = false | 'small' | 'always'
+// How hard the model thinks. 'default' leaves it to the provider.
+export const efforts = ['default', 'low', 'medium', 'high'] as const
+export type Effort = (typeof efforts)[number]
 // A model the chat can use: `key` is `connectionID:modelID`, as the chat endpoint expects.
 export type ModelOption = { key: string; model: string; connectionID: string; connection: string; service: Service }
 type Setup = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; models: ModelOption[] }
@@ -43,6 +46,8 @@ type AssistantState = {
   setup: Setup
   model?: string
   setModel: (model: string) => void
+  effort: Effort
+  setEffort: (effort: Effort) => void
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   context?: PageContext
@@ -55,6 +60,8 @@ type AssistantState = {
   refreshThreads: () => Promise<void>
   openThread: (id: number) => Promise<void>
   newChat: () => void
+  // Starts a new chat with this question; earlier chats stay in the history.
+  startChat: (text: string) => void
 }
 
 const AssistantContext = createContext<AssistantState | null>(null)
@@ -71,7 +78,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-type RequestState = { site: number; thread?: number; model?: string; context?: PageContext; language: string }
+type RequestState = { site: number; thread?: number; model?: string; effort?: Effort; context?: PageContext; language: string }
 
 // Holds what the next request should carry. The chat transport reads it when a message is sent.
 class RequestStore {
@@ -123,6 +130,7 @@ function createChat(
           site: request().site,
           thread: request().thread,
           model: request().model,
+          ...(request().effort && request().effort !== 'default' ? { effort: request().effort } : {}),
           locale: request().language,
           context: request().context,
           message: all.at(-1),
@@ -144,6 +152,7 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
   const { language } = useI18n()
   const [setup, setSetup] = useState<Setup>({ state: 'loading' })
   const [model, setModel] = useState<string>()
+  const [effort, setEffort] = useState<Effort>('default')
   const [open, setOpen] = useState(false)
   const [context, setContext] = useState<PageContext>()
   const [bottomBar, setBottomBar] = useState<BottomBar>(false)
@@ -151,8 +160,8 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
   const [thread, setThread] = useState<number>()
   const [request] = useState(() => new RequestStore({ site, language }))
   useEffect(() => {
-    request.update({ site, thread, model, context, language })
-  }, [request, site, thread, model, context, language])
+    request.update({ site, thread, model, effort, context, language })
+  }, [request, site, thread, model, effort, context, language])
 
   const refreshThreads = useCallback(async () => setThreads(await fetchThreads(site)), [site])
   const readRequest = request.read
@@ -188,9 +197,9 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
       const generation = request.nextGeneration()
       request.update({ thread })
       setThread(thread)
-      setChat(
-        createChat(messages, readRequest, adoptThread, () => void refreshThreads(), () => request.isGeneration(generation)),
-      )
+      const next = createChat(messages, readRequest, adoptThread, () => void refreshThreads(), () => request.isGeneration(generation))
+      setChat(next)
+      return next
     },
     [chat, request, readRequest, adoptThread, refreshThreads],
   )
@@ -203,14 +212,15 @@ function SiteAssistant({ site, children }: { site: number; children: React.React
     [replaceChat],
   )
 
-  const newChat = useCallback(() => replaceChat([]), [replaceChat])
+  const newChat = useCallback(() => void replaceChat([]), [replaceChat])
+  const startChat = useCallback((text: string) => void replaceChat([]).sendMessage({ text }), [replaceChat])
 
   const value = useMemo(
     () => ({
-      site, chat, thread, setup, model, setModel, open, setOpen, context, setContext, bottomBar, setBottomBar,
-      threads, refreshThreads, openThread, newChat,
+      site, chat, thread, setup, model, setModel, effort, setEffort, open, setOpen, context, setContext, bottomBar, setBottomBar,
+      threads, refreshThreads, openThread, newChat, startChat,
     }),
-    [site, chat, thread, setup, model, open, context, bottomBar, threads, refreshThreads, openThread, newChat],
+    [site, chat, thread, setup, model, effort, open, context, bottomBar, threads, refreshThreads, openThread, newChat, startChat],
   )
   return <AssistantContext value={value}>{children}</AssistantContext>
 }

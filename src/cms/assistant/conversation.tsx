@@ -60,7 +60,7 @@ import { useI18n } from '../client/i18n-provider'
 import type { MessageKey } from '../i18n'
 import { ApprovalCard } from './approval-card'
 import { useAssistant } from './assistant-context'
-import { ModelMenu } from './model-menu'
+import { EffortMenu, ModelMenu } from './model-menu'
 import { toolLabel } from './tool-label'
 
 // Chat composition from the shadcn AI Elements docs (Chat, Message, Tool, Confirmation,
@@ -351,8 +351,6 @@ function Composer({
   )
   const form = useRef<HTMLFormElement>(null)
   const input = useRef<HTMLInputElement>(null)
-  const models = assistant.setup.state === 'ready' ? assistant.setup.models : []
-  const selected = models.find(({ key }) => key === assistant.model)
   const ready = uploads.every(({ state }) => state !== 'uploading')
   const canSend = Boolean(text.trim()) && ready && !busy && !locked && assistant.setup.state === 'ready'
 
@@ -464,11 +462,8 @@ function Composer({
               event.target.value = ''
             }}
           />
-          {models.length > 1 ? (
-            <ModelMenu className="ml-auto" />
-          ) : (
-            <span className="ml-auto max-w-40 truncate text-xs text-muted-foreground">{selected?.model}</span>
-          )}
+          <ModelMenu className="ml-auto" />
+          <EffortMenu />
           {busy ? (
             <InputGroupButton size="icon-sm" variant="default" className="rounded-full" aria-label={t('stop')} onClick={onStop}>
               <SquareIcon />

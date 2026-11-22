@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/field'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { isLanguage } from '../i18n'
 import type { MessageKey } from '../i18n'
@@ -26,18 +28,18 @@ import {
   appearanceAttributes,
   fonts,
   radii,
-  textSizes,
+  themes,
   type Accent,
   type Font,
   type Preferences,
   type Radius,
-  type TextSize,
+  type Theme,
 } from '../preferences'
 import { useI18n } from '../client/i18n-provider'
 import { savePreferences } from '../client/preferences'
-import { useHydrated } from '../client/use-hydrated'
 import { usePreferences } from '../shell/preferences-context'
 
+const themeLabels: Record<Theme, MessageKey> = { light: 'light', dark: 'dark', system: 'system' }
 const accentLabels: Record<Accent, MessageKey> = {
   default: 'accentDefault',
   blue: 'accentBlue',
@@ -71,10 +73,6 @@ const fontOptions: Record<Font, { name?: string; label?: MessageKey; hint: Messa
   atkinson: { name: 'Atkinson Hyperlegible', hint: 'fontAtkinsonHint', family: 'var(--font-atkinson)' },
   system: { label: 'fontSystem', hint: 'fontSystemHint', family: 'ui-sans-serif, system-ui, sans-serif' },
 }
-const sizeOptions: Record<TextSize, { label: MessageKey; className: string }> = {
-  default: { label: 'sizeDefault', className: 'text-sm' },
-  large: { label: 'sizeLarge', className: 'text-base' },
-}
 const radiusOptions: Record<Radius, { label: MessageKey; value: string }> = {
   none: { label: 'radiusNone', value: '0' },
   small: { label: 'radiusSmall', value: '0.25rem' },
@@ -98,8 +96,7 @@ export function PreferencesForm() {
   const { t } = useI18n()
   const stored = usePreferences()
   const router = useRouter()
-  const { setTheme, resolvedTheme } = useTheme()
-  const hydrated = useHydrated()
+  const { setTheme } = useTheme()
   const [preferences, setPreferences] = useState(stored)
 
   async function change(update: Partial<Preferences>) {
@@ -115,15 +112,6 @@ export function PreferencesForm() {
       toast.error(t('saveFailed'))
     }
   }
-
-  // With the automatic theme the device picks light or dark and the swatch shows in that row. The
-  // device's choice is known only after the page has loaded; until then nothing is marked.
-  const mode =
-    preferences.theme === 'system'
-      ? hydrated && (resolvedTheme === 'dark' || resolvedTheme === 'light')
-        ? resolvedTheme
-        : undefined
-      : preferences.theme
 
   function card(
     name: string,
@@ -169,55 +157,48 @@ export function PreferencesForm() {
           <FieldSet>
             <FieldLegend variant="label">{t('themeLabel')}</FieldLegend>
             <RadioGroup
-              value={mode ? `${mode}:${preferences.accent}` : ''}
-              onValueChange={(value) => {
-                const [nextMode, accent] = String(value).split(':') as ['light' | 'dark', Accent]
-                change({ theme: nextMode, accent })
-              }}
-              className="gap-4"
+              value={preferences.theme}
+              onValueChange={(value) => change({ theme: value as Theme })}
+              className="grid-cols-3 gap-2 sm:max-w-lg"
             >
-              {(['light', 'dark'] as const).map((row) => (
-                <div key={row} role="group" aria-label={t(row)} className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">{t(row)}</span>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                    {accents.map((accent) =>
-                      card(
-                        'theme',
-                        `${row}:${accent}`,
-                        <>
-                          <span
-                            aria-hidden
-                            className={cn(
-                              'flex h-8 w-full items-end gap-1 rounded-sm border p-1.5',
-                              row === 'dark' ? 'border-neutral-700 bg-neutral-900' : 'border-neutral-200 bg-white',
-                            )}
-                          >
-                            <span className="h-2 w-5 rounded-full" style={{ background: swatches[row][accent] }} />
-                            <span className={cn('h-1.5 flex-1 rounded-full', row === 'dark' ? 'bg-neutral-700' : 'bg-neutral-200')} />
-                          </span>
-                          <FieldTitle className="text-xs">
-                            <span className="sr-only">{t(row)} </span>
-                            {t(accentLabels[accent])}
-                          </FieldTitle>
-                        </>,
-                        { compact: true, className: '*:data-[slot=field]:p-2' },
-                      ),
-                    )}
-                  </div>
-                </div>
+              {themes.map((theme) =>
+                card(
+                  'theme',
+                  theme,
+                  <>
+                    <ModePreview mode={theme} accent={preferences.accent} />
+                    <FieldTitle className="text-xs">{t(themeLabels[theme])}</FieldTitle>
+                  </>,
+                  { compact: true, className: '*:data-[slot=field]:p-2' },
+                ),
+              )}
+            </RadioGroup>
+          </FieldSet>
+          <FieldSet>
+            <FieldLegend variant="label">{t('accentLabel')}</FieldLegend>
+            <RadioGroup
+              value={preferences.accent}
+              onValueChange={(value) => change({ accent: value as Accent })}
+              className="flex flex-wrap gap-x-2 gap-y-2"
+            >
+              {accents.map((accent) => (
+                <FieldLabel
+                  key={accent}
+                  htmlFor={`accent-${accent}`}
+                  className="group/swatch w-11 flex-col items-center gap-1.5 text-xs font-normal text-muted-foreground has-data-checked:bg-transparent has-data-checked:text-foreground dark:has-data-checked:bg-transparent"
+                >
+                  <span
+                    aria-hidden
+                    style={{ '--swatch-light': swatches.light[accent], '--swatch-dark': swatches.dark[accent] } as React.CSSProperties}
+                    className="flex size-8 items-center justify-center rounded-full bg-(--swatch-light) ring-offset-2 ring-offset-background group-has-focus-visible/swatch:ring-2 group-has-focus-visible/swatch:ring-ring/50 group-has-data-checked/swatch:ring-2 group-has-data-checked/swatch:ring-(--swatch-light) dark:bg-(--swatch-dark) dark:group-has-data-checked/swatch:ring-(--swatch-dark)"
+                  >
+                    <CheckIcon className="hidden size-4 text-white mix-blend-difference group-has-data-checked/swatch:block" />
+                  </span>
+                  {t(accentLabels[accent])}
+                  <RadioGroupItem value={accent} id={`accent-${accent}`} className="sr-only" />
+                </FieldLabel>
               ))}
             </RadioGroup>
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel htmlFor="theme-system">{t('themeAutomatic')}</FieldLabel>
-                <FieldDescription>{t('themeAutomaticDescription')}</FieldDescription>
-              </FieldContent>
-              <Switch
-                id="theme-system"
-                checked={preferences.theme === 'system'}
-                onCheckedChange={(checked) => change({ theme: checked ? 'system' : (mode ?? 'light') })}
-              />
-            </Field>
           </FieldSet>
           <FieldSeparator />
           <FieldSet>
@@ -240,31 +221,31 @@ export function PreferencesForm() {
             </RadioGroup>
           </FieldSet>
           <FieldSet>
-            <FieldLegend variant="label">{t('textSize')}</FieldLegend>
-            <RadioGroup value={preferences.textSize} onValueChange={(value) => change({ textSize: value as TextSize })} className="grid-cols-2 gap-2 sm:max-w-sm">
-              {textSizes.map((size) =>
-                card('text-size', size, <FieldTitle className={sizeOptions[size].className}>{t(sizeOptions[size].label)}</FieldTitle>, { compact: true }),
-              )}
-            </RadioGroup>
-          </FieldSet>
-          <FieldSet>
             <FieldLegend variant="label">{t('cornerRounding')}</FieldLegend>
-            <RadioGroup value={preferences.radius} onValueChange={(value) => change({ radius: value as Radius })} className="grid-cols-2 gap-2 sm:grid-cols-4">
-              {radii.map((radius) =>
-                card(
-                  'radius',
-                  radius,
-                  <FieldTitle>
-                    <span
-                      aria-hidden
-                      className="size-3.5 shrink-0 border-t-2 border-l-2 border-foreground/70"
-                      style={{ borderTopLeftRadius: radiusOptions[radius].value }}
-                    />
-                    {t(radiusOptions[radius].label)}
-                  </FieldTitle>,
-                  { compact: true },
-                ),
-              )}
+            <RadioGroup value={preferences.radius} onValueChange={(value) => change({ radius: value as Radius })} className="flex flex-wrap gap-2">
+              {radii.map((radius) => (
+                <Tooltip key={radius}>
+                  <TooltipTrigger
+                    render={
+                      <FieldLabel
+                        htmlFor={`radius-${radius}`}
+                        className="has-data-checked:border-primary has-[>[data-slot=field]]:w-12 *:data-[slot=field]:size-12 *:data-[slot=field]:p-0 dark:has-data-checked:border-primary"
+                      />
+                    }
+                  >
+                    <Field orientation="horizontal" className="relative items-center justify-center gap-0">
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 m-auto size-4 border-t-2 border-l-2 border-foreground/70"
+                        style={{ borderTopLeftRadius: radiusOptions[radius].value }}
+                      />
+                      <span className="sr-only">{t(radiusOptions[radius].label)}</span>
+                      <RadioGroupItem value={radius} id={`radius-${radius}`} className="sr-only" />
+                    </Field>
+                  </TooltipTrigger>
+                  <TooltipContent>{t(radiusOptions[radius].label)}</TooltipContent>
+                </Tooltip>
+              ))}
             </RadioGroup>
           </FieldSet>
           <FieldSeparator />
@@ -278,5 +259,31 @@ export function PreferencesForm() {
         </FieldGroup>
       </CardContent>
     </Card>
+  )
+}
+
+// A small picture of the CMS in a mode, with the chosen accent; the system mode shows both halves.
+function ModePreview({ mode, accent }: { mode: Theme; accent: Accent }) {
+  const pane = (shade: 'light' | 'dark') => (
+    <span className={cn('absolute inset-0 flex gap-1 p-1.5', shade === 'dark' ? 'bg-neutral-900' : 'bg-white')}>
+      <span className={cn('w-3 rounded-sm', shade === 'dark' ? 'bg-neutral-800' : 'bg-neutral-100')} />
+      <span className="flex flex-1 flex-col gap-1">
+        <span className={cn('h-1.5 w-3/4 rounded-full', shade === 'dark' ? 'bg-neutral-700' : 'bg-neutral-200')} />
+        <span className={cn('h-1.5 w-1/2 rounded-full', shade === 'dark' ? 'bg-neutral-700' : 'bg-neutral-200')} />
+        <span className="mt-auto h-2 w-6 rounded-full" style={{ background: swatches[shade][accent] }} />
+      </span>
+    </span>
+  )
+  return (
+    <span aria-hidden className="relative block h-14 w-full overflow-hidden rounded-sm border border-neutral-300 dark:border-neutral-700">
+      {mode === 'system' ? (
+        <>
+          {pane('light')}
+          <span className="absolute inset-0 [clip-path:polygon(100%_0,100%_100%,0_100%)]">{pane('dark')}</span>
+        </>
+      ) : (
+        pane(mode)
+      )}
+    </span>
   )
 }
