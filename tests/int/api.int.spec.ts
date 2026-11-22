@@ -262,7 +262,7 @@ describe('tenant content', () => {
     const models = modelEndpoints[0]
     const list = (user: PayloadRequest['user']) =>
       models.handler(Object.assign(request('https://cms.optidigi.nl/api/assistant/models'), {
-        user, json: async () => ({ site: tenantA, connection: kept.connections![0].id }),
+        user, json: async () => ({ site: tenantA, connection: kept.connections![0].id, provider: kept.connections![0].provider }),
       }) as unknown as PayloadRequest)
     expect((await list(actor)).status).toBe(403)
     expect((await list(null)).status).toBe(401)

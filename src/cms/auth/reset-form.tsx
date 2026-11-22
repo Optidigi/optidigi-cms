@@ -38,7 +38,7 @@ export function ResetForm({ token }: { token: string }) {
   }
 
   return (
-    // The form of the official shadcn login-02 block: a centred heading above the fields.
+    // The form of the official shadcn login-04 block: a centred heading above the fields.
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-1 text-center">
         <h1 className="text-2xl font-bold">{t('resetTitle')}</h1>
@@ -65,7 +65,7 @@ export function ResetForm({ token }: { token: string }) {
             </FieldGroup>
           </form>
         )}
-        <FieldDescription className="mt-6 text-center">
+        <FieldDescription className="text-center">
           <Link href="/admin/login">{t('backToSignIn')}</Link>
         </FieldDescription>
     </div>

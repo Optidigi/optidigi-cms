@@ -9,7 +9,7 @@ import { APIError, type Endpoint, type PayloadRequest } from 'payload'
 import { z } from 'zod'
 import type { AssistantSetting } from '../payload-types'
 import { isPlatformAdmin } from '../site/access'
-import type { AssistantProvider } from './collections'
+import { assistantProviders, type AssistantProvider } from './collections'
 
 type Connection = NonNullable<AssistantSetting['connections']>[number]
 export type ModelChoice = { connection: string; model: string }
@@ -164,36 +164,53 @@ export async function listModels({ provider, apiKey, baseURL }: Keyed): Promise<
 const cache = new Map<string, { expires: number; models: ListedModel[] }>()
 const hour = 60 * 60_000
 
-const modelsBody = z.object({ site: z.number().int().positive(), connection: z.string().min(1).max(100) })
+// `connection` reads the key and address of a saved connection; `apiKey`, `provider` and `baseURL`
+// describe one that isn't saved yet, or replace those parts of a saved one. A saved key is only
+// reused for the provider it was made for.
+const modelsBody = z.object({
+  site: z.number().int().positive(),
+  connection: z.string().min(1).max(100).optional(),
+  provider: z.enum(assistantProviders),
+  baseURL: z.string().max(2000).regex(/^https?:\/\/\S+$/).nullish(),
+  apiKey: z.string().min(1).max(2000).optional(),
+})
 
 function json(value: unknown, status: number) {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } })
 }
 
-// POST /api/assistant/models { site, connection }: the chat models a saved connection offers.
-// Platform administrators only; the key stays on the server.
+// POST /api/assistant/models: the chat models a connection offers, before or after it is saved.
+// Platform administrators only; the key is never stored here and never returned.
 async function models(req: PayloadRequest): Promise<Response> {
   const user = req.user
   if (user?.collection !== 'users') return json({ error: 'Unauthorized' }, 401)
   if (!isPlatformAdmin(user)) return json({ error: 'Forbidden' }, 403)
   const input = modelsBody.safeParse(await req.json?.())
   if (!input.success) return json({ error: 'Invalid request' }, 400)
-  const { site, connection: id } = input.data
+  const { site, connection: id, provider, apiKey } = input.data
+  const baseURL = input.data.baseURL || null
   try {
-    const settings = await settingsFor(req, site)
-    if (!settings) return json({ error: 'AI is not set up for this website.' }, 409)
-    const connection = await connectionWithKey(req, settings, id)
-    const key = createHash('sha256').update(`${settings.id}:${id}:${connection.provider}:${connection.baseURL}:${connection.storedKey}`).digest('hex')
-    const cached = cache.get(key)
+    let key = apiKey
+    let identity = apiKey ? createHash('sha256').update(apiKey).digest('hex') : ''
+    if (!key) {
+      const settings = id ? await settingsFor(req, site) : undefined
+      if (!settings || !id) return json({ error: 'An API key is needed.', code: 'key-needed' }, 409)
+      const saved = await connectionWithKey(req, settings, id)
+      if (saved.provider !== provider) return json({ error: 'A new key is needed for another service.', code: 'key-needed' }, 409)
+      key = saved.apiKey
+      identity = saved.storedKey
+    }
+    const cacheKey = createHash('sha256').update(`${site}:${provider}:${baseURL}:${identity}`).digest('hex')
+    const cached = cache.get(cacheKey)
     if (cached && cached.expires > Date.now()) return json({ models: cached.models }, 200)
-    const found = (await listModels(connection)).sort((a, b) => a.id.localeCompare(b.id))
-    cache.set(key, { expires: Date.now() + hour, models: found })
+    const found = (await listModels({ provider, baseURL, apiKey: key } as Keyed)).sort((a, b) => a.id.localeCompare(b.id))
+    cache.set(cacheKey, { expires: Date.now() + hour, models: found })
     return json({ models: found }, 200)
   } catch (error) {
     if (error instanceof APIError && error.isPublic) return json({ error: error.message }, error.status)
     // Never return the provider's raw answer; it can echo request data.
     req.payload.logger.warn({ err: error, msg: 'Listing AI models failed' })
-    return json({ error: 'The provider refused the key or could not be reached.' }, 502)
+    return json({ error: 'The provider refused the key or could not be reached.', code: 'provider' }, 502)
   }
 }
 

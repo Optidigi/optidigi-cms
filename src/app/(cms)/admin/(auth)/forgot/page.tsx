@@ -5,6 +5,7 @@ export async function generateMetadata() {
   return { title: (await getTranslator())('forgotTitle') }
 }
 
-export default function ForgotPage() {
-  return <ForgotForm />
+export default async function ForgotPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+  const { email } = await searchParams
+  return <ForgotForm email={typeof email === 'string' ? email.slice(0, 254) : undefined} />
 }

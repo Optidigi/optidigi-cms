@@ -23,6 +23,11 @@ function onAssistantPage(pathname: string) {
   return /^\/admin\/\d+\/ai(\/|$)/.test(pathname)
 }
 
+// The overview has its own large prompt instead of the floating bar.
+function onOverview(pathname: string) {
+  return /^\/admin\/\d+\/?$/.test(pathname)
+}
+
 function onAISettings(pathname: string) {
   return /^\/admin\/\d+\/settings\/ai(\/|$)/.test(pathname)
 }
@@ -65,8 +70,12 @@ export function AssistantFrame({ platformAdmin, children }: { platformAdmin: boo
     <div className="flex min-h-[calc(100svh-var(--inset-gap)*2)] w-full">
       <div className="flex min-w-0 flex-1 flex-col">
         {children}
-        {!visible && !onAssistantPage(pathname) && assistant.setup.state === 'ready' && <AskBar />}
-        {platformAdmin && assistant.setup.state === 'missing' && !onAssistantPage(pathname) && !onAISettings(pathname) && <SetupBar />}
+        {!visible && !onAssistantPage(pathname) && !onOverview(pathname) && assistant.setup.state === 'ready' && <AskBar />}
+        {platformAdmin &&
+          assistant.setup.state === 'missing' &&
+          !onAssistantPage(pathname) &&
+          !onOverview(pathname) &&
+          !onAISettings(pathname) && <SetupBar />}
       </div>
       {!mobile && visible && (
         <aside aria-label={t('assistantTitle')} className="sticky top-(--inset-gap) flex h-[calc(100svh-var(--inset-gap)*2)] w-[24rem] shrink-0 flex-col rounded-r-xl border-l bg-background">
