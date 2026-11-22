@@ -31,7 +31,7 @@ import { useI18n } from '../client/i18n-provider'
 import { enabledSections, type Section } from '../sections'
 import { savePreferences } from '../client/preferences'
 import { NavUser } from './nav-user'
-import { SiteSwitcher, type SiteSummary } from './site-switcher'
+import { SiteIdentity, type SiteSummary } from './site-identity'
 
 type NavItem = { key: MessageKey; path: string; icon: React.ReactNode; exact?: boolean; section?: Section }
 
@@ -106,7 +106,7 @@ export function AppSidebar({
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
-        <SiteSwitcher sites={sites} current={site} />
+        <SiteIdentity site={site} />
       </SidebarHeader>
       <SidebarContent>
         {group(undefined, workspace)}
@@ -131,7 +131,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser email={user.email} />
+        <NavUser email={user.email} sites={sites} current={site} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

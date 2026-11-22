@@ -54,7 +54,11 @@ test('the assistant explains when no model is set up', async ({ page }) => {
   await page.goto(`/admin/${site}/pages`)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: /^(instellen|set up)$/i })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toHaveCount(0)
+  // The overview says so in a pill, without a prompt.
+  await page.goto(`/admin/${site}`)
+  await expect(page.getByText(/ingesteld door je beheerder|set up by your administrator/i)).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(0)
 })
 
 test('sections a website does not use are hidden and unreachable', async ({ page }) => {
@@ -102,9 +106,13 @@ test.describe('AI services', () => {
     await login(page, admin)
     await page.goto(`/admin/${site}/pages`)
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(0)
-    await page.getByRole('link', { name: /^(instellen|set up)$/i }).click()
+    await page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i }).click()
     await page.waitForURL(`**/admin/${site}/settings/ai`)
-    await expect(page.getByRole('link', { name: /^(instellen|set up)$/i })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toHaveCount(0)
+    // On the overview: the same pill above the heading and the prompt greyed out.
+    await page.goto(`/admin/${site}`)
+    await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toBeDisabled()
   })
 
   test('choosing a named service fills in its address and shows its name', async ({ page }) => {
@@ -259,12 +267,29 @@ test('the sidebar puts AI under the overview and settings at the bottom', async 
   const names = await page.locator('[data-sidebar="menu-button"]').evaluateAll((items) =>
     items.map((item) => item.textContent?.trim() ?? '').filter(Boolean),
   )
-  const order = names.slice(1, -1) // without the website switcher and the account menu
+  const order = names.slice(1, -1) // without the website's name at the top and the account menu
   expect(order[0]).toMatch(/overzicht|overview/i)
   expect(order[1]).toMatch(/^ai$/i)
   expect(order.at(-1)).toMatch(/instellingen|settings/i)
   expect(order.at(-2)).toMatch(/live site bekijken|view live site/i)
   expect(order.some((name) => /^platform$/i.test(name))).toBe(false)
+})
+
+test('the account menu switches the theme and the language in place', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await login(page, user)
+  await page.goto(`/admin/${site}`)
+  const html = page.locator('html')
+  await page.getByRole('button').filter({ hasText: user.email }).last().click()
+  await page.getByRole('menuitem', { name: /^(weergave|appearance)$/i }).click()
+  // The choices apply at once and the menu stays open.
+  await page.getByRole('menuitemradio', { name: /^(donker|dark)$/i }).click()
+  await expect(html).toHaveClass(/dark/)
+  await page.getByRole('menuitemradio', { name: /^english$/i }).click()
+  await expect(html).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/what would you like to change/i)
+  await page.getByRole('menuitemradio', { name: /^(nederlands|dutch)$/i }).click()
+  await expect(html).toHaveAttribute('lang', 'nl')
 })
 
 test('appearance choices apply at once and survive a reload', async ({ page }) => {

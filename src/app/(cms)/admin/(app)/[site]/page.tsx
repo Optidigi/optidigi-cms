@@ -88,17 +88,18 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
       <SiteHeader crumbs={[{ label: site.name }, { label: t('overview') }]} />
       <PageBody className="@container">
         <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 py-4 md:py-8">
-          <div className="flex flex-col items-center gap-1 text-center">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{t('homeTitle')}</h1>
-            <p className="text-sm text-muted-foreground">
-              {site.name} ·{' '}
-              <a href={site.siteOrigin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
-                {t('viewWebsite')}
-                <ExternalLinkIcon className="size-3" aria-hidden />
-              </a>
-            </p>
-          </div>
-          <HomePrompt platformAdmin={isPlatformAdmin(user)} />
+          <HomePrompt platformAdmin={isPlatformAdmin(user)}>
+            <div className="flex flex-col items-center gap-1 text-center">
+              <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{t('homeTitle')}</h1>
+              <p className="text-sm text-muted-foreground">
+                {site.name} ·{' '}
+                <a href={site.siteOrigin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
+                  {t('viewWebsite')}
+                  <ExternalLinkIcon className="size-3" aria-hidden />
+                </a>
+              </p>
+            </div>
+          </HomePrompt>
         </section>
 
         <div className={cn('grid grid-cols-2 gap-4', stats.length === 3 && '@xl:grid-cols-3', stats.length === 4 && '@3xl:grid-cols-4')}>
