@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
 import { useAssistant } from './assistant-context'
 import { ChatHistory } from './chat-history'
+import { SetupPill } from './setup-pill'
 import { ModelMenu } from './model-menu'
 import { Conversation } from './conversation'
 
@@ -209,20 +210,13 @@ function AskBar() {
   )
 }
 
-// In place of the bar for platform administrators while the website has no AI model yet: says so
-// and links to the AI settings. Members can't change this, so they see nothing.
+// In place of the bar for platform administrators while the website has no AI model yet: the
+// setup pill, linking to the AI settings. Members can't change this, so they see nothing.
 function SetupBar() {
   const assistant = useAssistant()!
-  const { t } = useI18n()
   return (
     <div className={cn('pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]', barVisibility(assistant.bottomBar))}>
-      <div className="pointer-events-auto flex h-11 w-full max-w-xl items-center gap-2 rounded-full border bg-background pr-1.5 pl-3 text-sm text-muted-foreground shadow-lg">
-        <BotMessageSquareIcon className="size-4 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{t('aiNotSetUpYet')}</span>
-        <Link href={`/admin/${assistant.site}/settings/ai`} className={cn(buttonVariants({ size: 'sm' }), 'rounded-full')}>
-          {t('setUpAI')}
-        </Link>
-      </div>
+      <SetupPill site={assistant.site} platformAdmin className="pointer-events-auto shadow-lg" />
     </div>
   )
 }
