@@ -91,9 +91,16 @@ const defaults: Record<AssistantProvider, string | undefined> = {
 const openAIChat = /^(gpt-|o\d|chatgpt-)/
 const openAISkip = /(audio|realtime|tts|transcribe|image|search|embedding|instruct|moderation)/
 
+// The provider answered with an error status (401/403: it refused the key).
+class ProviderError extends Error {
+  constructor(readonly status: number) {
+    super(`Model list request failed with ${status}`)
+  }
+}
+
 async function getJSON(url: string, headers: Record<string, string>) {
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) })
-  if (!response.ok) throw new Error(`Model list request failed with ${response.status}`)
+  if (!response.ok) throw new ProviderError(response.status)
   return (await response.json()) as Record<string, unknown>
 }
 
@@ -210,7 +217,11 @@ async function models(req: PayloadRequest): Promise<Response> {
     if (error instanceof APIError && error.isPublic) return json({ error: error.message }, error.status)
     // Never return the provider's raw answer; it can echo request data.
     req.payload.logger.warn({ err: error, msg: 'Listing AI models failed' })
-    return json({ error: 'The provider refused the key or could not be reached.', code: 'provider' }, 502)
+    // 422, not 502: proxies in front of the CMS may replace a 5xx body with their own page.
+    if (error instanceof ProviderError && (error.status === 401 || error.status === 403)) {
+      return json({ error: 'The provider refused the key.', code: 'key-refused' }, 422)
+    }
+    return json({ error: 'The provider could not be reached or returned an error.', code: 'provider' }, 422)
   }
 }
 

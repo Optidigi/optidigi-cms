@@ -314,9 +314,11 @@ function ConnectionDialog({
         error:
           code === 'key-needed'
             ? t(serviceChanged ? 'newKeyForService' : 'keyNeeded')
-            : code === 'provider'
-              ? t('providerRefused')
-              : t('modelsLoadFailed'),
+            : code === 'key-refused'
+              ? t('keyRefused', { service: serviceName(service, t) })
+              : code === 'provider'
+                ? t('providerRefused')
+                : t('modelsLoadFailed'),
       }
     }
   }
