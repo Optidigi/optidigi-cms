@@ -10,7 +10,7 @@ Keep this page current: a change that alters behaviour, a rule or a custom piece
 - **Official shadcn only.** UI comes from official shadcn components (style `base-vega`, Base UI) and AI Elements, composed in app code. Files in `src/components/ui` stay exactly as the shadcn CLI generates them; `scripts/verify-ui.mjs` checks their hashes in CI. Look and feel change only through theme tokens in `src/app/(cms)/admin.css`. Any library outside what shadcn itself installs needs the owner's review.
 - **Secrets stay on the server.** AI keys and the website refresh secret are encrypted with `payload.encrypt`, and their field access never returns them.
 - **Websites stay apart.** The multi-tenant plugin scopes every read and write to the user's websites. The AI is limited to the one website its chat belongs to.
-- **Exact versions.** Payload is on a 4.0 beta; all `payload` and `@payloadcms/*` packages are pinned to the same exact version and upgraded together, on purpose.
+- **Exact versions.** Every dependency is pinned to an exact version, so each update is a visible change. Payload is on a 4.0 beta; all `payload` and `@payloadcms/*` packages share one version and are upgraded together, on purpose. npm reports conflicting peer versions (there is no `legacy-peer-deps`).
 
 ## Where things live
 
@@ -76,7 +76,7 @@ Every pull request and every push to `main` runs `.github/workflows/docker-image
 | `npm audit` | Known high-severity vulnerabilities in production dependencies |
 | Docker build | The production image builds |
 | Upgrade from the released image | Migrations or changes that break existing content (`scripts/upgrade-check.sh`) |
-| `npm run test:e2e` against the image | Editor journeys, AI chat with a local test model, settings, media, users, password reset, and an accessibility scan (axe, WCAG 2 A/AA) of the main screens |
+| `npm run test:e2e` against the image | Editor journeys, AI chat with a local test model, settings, media, users, password reset, and an accessibility scan (axe, WCAG 2 A/AA) of the main screens in light and dark mode |
 
 Tests never reach the internet: `tests/helpers/test.ts` blocks other hosts in the browser and answers AI provider calls, unless a test uses the local model (`tests/helpers/mock-model.ts`). CI fails on flaky tests.
 

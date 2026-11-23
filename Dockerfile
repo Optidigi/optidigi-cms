@@ -3,7 +3,7 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM base AS build
-COPY .npmrc package.json package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 # Build-time values are fixtures. Payload receives production credentials at startup.
@@ -14,7 +14,7 @@ RUN mkdir -p public && \
     npm run build
 
 FROM base AS production-dependencies
-COPY .npmrc package.json package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 FROM base AS runner

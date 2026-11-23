@@ -2,7 +2,6 @@
   "name": "optidigi-cms",
   "version": "1.0.0",
   "description": "Optidigi CMS: one Payload CMS for several independently deployed websites",
-  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" payload build",
@@ -25,7 +24,7 @@
     "@ai-sdk/openai": "4.0.121",
     "@ai-sdk/openai-compatible": "3.0.93",
     "@ai-sdk/react": "4.0.181",
-    "@base-ui/react": "^1.9.0",
+    "@base-ui/react": "1.9.0",
     "@lexical/list": "0.53.0",
     "@lexical/react": "0.53.0",
     "@lexical/rich-text": "0.53.0",
@@ -40,42 +39,39 @@
     "@payloadcms/transformer-sharp": "4.0.0-beta.10",
     "@payloadcms/translations": "4.0.0-beta.10",
     "@payloadcms/ui": "4.0.0-beta.10",
-    "@shadcn/react": "^0.3.1",
+    "@shadcn/react": "0.3.1",
     "@tailwindcss/postcss": "4.3.5",
     "ai": "7.0.177",
-    "class-variance-authority": "^0.7.1",
-    "cn": "^0.5.2",
+    "class-variance-authority": "0.7.1",
+    "cn": "0.5.2",
     "cross-env": "10.1.0",
     "dotenv": "16.4.7",
     "geist": "1.9.2",
-    "graphql": "^16.8.1",
+    "graphql": "16.15.0",
     "lexical": "0.53.0",
-    "lucide-react": "^1.77.0",
+    "lucide-react": "1.77.0",
     "next": "16.4.6",
     "next-themes": "0.4.6",
     "payload": "4.0.0-beta.10",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-resizable-panels": "^4.24.1",
-    "recharts": "^3.8.0",
+    "react-resizable-panels": "4.24.1",
+    "recharts": "3.8.0",
     "sonner": "2.0.8",
     "streamdown": "2.8.0",
     "tailwindcss": "4.3.5",
-    "tw-animate-css": "^1.4.0",
+    "tw-animate-css": "1.4.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.63.0",
-    "@testing-library/react": "16.3.0",
     "@types/node": "24.12.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "4.5.2",
-    "eslint": "^9.16.0",
+    "eslint": "9.39.5",
     "eslint-config-next": "16.4.6",
-    "jsdom": "28.0.0",
-    "oxfmt": "^0.73.0",
+    "oxfmt": "0.73.0",
     "shadcn": "4.23.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
@@ -84,14 +80,7 @@
     "vitest": "5.0.1"
   },
   "engines": {
-    "node": "^24.22.3 || >=26.13.1",
-    "pnpm": "^9 || ^10 || ^11"
+    "node": "^24.22.3 || >=26.13.1"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "sharp",
-      "esbuild",
-      "unrs-resolver"
-    ]
-  }
+  "private": true
 }

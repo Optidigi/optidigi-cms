@@ -91,34 +91,38 @@ test('a forgotten password is replaced through the emailed link', async ({ page 
   await login(page, admin)
 })
 
-test('the main screens pass an automatic accessibility check', async ({ page, browser }) => {
-  const check = async (target: import('@playwright/test').Page, path: string) => {
-    await target.goto(path)
-    await target.waitForLoadState('networkidle')
-    const { violations } = await new AxeBuilder({ page: target }).withTags(['wcag2a', 'wcag2aa']).analyze()
-    // One line per element: the rule, what axe says and the element's opening tag.
-    return violations.flatMap(({ id, nodes }) =>
-      nodes.map(({ html, failureSummary }) => `${path} ${id}: ${failureSummary?.split('\n').at(-1)?.trim()} — ${html.slice(0, 160)}`),
-    )
-  }
-  const found: string[] = []
-  const signedOut = await (await browser.newContext()).newPage()
-  for (const path of ['/admin/login', '/admin/forgot']) found.push(...(await check(signedOut, path)))
-  await signedOut.context().close()
-  await login(page, admin)
-  for (const path of [
-    `/admin/${site}`,
-    `/admin/${site}/pages`,
-    `/admin/${site}/pages/${home}`,
-    `/admin/${site}/media`,
-    `/admin/${site}/ai`,
-    `/admin/${site}/settings/general`,
-    `/admin/${site}/settings/ai`,
-    '/admin/platform/websites',
-    '/admin/platform/users',
-    '/admin/account/appearance',
-  ]) {
-    found.push(...(await check(page, path)))
-  }
-  expect(found).toEqual([])
-})
+// The main screens in light and dark mode (the theme follows the system by default).
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`the main screens pass an automatic accessibility check in ${colorScheme} mode`, async ({ page, browser }) => {
+    const check = async (target: import('@playwright/test').Page, path: string) => {
+      await target.goto(path)
+      await target.waitForLoadState('networkidle')
+      const { violations } = await new AxeBuilder({ page: target }).withTags(['wcag2a', 'wcag2aa']).analyze()
+      // One line per element: the rule, what axe says and the element's opening tag.
+      return violations.flatMap(({ id, nodes }) =>
+        nodes.map(({ html, failureSummary }) => `${path} ${id}: ${failureSummary?.split('\n').at(-1)?.trim()} — ${html.slice(0, 160)}`),
+      )
+    }
+    const found: string[] = []
+    const signedOut = await (await browser.newContext({ colorScheme })).newPage()
+    for (const path of ['/admin/login', '/admin/forgot']) found.push(...(await check(signedOut, path)))
+    await signedOut.context().close()
+    await page.emulateMedia({ colorScheme })
+    await login(page, admin)
+    for (const path of [
+      `/admin/${site}`,
+      `/admin/${site}/pages`,
+      `/admin/${site}/pages/${home}`,
+      `/admin/${site}/media`,
+      `/admin/${site}/ai`,
+      `/admin/${site}/settings/general`,
+      `/admin/${site}/settings/ai`,
+      '/admin/platform/websites',
+      '/admin/platform/users',
+      '/admin/account/appearance',
+    ]) {
+      found.push(...(await check(page, path)))
+    }
+    expect(found).toEqual([])
+  })
+}
