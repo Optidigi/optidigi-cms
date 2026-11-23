@@ -6,7 +6,7 @@ import { BrandLogo } from '@/cms/shell/brand-logo'
 
 // Layout of the official shadcn login-04 block: one card on a muted page, the form on the left and
 // a picture on the right. The picture is the CMS brand's logo (Platform → Websites), following light
-// and dark mode; without one, the app name.
+// and dark mode, on a faded dot pattern; without a logo, the app name.
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const [t, brand] = await Promise.all([getTranslator(), getBrand()])
   const logo = (className: string) =>
@@ -28,8 +28,12 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
               <div className="flex justify-center md:hidden">{logo('h-6')}</div>
               <div className="flex flex-1 flex-col justify-center">{children}</div>
             </div>
-            <div className="relative hidden flex-col items-center justify-center gap-8 overflow-hidden bg-muted p-10 md:flex dark:bg-[#09090b]">
-              <div aria-hidden className="absolute inset-0 hidden bg-[radial-gradient(circle_at_50%_40%,rgb(5_170_116/0.28),transparent_60%)] dark:block" />
+            <div className="relative hidden flex-col items-center justify-center gap-8 overflow-hidden bg-muted p-10 md:flex dark:bg-background">
+              {/* A dot grid in the theme's text colour, fading out towards the edges. */}
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-[radial-gradient(var(--color-foreground)_1px,transparent_1px)] [background-size:14px_14px] opacity-20 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
+              />
               <div className="relative flex justify-center">{logo('h-10 object-center')}</div>
               <div className="relative flex flex-col gap-2 text-center">
                 <p className="text-xl font-semibold">{t('authCoverTitle')}</p>
