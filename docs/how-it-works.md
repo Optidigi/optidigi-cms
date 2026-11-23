@@ -58,7 +58,8 @@ Rules and validators, all Payload hooks or field validation:
 
 ## Known limitations
 
-- **Edit locks are not limited to one website.** Payload generates the `payload-locked-documents` collection itself, with access for any signed-in user, and has no setting to change it. So an editor could mark another website's page as "being edited". The other editor can take over with one click and locks expire after 5 minutes; no content can be read or changed. Patching Payload's generated collection would break on upgrades, so this is accepted.
+- **Edit locks are not limited to one website.** Payload generates the `payload-locked-documents` collection itself, with access for any signed-in user, and has no setting to change it. So an editor could mark another website's page as "being edited". The other editor can take over with one click and locks expire after 5 minutes; no content can be read or changed. Patching Payload's generated collection would break on upgrades, so this is accepted until Payload makes it configurable ([payloadcms/payload#19709](https://github.com/payloadcms/payload/issues/19709); tracked in [#31](https://github.com/Optidigi/optidigi-cms/issues/31)).
+- **The AI writes through edit locks, on purpose.** Payload's MCP update tool overrides locks by default, so the AI isn't blocked just because someone has the page open. Keep it that way ([payloadcms/payload#19591](https://github.com/payloadcms/payload/issues/19591)).
 - **Media lists are public.** Anyone can list `/api/media` across websites, as in Payload's website template. This includes images used only in drafts.
 - **Content languages.** Content is stored per locale (NL, EN), but the admin has no language switch for content yet; a better way to manage multilingual pages is still to be designed.
 
