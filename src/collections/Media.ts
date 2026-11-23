@@ -11,6 +11,8 @@ export const Media: CollectionConfig = {
     read: anyone,
     update: signedIn,
   },
+  // No version history: uploads are replaced, not edited (Payload 4 keeps history unless told not to).
+  versions: false,
   fields: [{ name: 'alt', label: { en: 'Alternative text', nl: 'Alternatieve tekst' }, type: 'text', required: true }],
   upload: {
     staticDir: process.env.UPLOADS_DIR ?? path.resolve('media'),

@@ -217,12 +217,12 @@ export async function websiteCapabilities(req: PayloadRequest, site: number, set
 
 // `connection` reads the key and address of a saved connection; `apiKey`, `provider` and `baseURL`
 // describe one that isn't saved yet, or replace those parts of a saved one. A saved key is only
-// reused for the provider it was made for.
+// reused for the provider and address it was saved for.
 const modelsBody = z.object({
   site: z.number().int().positive(),
   connection: z.string().min(1).max(100).optional(),
   provider: z.enum(assistantProviders),
-  baseURL: z.string().max(2000).regex(/^https?:\/\/\S+$/).nullish(),
+  baseURL: z.string().max(2000).regex(/^https:\/\/\S+$/).nullish(),
   apiKey: z.string().min(1).max(2000).optional(),
 })
 
@@ -247,7 +247,10 @@ async function models(req: PayloadRequest): Promise<Response> {
       const settings = id ? await settingsFor(req, site) : undefined
       if (!settings || !id) return json({ error: 'An API key is needed.', code: 'key-needed' }, 409)
       const saved = await connectionWithKey(req, settings, id)
-      if (saved.provider !== provider) return json({ error: 'A new key is needed for another service.', code: 'key-needed' }, 409)
+      // A saved key only goes to the service and address it was saved for.
+      if (saved.provider !== provider || (saved.baseURL || null) !== baseURL) {
+        return json({ error: 'A new key is needed for another service or address.', code: 'key-needed' }, 409)
+      }
       key = saved.apiKey
       identity = saved.storedKey
     }

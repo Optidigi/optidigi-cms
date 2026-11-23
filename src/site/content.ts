@@ -2,6 +2,7 @@ import { ValidationError, type CollectionBeforeChangeHook, type CollectionConfig
 import { relationID, anyone, platformOnly, signedIn, signedInOrPublished, tenantDelete } from './access'
 import { previewURL } from './preview'
 import { refreshAfterChange, refreshAfterDelete } from './revalidate'
+import { slugify } from './slug'
 
 const drafts = { drafts: { autosave: true } }
 
@@ -10,6 +11,8 @@ export const Tenants: CollectionConfig = {
   admin: { useAsTitle: 'name' },
   // Websites read published content by tenant slug, so the slug is public. Other fields stay private.
   access: { create: platformOnly, delete: () => false, read: anyone, update: platformOnly },
+  // No version history: it would keep old copies of the encrypted refresh secret.
+  versions: false,
   fields: [
     { name: 'name', label: { en: 'Name', nl: 'Naam' }, type: 'text', required: true, access: { read: signedIn } },
     { name: 'slug', type: 'slug', useAsSlug: 'name' },
@@ -167,7 +170,10 @@ function editorialCollection(slug: 'pages' | 'articles' | 'projects'): Collectio
       { name: 'title', label: { en: 'Title', nl: 'Titel' }, type: 'text', required: true, localized: true },
       // Unique per website through the (tenant, slug) index below. The native slug field checks
       // uniqueness across all websites, so it doesn't fit a multi-tenant collection.
-      { name: 'slug', type: 'text', required: true, index: true },
+      {
+        name: 'slug', type: 'text', required: true, index: true,
+        hooks: { beforeValidate: [({ value }) => (typeof value === 'string' ? slugify(value) : value)] },
+      },
       { name: 'heading', label: { en: 'Page heading', nl: 'Paginakop' }, type: 'text', localized: true },
       { name: 'description', label: { en: 'Description', nl: 'Beschrijving' }, type: 'textarea', localized: true },
       { name: 'body', label: { en: 'Body content', nl: 'Inhoud' }, type: 'richText', localized: true },

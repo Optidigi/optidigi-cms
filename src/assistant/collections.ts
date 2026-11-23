@@ -11,11 +11,16 @@ const own: Access = ({ req }) =>
 
 // The key is never readable through the API, so a new value from a request is always plain text.
 // An unchanged or missing value keeps the stored ciphertext of the same connection (Payload matches
-// array rows by id); null clears the key. `hasKey` tells readers whether a key is stored.
-const encryptKey: FieldHook = ({ value, previousValue, siblingData, req }) => {
+// array rows by id); null clears the key. A key belongs to the service and address it was saved for,
+// so changing either drops it unless a new key comes along. `hasKey` tells readers whether one is stored.
+const encryptKey: FieldHook = ({ value, previousValue, previousSiblingDoc, siblingData, req }) => {
   const stored = typeof previousValue === 'string' && previousValue ? previousValue : null
-  const next =
-    value === null ? null : typeof value !== 'string' || !value || value === stored ? stored : req.payload.encrypt(value)
+  const moved =
+    previousSiblingDoc &&
+    (('provider' in siblingData && siblingData.provider !== previousSiblingDoc.provider) ||
+      ('baseURL' in siblingData && (siblingData.baseURL || null) !== (previousSiblingDoc.baseURL || null)))
+  const kept = moved ? null : stored
+  const next = value === null ? null : typeof value !== 'string' || !value || value === stored ? kept : req.payload.encrypt(value)
   siblingData.hasKey = Boolean(next)
   return next
 }
@@ -45,7 +50,8 @@ export const AssistantSettings: CollectionConfig = {
           // It can carry a proxy token, so only platform administrators read it.
           access: { read: platformOnly },
           validate: (value: unknown, { siblingData }: { siblingData: { provider?: string } }) => {
-            if (value && !/^https?:\/\/\S+$/.test(String(value))) return 'Use an http(s) URL.'
+            // HTTPS only: the address receives the connection's key.
+            if (value && !/^https:\/\/\S+$/.test(String(value))) return 'Use an https:// URL.'
             return siblingData?.provider === 'openai-compatible' && !value ? 'An OpenAI-compatible connection needs a base URL.' : true
           },
         },

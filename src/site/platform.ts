@@ -7,6 +7,7 @@ export const Platform: GlobalConfig = {
   slug: 'platform',
   label: { en: 'Platform', nl: 'Platform' },
   access: { read: platformOnly, update: platformOnly },
+  versions: false,
   fields: [
     {
       name: 'brandWebsite',

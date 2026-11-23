@@ -12,15 +12,18 @@ import { useI18n } from '../client/i18n-provider'
 
 export type MediaSummary = Pick<Media, 'id' | 'alt' | 'url' | 'filename' | 'mimeType'>
 
+// An image node's picture: the media itself when the node carries it, otherwise fetched by id
+// (again whenever the id changes).
 export function MediaPreview({ value }: { value: unknown }) {
-  const [media, setMedia] = useState<MediaSummary | null>(
-    value && typeof value === 'object' && 'url' in value ? (value as MediaSummary) : null,
-  )
+  const given = value && typeof value === 'object' && 'url' in value ? (value as MediaSummary) : null
   const id = value && typeof value === 'object' && 'id' in value ? value.id : value
+  const [fetched, setFetched] = useState<MediaSummary | null>(null)
+  const current = fetched && String(fetched.id) === String(id) ? fetched : null
   useEffect(() => {
-    if (media || (typeof id !== 'number' && typeof id !== 'string')) return
-    api<MediaSummary>(`media/${id}${query({ depth: 0 })}`).then(setMedia, () => undefined)
-  }, [id, media])
+    if (given || current || (typeof id !== 'number' && typeof id !== 'string')) return
+    api<MediaSummary>(`media/${id}${query({ depth: 0 })}`).then(setFetched, () => undefined)
+  }, [given, current, id])
+  const media = given ?? current
   if (!media?.url) return <Skeleton className="my-3 h-40 w-full max-w-md" />
   // eslint-disable-next-line @next/next/no-img-element -- Payload serves the original upload.
   return <img src={media.url} alt={media.alt} className="my-3 max-h-80 max-w-full rounded-md border" />
