@@ -3,15 +3,18 @@ import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getTranslator, requirePlatformAdmin } from '@/cms/server'
+import { BrandSelect } from '@/cms/settings/brand-select'
 import { SettingsFrame } from '@/cms/settings/settings-layout'
 import { PageTitle } from '@/cms/shell/page'
 import { SiteHeader } from '@/cms/shell/site-header'
+import { relationID } from '@/site/access'
 
 export default async function WebsitesPage() {
   const [{ payload, user }, t] = await Promise.all([requirePlatformAdmin(), getTranslator()])
-  const { docs } = await payload.find({
-    collection: 'tenants', depth: 0, limit: 500, overrideAccess: false, pagination: false, sort: 'name', user,
-  })
+  const [{ docs }, platform] = await Promise.all([
+    payload.find({ collection: 'tenants', depth: 0, limit: 500, overrideAccess: false, pagination: false, sort: 'name', user }),
+    payload.findGlobal({ slug: 'platform', depth: 0, overrideAccess: false, user }),
+  ])
   return (
     <>
       <SiteHeader crumbs={[{ label: t('platform') }, { label: t('websites') }]} />
@@ -26,6 +29,7 @@ export default async function WebsitesPage() {
             </Link>
           }
         />
+        <BrandSelect websites={docs.map(({ id, name }) => ({ id, name }))} value={relationID(platform.brandWebsite) ?? null} />
         <div className="overflow-hidden rounded-md border">
           <Table className="table-fixed">
             <TableHeader>
