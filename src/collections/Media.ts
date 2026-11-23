@@ -14,7 +14,8 @@ export const Media: CollectionConfig = {
   fields: [{ name: 'alt', label: { en: 'Alternative text', nl: 'Alternatieve tekst' }, type: 'text', required: true }],
   upload: {
     staticDir: process.env.UPLOADS_DIR ?? path.resolve('media'),
-    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'],
+    // SVG for logos: Payload rejects SVGs with scripts, event handlers or javascript: links.
+    mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml'],
     pasteURL: false,
   },
 }

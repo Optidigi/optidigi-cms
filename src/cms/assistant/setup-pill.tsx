@@ -4,6 +4,7 @@ import { ArrowUpIcon } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group'
 import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
@@ -41,13 +42,17 @@ export function SetupPill({ site, platformAdmin, className }: { site: number; pl
   )
 }
 
-// The prompt greyed out, so administrators see where they'll type once a model is connected.
-export function DisabledPrompt({ placeholder, className }: { placeholder: string; className?: string }) {
+// The prompt greyed out, so administrators see where they'll type once a model is connected. Where
+// the model picker will be, a button leads to the AI settings.
+export function DisabledPrompt({ site, className }: { site: number; className?: string }) {
   const { t } = useI18n()
   return (
-    <InputGroup data-disabled className={cn('rounded-xl bg-background', className)}>
-      <InputGroupTextarea aria-label={t('askAI')} placeholder={placeholder} className="min-h-20 p-3 text-base md:text-base" disabled />
+    <InputGroup className={cn('rounded-xl bg-background', className)}>
+      <InputGroupTextarea aria-label={t('askAI')} placeholder={t('connectModelFirst')} className="min-h-20 p-3 text-base md:text-base" disabled />
       <InputGroupAddon align="block-end">
+        <Link href={`/admin/${site}/settings/ai`} className={buttonVariants({ variant: 'ghost', size: 'sm', className: 'text-muted-foreground' })}>
+          {t('noModelConnect')}
+        </Link>
         <InputGroupButton size="icon-sm" variant="default" className="ml-auto rounded-full" aria-label={t('send')} disabled>
           <ArrowUpIcon />
         </InputGroupButton>

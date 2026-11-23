@@ -426,6 +426,9 @@ export interface SiteSetting {
   name: string;
   contactEmail?: string | null;
   phone?: string | null;
+  logo?: (number | null) | Media;
+  logoDark?: (number | null) | Media;
+  icon?: (number | null) | Media;
   navigation?:
     | {
         label: string;
@@ -856,6 +859,9 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   name?: T;
   contactEmail?: T;
   phone?: T;
+  logo?: T;
+  logoDark?: T;
+  icon?: T;
   navigation?:
     | T
     | {

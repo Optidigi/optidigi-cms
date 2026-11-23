@@ -1,3 +1,4 @@
+import { relationID } from '@/site/access'
 import { getTranslator, requireSite } from '../server'
 import { contentLocale } from '../sections'
 import { SiteHeader } from '../shell/site-header'
@@ -65,6 +66,9 @@ export async function SiteSettingsPage({ site: siteParam, locale: localeParam, p
                   name: doc.name ?? '',
                   contactEmail: doc.contactEmail ?? '',
                   phone: doc.phone ?? '',
+                  logo: relationID(doc.logo) ?? null,
+                  logoDark: relationID(doc.logoDark) ?? null,
+                  icon: relationID(doc.icon) ?? null,
                   navigation: (doc.navigation ?? []).map(({ id, label, href }) => ({ id, label, href })),
                   seo: { title: doc.seo?.title ?? '', description: doc.seo?.description ?? '' },
                 }

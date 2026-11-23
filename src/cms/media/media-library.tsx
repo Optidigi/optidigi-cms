@@ -37,7 +37,7 @@ export type MediaItem = {
 
 type Upload = { key: string; name: string; state: 'uploading' | 'error' }
 
-const accept = 'image/jpeg,image/png,image/webp,image/avif,image/gif'
+const accept = 'image/jpeg,image/png,image/webp,image/avif,image/gif,image/svg+xml'
 
 export function MediaLibrary({ site, language, items }: { site: number; language: string; items: MediaItem[] }) {
   const { t } = useI18n()

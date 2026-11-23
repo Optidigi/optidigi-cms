@@ -36,7 +36,7 @@ export function HomePrompt({ platformAdmin, children }: { platformAdmin: boolean
       <>
         <SetupPill site={assistant.site} platformAdmin={platformAdmin} className="self-center" />
         {children}
-        {platformAdmin && <DisabledPrompt placeholder={t('homePromptPlaceholder')} />}
+        {platformAdmin && <DisabledPrompt site={assistant.site} />}
       </>
     )
   }

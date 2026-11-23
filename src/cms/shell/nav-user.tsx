@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeftRightIcon, ChevronsUpDownIcon, LogOutIcon, PaletteIcon, SlidersHorizontalIcon, UserIcon } from 'lucide-react'
+import { ArrowLeftRightIcon, ChevronsUpDownIcon, LogOutIcon, MonitorIcon, MoonIcon, PaletteIcon, SlidersHorizontalIcon, SunIcon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -20,6 +20,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
@@ -30,6 +32,7 @@ import { usePreferences } from './preferences-context'
 import { SiteAvatar, type SiteSummary } from './site-identity'
 
 const themeLabels: Record<Theme, MessageKey> = { system: 'system', light: 'light', dark: 'dark' }
+const themeIcons = { system: MonitorIcon, light: SunIcon, dark: MoonIcon } satisfies Record<Theme, unknown>
 
 // The nav-user menu from the official sidebar-07 block, with submenus (shadcn's DropdownMenuSub)
 // to switch websites and to change the theme and language without leaving the page.
@@ -120,13 +123,28 @@ export function NavUser({ email, sites, current }: { email: string; sites: SiteS
                 <DropdownMenuSubContent className="min-w-48">
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>{t('theme')}</DropdownMenuLabel>
-                    <DropdownMenuRadioGroup value={theme ?? preferences.theme} onValueChange={(value) => change({ theme: value as Theme })}>
-                      {themes.map((option) => (
-                        <DropdownMenuRadioItem key={option} value={option}>
-                          {t(themeLabels[option])}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
+                    {/* An icon row (shadcn's ToggleGroup) that applies at once; arrow keys skip it, Tab reaches it. */}
+                    <ToggleGroup
+                      variant="outline"
+                      size="sm"
+                      spacing={0}
+                      aria-label={t('theme')}
+                      className="mx-1.5 mb-1 w-[calc(100%-0.75rem)]"
+                      value={[theme ?? preferences.theme]}
+                      onValueChange={(value) => value[0] && change({ theme: value[0] as Theme })}
+                    >
+                      {themes.map((option) => {
+                        const Icon = themeIcons[option]
+                        return (
+                          <Tooltip key={option}>
+                            <TooltipTrigger render={<ToggleGroupItem value={option} aria-label={t(themeLabels[option])} className="flex-1" />}>
+                              <Icon />
+                            </TooltipTrigger>
+                            <TooltipContent>{t(themeLabels[option])}</TooltipContent>
+                          </Tooltip>
+                        )
+                      })}
+                    </ToggleGroup>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>

@@ -1,5 +1,5 @@
-import type { CollectionConfig, Field } from 'payload'
-import { anyone, platformOnly, signedIn, signedInOrPublished, tenantDelete } from './access'
+import { ValidationError, type CollectionBeforeChangeHook, type CollectionConfig, type Field } from 'payload'
+import { relationID, anyone, platformOnly, signedIn, signedInOrPublished, tenantDelete } from './access'
 import { previewURL } from './preview'
 import { refreshAfterChange, refreshAfterDelete } from './revalidate'
 
@@ -106,6 +106,21 @@ const seo: Field = {
   ],
 }
 
+// A website's logos must come from its own media library, also when the editor can open others.
+const logoFields = ['logo', 'logoDark', 'icon'] as const
+const logosFromOwnSite: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+  const tenant = relationID(data.tenant ?? originalDoc?.tenant)
+  const errors: { path: string; message: string }[] = []
+  for (const name of logoFields) {
+    const id = relationID(data[name])
+    if (id === undefined || id === relationID(originalDoc?.[name])) continue
+    const media = await req.payload.findByID({ collection: 'media', id, depth: 0, overrideAccess: true, req, disableErrors: true })
+    if (!media || relationID(media.tenant) !== tenant) errors.push({ path: name, message: req.t('validation:invalidSelection') })
+  }
+  if (errors.length) throw new ValidationError({ collection: 'site-settings', errors }, req.t)
+  return data
+}
+
 export const SiteSettings: CollectionConfig = {
   slug: 'site-settings',
   admin: {
@@ -114,13 +129,17 @@ export const SiteSettings: CollectionConfig = {
     livePreview: { url: ({ data, locale, req }) => previewURL('site-settings', data.id, locale.code, req) },
   },
   access: { ...editorAccess, delete: () => false },
-  hooks: { afterChange: [refreshAfterChange] },
+  hooks: { beforeChange: [logosFromOwnSite], afterChange: [refreshAfterChange] },
   versions: drafts,
   llmInstructions: 'Edit the current tenant’s site identity and defaults. Save edits as drafts unless the editor explicitly asks to publish.',
   fields: [
     { name: 'name', label: { en: 'Name', nl: 'Naam' }, type: 'text', required: true },
     { name: 'contactEmail', label: { en: 'Contact email', nl: 'E-mailadres' }, type: 'email' },
     { name: 'phone', label: { en: 'Phone', nl: 'Telefoonnummer' }, type: 'text' },
+    // The website's logos, also shown in the CMS sidebar. The icon is the square version for small spaces.
+    { name: 'logo', label: { en: 'Logo', nl: 'Logo' }, type: 'upload', relationTo: 'media' },
+    { name: 'logoDark', label: { en: 'Logo for dark mode', nl: 'Logo voor donkere weergave' }, type: 'upload', relationTo: 'media' },
+    { name: 'icon', label: { en: 'Icon (square)', nl: 'Pictogram (vierkant)' }, type: 'upload', relationTo: 'media' },
     { name: 'navigation', label: { en: 'Website navigation', nl: 'Websitenavigatie' }, type: 'array', localized: true, fields: [
       { name: 'label', label: { en: 'Link text', nl: 'Linktekst' }, type: 'text', required: true },
       { name: 'href', label: { en: 'Link destination', nl: 'Linkbestemming' }, type: 'text', required: true, validate: (value: unknown) =>

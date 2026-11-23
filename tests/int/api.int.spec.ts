@@ -151,6 +151,41 @@ describe('tenant content', () => {
     await payload.delete({ collection: 'site-settings', overrideAccess: true, where: { tenant: { equals: tenantA } } })
   })
 
+  it('accepts SVG logos without scripts and keeps logos on their own website', async () => {
+    const svg = (body: string) => {
+      const data = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">${body}</svg>`)
+      return { data, mimetype: 'image/svg+xml', name: `logo-${randomUUID().slice(0, 6)}.svg`, size: data.length }
+    }
+    const logo = await payload.create({
+      collection: 'media', overrideAccess: true,
+      data: { alt: 'Logo', tenant: tenantA }, file: svg('<rect width="10" height="10"/>'),
+    })
+    const other = await payload.create({
+      collection: 'media', overrideAccess: true,
+      data: { alt: 'Other', tenant: tenantB }, file: svg('<rect width="10" height="10"/>'),
+    })
+    try {
+      await expect(
+        payload.create({ collection: 'media', overrideAccess: true, data: { alt: 'Bad', tenant: tenantA }, file: svg('<script>alert(1)</script>') }),
+      ).rejects.toThrow()
+      await expect(
+        payload.create({ collection: 'media', overrideAccess: true, data: { alt: 'Bad', tenant: tenantA }, file: svg('<rect onload="alert(1)"/>') }),
+      ).rejects.toThrow()
+      const settings = await payload.create({
+        collection: 'site-settings', overrideAccess: false, user: actor, draft: true,
+        data: { tenant: tenantA, name: 'Site A', logo: logo.id, icon: logo.id },
+      })
+      expect(relationID(settings.logo)).toBe(logo.id)
+      // A logo from another website is refused.
+      await expect(
+        payload.update({ collection: 'site-settings', id: settings.id, overrideAccess: false, user: actor, draft: true, data: { logoDark: other.id } }),
+      ).rejects.toThrow()
+    } finally {
+      await payload.delete({ collection: 'site-settings', overrideAccess: true, where: { tenant: { equals: tenantA } } })
+      await payload.delete({ collection: 'media', overrideAccess: true, where: { id: { in: [logo.id, other.id] } } })
+    }
+  })
+
   it('limits AI requests to the chat website even when the user belongs to more websites', async () => {
     const req = request('https://cms.optidigi.nl/api/mcp')
     req.headers.set(assistantSiteHeader, String(tenantA))
