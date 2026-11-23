@@ -71,6 +71,7 @@ export function ChatHistory({ onSelect }: { onSelect?: () => void }) {
           {threads.map((thread) => (
             <Item
               key={thread.id}
+              role="listitem"
               size="sm"
               variant={thread.id === assistant.thread ? 'muted' : 'default'}
               aria-current={thread.id === assistant.thread || undefined}

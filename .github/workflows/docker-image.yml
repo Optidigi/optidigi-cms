@@ -51,10 +51,30 @@ jobs:
       - run: npm run lint
       - run: npx --no-install tsc --noEmit
       - run: npm run payload -- migrate
+      - name: Migrations, types and import map match the config
+        run: |
+          set -euo pipefail
+          npm run payload -- migrate:create drift-check --skip-empty
+          npm run generate:types
+          npm run generate:importmap
+          drift="$(git status --porcelain -- src/migrations src/payload-types.ts 'src/app/(payload)/admin/importMap.js')"
+          if [ -n "$drift" ]; then
+            echo "::error::The config changed without a matching migration, types or import map. Run 'npm run payload -- migrate:create <name>', 'npm run generate:types' and 'npm run generate:importmap', then commit the result."
+            echo "$drift"
+            exit 1
+          fi
       - run: npm run test:int
       - run: npm audit --omit=dev --audit-level=high
       - name: Build the release image
         run: docker build --tag "$IMAGE:$GITHUB_SHA" .
+      - name: Upgrade from the released image
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          docker exec "$POSTGRES_CONTAINER" createdb -U ci cms_upgrade
+          docker pull --quiet "$IMAGE:latest"
+          scripts/upgrade-check.sh "$IMAGE:latest" "$IMAGE:$GITHUB_SHA" postgres://ci:ci@127.0.0.1:5432/cms_upgrade
       - name: Install Chromium for the admin journeys
         run: npx --no-install playwright install --with-deps chromium
       - name: Test the image against a fresh database

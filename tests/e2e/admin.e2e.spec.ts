@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../helpers/test'
 import { randomUUID } from 'node:crypto'
 import { getPayload, type Payload } from 'payload'
 import config from '../../src/payload.config.js'
