@@ -85,13 +85,20 @@ function DetailsForm({
               <SheetHeader>
                 <SheetTitle className="truncate">{item.filename}</SheetTitle>
                 <SheetDescription>
-                  {item.width}×{item.height} · {Math.round(item.filesize / 1024)} KB · {formatDate(item.updatedAt, language)}
+                  {/* SVGs have no pixel size. */}
+                  {[
+                    item.width && item.height ? `${item.width}×${item.height}` : null,
+                    item.filesize ? `${Math.round(item.filesize / 1024)} KB` : null,
+                    formatDate(item.updatedAt, language),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </SheetDescription>
               </SheetHeader>
               <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4">
                 <AspectRatio ratio={4 / 3} className="overflow-hidden rounded-md bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element -- Payload serves the original upload. */}
-                  <img src={item.url} alt={item.alt} className="size-full object-contain" />
+                  <img src={item.url ?? undefined} alt={item.alt} className="size-full object-contain" />
                 </AspectRatio>
                 <FieldGroup>
                   <Field data-invalid={error ? true : undefined}>

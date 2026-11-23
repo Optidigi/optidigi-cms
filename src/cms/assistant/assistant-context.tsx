@@ -7,7 +7,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { api, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import type { EffortLevel, ModelCapabilities } from '@/assistant/efforts'
-import { type Provider, type Service, serviceOf } from '../settings/ai-services'
+import type { AssistantSetting } from '@/payload-types'
+import { type Service, serviceOf } from '../settings/ai-services'
 
 export type ThreadSummary = { id: number; title?: string | null; archived?: boolean | null; updatedAt: string }
 export type PageContext = { collection: string; id: number; title: string }
@@ -17,12 +18,8 @@ export type Effort = 'default' | EffortLevel
 // A model the chat can use: `key` is `connectionID:modelID`, as the chat endpoint expects.
 export type ModelOption = { key: string; model: string; connectionID: string; connection: string; service: Service }
 type Setup = { state: 'loading' } | { state: 'missing' } | { state: 'ready'; models: ModelOption[] }
-type SettingsDoc = {
-  connections?:
-    | { id?: string | null; label: string; provider?: Provider | null; baseURL?: string | null; hasKey?: boolean | null; models?: string[] | null }[]
-    | null
-  defaultModel?: string | null
-}
+// The website's AI settings as members read them (without keys or, for non-admins, addresses).
+type SettingsDoc = Pick<AssistantSetting, 'connections' | 'defaultModel'>
 
 // Enabled models of connections that have a key, in order; matches the endpoint's own choice.
 function modelOptions(settings?: SettingsDoc): ModelOption[] {

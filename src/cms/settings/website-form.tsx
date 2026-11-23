@@ -2,19 +2,21 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { api, APIError } from '../client/api'
+import type { Tenant } from '@/payload-types'
+import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useSave } from '../client/use-save'
 
-type Paths = { pages: string; articles: string; projects: string }
-type Optional = 'articles' | 'projects'
-type Website = { id: number; name: string; slug: string; siteOrigin: string; sections: Optional[]; previewPaths: Paths; refreshUrl: string }
+// The website as the form edits it: Payload's fields, with empty values as empty strings.
+type Paths = { [K in keyof NonNullable<Tenant['previewPaths']>]-?: string }
+type Optional = NonNullable<Tenant['sections']>[number]
+type Website = Pick<Tenant, 'id' | 'name' | 'slug' | 'siteOrigin'> & { sections: Optional[]; previewPaths: Paths; refreshUrl: string }
 
 export function WebsiteForm({ website }: { website?: Website }) {
   const { t } = useI18n()
@@ -24,42 +26,33 @@ export function WebsiteForm({ website }: { website?: Website }) {
   const [paths, setPaths] = useState<Paths>(website?.previewPaths ?? { pages: '', articles: '', projects: '' })
   const [refreshUrl, setRefreshUrl] = useState(website?.refreshUrl ?? '')
   const [refreshSecret, setRefreshSecret] = useState('')
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const { errors, saving, save: run, invalid, ariaInvalid } = useSave()
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    setSaving(true)
-    setErrors({})
-    try {
-      // The slug field is Payload's native slug field; leaving it empty generates it from the name.
-      const json = {
-        name: values.name,
-        siteOrigin: values.siteOrigin,
-        sections,
-        previewPaths: paths,
-        refreshUrl: refreshUrl.trim() || null,
-        ...(refreshSecret ? { refreshSecret } : {}),
-        ...(values.slug ? { slug: values.slug } : {}),
-      }
-      const result = await api<{ doc: { id: number } }>(website ? `tenants/${website.id}?depth=0` : 'tenants?depth=0', {
-        method: website ? 'PATCH' : 'POST',
-        json,
-      })
-      toast.success(t('savedToast'))
-      if (website) router.refresh()
-      else router.replace(`/admin/platform/websites/${result.doc.id}`)
-    } catch (error) {
-      if (error instanceof APIError) setErrors(error.fields)
-      toast.error(t('saveFailed'))
+    // The slug field is Payload's native slug field; leaving it empty generates it from the name.
+    const json = {
+      name: values.name,
+      siteOrigin: values.siteOrigin,
+      sections,
+      previewPaths: paths,
+      refreshUrl: refreshUrl.trim() || null,
+      ...(refreshSecret ? { refreshSecret } : {}),
+      ...(values.slug ? { slug: values.slug } : {}),
     }
-    setSaving(false)
+    const result = await run(
+      () => api<{ doc: { id: number } }>(website ? `tenants/${website.id}?depth=0` : 'tenants?depth=0', { method: website ? 'PATCH' : 'POST', json }),
+      t('savedToast'),
+    )
+    if (!result) return
+    if (website) router.refresh()
+    else router.replace(`/admin/platform/websites/${result.doc.id}`)
   }
 
   const field = (key: keyof typeof values, label: string, props: React.ComponentProps<typeof Input> = {}, description?: string) => (
-    <Field data-invalid={errors[key] ? true : undefined}>
+    <Field {...invalid(key)}>
       <FieldLabel htmlFor={key}>{label}</FieldLabel>
-      <Input id={key} value={values[key]} aria-invalid={errors[key] ? true : undefined} onChange={(event) => setValues({ ...values, [key]: event.target.value })} {...props} />
+      <Input id={key} value={values[key]} {...ariaInvalid(key)} onChange={(event) => setValues({ ...values, [key]: event.target.value })} {...props} />
       {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError>{errors[key]}</FieldError>
     </Field>
@@ -95,9 +88,9 @@ export function WebsiteForm({ website }: { website?: Website }) {
               <FieldLegend variant="label">{t('previewPaths')}</FieldLegend>
               <FieldDescription>{t('previewPathsDescription')}</FieldDescription>
               {(['pages', 'articles', 'projects'] as const).map((key) => (
-                <Field key={key} data-invalid={errors[`previewPaths.${key}`] ? true : undefined}>
+                <Field key={key} {...invalid(`previewPaths.${key}`)}>
                   <FieldLabel htmlFor={`preview-${key}`}>{t(key === 'projects' ? 'portfolio' : key)}</FieldLabel>
-                  <Input id={`preview-${key}`} placeholder="/{slug}" value={paths[key]} onChange={(event) => setPaths({ ...paths, [key]: event.target.value })} />
+                  <Input id={`preview-${key}`} {...ariaInvalid(`previewPaths.${key}`)} placeholder="/{slug}" value={paths[key]} onChange={(event) => setPaths({ ...paths, [key]: event.target.value })} />
                   <FieldError>{errors[`previewPaths.${key}`]}</FieldError>
                 </Field>
               ))}
@@ -105,9 +98,9 @@ export function WebsiteForm({ website }: { website?: Website }) {
             <FieldSet>
               <FieldLegend variant="label">{t('refresh')}</FieldLegend>
               <FieldDescription>{t('refreshDescription')}</FieldDescription>
-              <Field data-invalid={errors.refreshUrl ? true : undefined}>
+              <Field {...invalid('refreshUrl')}>
                 <FieldLabel htmlFor="refreshUrl">{t('refreshUrl')}</FieldLabel>
-                <Input id="refreshUrl" type="url" value={refreshUrl} onChange={(event) => setRefreshUrl(event.target.value)} />
+                <Input id="refreshUrl" {...ariaInvalid('refreshUrl')} type="url" value={refreshUrl} onChange={(event) => setRefreshUrl(event.target.value)} />
                 <FieldError>{errors.refreshUrl}</FieldError>
               </Field>
               <Field>

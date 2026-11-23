@@ -79,7 +79,7 @@ export function ChatHistory({ onSelect }: { onSelect?: () => void }) {
               <ItemContent className="min-w-0">
                 <button
                   type="button"
-                  className="text-left outline-none focus-visible:underline"
+                  className="rounded-sm text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   onClick={async () => {
                     await assistant.openThread(thread.id)
                     onSelect?.()
