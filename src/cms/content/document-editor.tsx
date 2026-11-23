@@ -45,18 +45,18 @@ import { DeleteDialog } from './delete-dialog'
 import { LivePreview } from './live-preview'
 import { StatusBadge, formatDate } from './status-badge'
 import { useDocumentLock } from './use-document-lock'
+import type { Page } from '@/payload-types'
 import { slugify } from '@/site/slug'
 
-export type EditorDocument = {
-  id: number
-  title: string
-  slug: string
-  heading: string
-  description: string
+// A page, article or project as the editor edits it: Payload's fields, with empty texts as empty
+// strings. Pages, articles and projects share these fields (src/site/content.ts).
+export type EditorDocument = Pick<Page, 'id' | 'title' | 'slug' | 'updatedAt'> & {
+  [K in 'heading' | 'description']-?: string
+} & {
+  // Lexical JSON, read and written by the rich-text editor.
   body: unknown
-  seo: { title: string; description: string }
-  status: string
-  updatedAt: string
+  seo: { [K in keyof NonNullable<Page['seo']>]-?: string }
+  status: NonNullable<Page['_status']>
 }
 
 type Values = Omit<EditorDocument, 'id' | 'status' | 'updatedAt'>

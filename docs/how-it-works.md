@@ -6,7 +6,7 @@ Keep this page current: a change that alters behaviour, a rule or a custom piece
 
 ## Ground rules
 
-- **Payload does the work.** The admin talks to Payload's own REST API in the browser and the Local API in server components (with `overrideAccess: false` and the signed-in user). Auth, drafts, versions, locking, uploads, localisation and preferences are Payload's built-in features. No custom rule is added without discussing it first; the custom pieces below are the complete list.
+- **Payload does the work.** The admin talks to Payload's own REST API in the browser and the Local API in server components (with `overrideAccess: false` and the signed-in user). Auth, drafts, versions, locking, uploads, localisation and preferences are Payload's built-in features. No custom rule is added without discussing it first; the custom pieces below are the complete list. GraphQL is switched off (`graphQL.disable`); everything uses REST.
 - **Official shadcn only.** UI comes from official shadcn components (style `base-vega`, Base UI) and AI Elements, composed in app code. Files in `src/components/ui` stay exactly as the shadcn CLI generates them; `scripts/verify-ui.mjs` checks their hashes in CI. Look and feel change only through theme tokens in `src/app/(cms)/admin.css`. Any library outside what shadcn itself installs needs the owner's review.
 - **Secrets stay on the server.** AI keys and the website refresh secret are encrypted with `payload.encrypt`, and their field access never returns them.
 - **Websites stay apart.** The multi-tenant plugin scopes every read and write to the user's websites. The AI is limited to the one website its chat belongs to.

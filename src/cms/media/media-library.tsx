@@ -20,20 +20,13 @@ import { Card } from '@/components/ui/card'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import type { Media } from '@/payload-types'
 import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import { MediaDetails } from './media-details'
 
-export type MediaItem = {
-  id: number
-  alt: string
-  url: string
-  filename: string
-  filesize: number
-  width: number
-  height: number
-  updatedAt: string
-}
+// A media document as the library lists it (read with depth 0).
+export type MediaItem = Pick<Media, 'id' | 'alt' | 'url' | 'filename' | 'filesize' | 'width' | 'height' | 'updatedAt'>
 
 type Upload = { key: string; name: string; state: 'uploading' | 'error' }
 
@@ -145,11 +138,12 @@ export function MediaLibrary({ site, language, items }: { site: number; language
       {items.length ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((item) => (
-            <Card key={item.id} className="gap-0 overflow-hidden p-0">
-              <button type="button" className="text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50" onClick={() => setSelected(item)}>
+            // The card shows the focus ring of its button, which its overflow would otherwise clip.
+            <Card key={item.id} className="gap-0 overflow-hidden p-0 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50">
+              <button type="button" className="text-left outline-none" onClick={() => setSelected(item)}>
                 <AspectRatio ratio={4 / 3} className="bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element -- Payload serves the original upload. */}
-                  <img src={item.url} alt={item.alt} loading="lazy" className="size-full object-cover" />
+                  <img src={item.url ?? undefined} alt={item.alt} loading="lazy" className="size-full object-cover" />
                 </AspectRatio>
                 <span className="block truncate px-3 py-2 text-sm">{item.alt || item.filename}</span>
               </button>

@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -10,12 +9,15 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table'
-import { api, APIError } from '../client/api'
+import type { User } from '@/payload-types'
+import { api } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useSave } from '../client/use-save'
 
-type Role = 'customer' | 'platform-admin'
-type Membership = 'admin' | 'editor'
-type Account = { id: number; email: string; role: Role; memberships: Record<number, Membership> }
+type Role = User['role']
+type Membership = NonNullable<User['tenants']>[number]['role']
+// The account as the form edits it: its role on each website by website id.
+type Account = Pick<User, 'id' | 'email' | 'role'> & { memberships: Record<number, Membership> }
 
 export function UserForm({ sites, account }: { sites: { id: number; name: string }[]; account?: Account }) {
   const { t } = useI18n()
@@ -24,36 +26,27 @@ export function UserForm({ sites, account }: { sites: { id: number; name: string
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<Role>(account?.role ?? 'customer')
   const [memberships, setMemberships] = useState<Record<number, Membership>>(account?.memberships ?? {})
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const { errors, saving, save: run, invalid, ariaInvalid } = useSave()
 
   const roleLabels: Record<Role, string> = { customer: t('customer'), 'platform-admin': t('platformAdmin') }
   const membershipLabels: Record<string, string> = { none: t('noAccess'), editor: t('editor'), admin: t('websiteAdmin') }
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    setSaving(true)
-    setErrors({})
     const json = {
       email,
       role,
       tenants: Object.entries(memberships).map(([tenant, membership]) => ({ tenant: Number(tenant), role: membership })),
       ...(password ? { password } : {}),
     }
-    try {
-      const result = await api<{ doc: { id: number } }>(account ? `users/${account.id}?depth=0` : 'users?depth=0', {
-        method: account ? 'PATCH' : 'POST',
-        json,
-      })
-      setPassword('')
-      toast.success(t('savedToast'))
-      if (account) router.refresh()
-      else router.replace(`/admin/platform/users/${result.doc.id}`)
-    } catch (error) {
-      if (error instanceof APIError) setErrors(error.fields)
-      toast.error(t('saveFailed'))
-    }
-    setSaving(false)
+    const result = await run(
+      () => api<{ doc: { id: number } }>(account ? `users/${account.id}?depth=0` : 'users?depth=0', { method: account ? 'PATCH' : 'POST', json }),
+      t('savedToast'),
+    )
+    if (!result) return
+    setPassword('')
+    if (account) router.refresh()
+    else router.replace(`/admin/platform/users/${result.doc.id}`)
   }
 
   return (
@@ -61,14 +54,14 @@ export function UserForm({ sites, account }: { sites: { id: number; name: string
       <Card>
         <CardContent>
           <FieldGroup>
-            <Field data-invalid={errors.email ? true : undefined}>
+            <Field {...invalid('email')}>
               <FieldLabel htmlFor="email">{t('email')}</FieldLabel>
-              <Input id="email" type="email" required value={email} aria-invalid={errors.email ? true : undefined} onChange={(event) => setEmail(event.target.value)} />
+              <Input id="email" type="email" required value={email} {...ariaInvalid('email')} onChange={(event) => setEmail(event.target.value)} />
               <FieldError>{errors.email}</FieldError>
             </Field>
-            <Field data-invalid={errors.password ? true : undefined}>
+            <Field {...invalid('password')}>
               <FieldLabel htmlFor="password">{account ? t('newPassword') : t('password')}</FieldLabel>
-              <Input id="password" type="password" autoComplete="new-password" required={!account} value={password} aria-invalid={errors.password ? true : undefined} onChange={(event) => setPassword(event.target.value)} />
+              <Input id="password" type="password" autoComplete="new-password" required={!account} value={password} {...ariaInvalid('password')} onChange={(event) => setPassword(event.target.value)} />
               {account && <FieldDescription>{t('passwordDescription')}</FieldDescription>}
               <FieldError>{errors.password}</FieldError>
             </Field>

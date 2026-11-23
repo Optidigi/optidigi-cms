@@ -108,6 +108,8 @@ export default buildConfig({
       })
     : undefined,
   endpoints: [...siteEndpoints, ...assistantEndpoints],
+  // Websites and the admin use REST; nothing uses GraphQL, so it is off (and its routes removed).
+  graphQL: { disable: true },
   llmInstructions: { access: platformOnly },
   secret: process.env.PAYLOAD_SECRET ?? '',
   serverURL: origin ?? '',

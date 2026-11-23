@@ -3,7 +3,6 @@
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon, CheckIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -13,23 +12,25 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { api, APIError, query } from '../client/api'
+import type { SiteSetting } from '@/payload-types'
+import { api, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
+import { useSave } from '../client/use-save'
 import { StatusBadge } from '../content/status-badge'
 import { LogoField } from './logo-field'
 import type { ContentLocale } from '../sections'
 
 export type SettingsPart = 'general' | 'navigation' | 'seo'
 export type PageLink = { title: string; href: string }
-type Values = {
-  name: string
-  contactEmail: string
-  phone: string
-  logo: number | null
-  logoDark: number | null
-  icon: number | null
-  navigation: { id?: string | null; label: string; href: string }[]
-  seo: { title: string; description: string }
+// The settings as the form edits them: Payload's fields, with empty texts as empty strings and
+// uploads as media ids.
+type Values = Pick<SiteSetting, 'name'> & {
+  [K in 'contactEmail' | 'phone']-?: string
+} & {
+  [K in 'logo' | 'logoDark' | 'icon']-?: number | null
+} & {
+  navigation: (Pick<NonNullable<SiteSetting['navigation']>[number], 'label' | 'href'> & { id?: string | null })[]
+  seo: { [K in keyof NonNullable<SiteSetting['seo']>]-?: string }
 }
 
 export function SiteSettingsForm({
@@ -53,8 +54,9 @@ export function SiteSettingsForm({
   const [values, setValues] = useState<Values>(
     document ?? { name: siteName, contactEmail: '', phone: '', logo: null, logoDark: null, icon: null, navigation: [], seo: { title: '', description: '' } },
   )
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState<'draft' | 'publish'>()
+  const { errors, saving: busy, save: run, invalid, ariaInvalid } = useSave()
+  const [intent, setIntent] = useState<'draft' | 'publish'>()
+  const saving = busy ? intent : undefined
   const localized = part !== 'general'
   // Published and unchanged since: nothing to publish (the page remounts the form after each save).
   const upToDate = document?.status === 'published' && JSON.stringify(values) === JSON.stringify(withoutMeta(document))
@@ -70,26 +72,21 @@ export function SiteSettingsForm({
   }
 
   async function save(intent: 'draft' | 'publish') {
-    setSaving(intent)
-    setErrors({})
+    setIntent(intent)
     const params = query({
       depth: 0,
       locale,
       draft: intent === 'draft' ? true : undefined,
     })
     const data = { ...fields(), _status: intent === 'publish' ? 'published' : 'draft' }
-    try {
-      await api(document ? `site-settings/${document.id}${params}` : `site-settings${params}`, {
+    const saved = await run(
+      () => api(document ? `site-settings/${document.id}${params}` : `site-settings${params}`, {
         method: document ? 'PATCH' : 'POST',
         json: document ? data : { name: values.name, tenant: site, ...data },
-      })
-      toast.success(intent === 'publish' ? t('publishedToast') : t('saved'))
-      router.refresh()
-    } catch (error) {
-      if (error instanceof APIError) setErrors(error.fields)
-      toast.error(t('saveFailed'))
-    }
-    setSaving(undefined)
+      }),
+      intent === 'publish' ? t('publishedToast') : t('saved'),
+    )
+    if (saved !== undefined) router.refresh()
   }
 
   function setLink(index: number, key: 'label' | 'href', value: string) {
@@ -107,8 +104,6 @@ export function SiteSettingsForm({
       return { ...current, navigation }
     })
   }
-
-  const invalid = (key: string) => (errors[key] ? { 'data-invalid': true } : {})
 
   return (
     <Card>
@@ -161,17 +156,17 @@ export function SiteSettingsForm({
               />
               <Field {...invalid('name')}>
                 <FieldLabel htmlFor="name">{t('name')}</FieldLabel>
-                <Input id="name" aria-invalid={Boolean(errors.name) || undefined} required value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} />
+                <Input id="name" {...ariaInvalid('name')} required value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} />
                 <FieldError>{errors.name}</FieldError>
               </Field>
               <Field {...invalid('contactEmail')}>
                 <FieldLabel htmlFor="contactEmail">{t('contactEmail')}</FieldLabel>
-                <Input id="contactEmail" aria-invalid={Boolean(errors.contactEmail) || undefined} type="email" value={values.contactEmail} onChange={(event) => setValues({ ...values, contactEmail: event.target.value })} />
+                <Input id="contactEmail" {...ariaInvalid('contactEmail')} type="email" value={values.contactEmail} onChange={(event) => setValues({ ...values, contactEmail: event.target.value })} />
                 <FieldError>{errors.contactEmail}</FieldError>
               </Field>
               <Field {...invalid('phone')}>
                 <FieldLabel htmlFor="phone">{t('phone')}</FieldLabel>
-                <Input id="phone" aria-invalid={Boolean(errors.phone) || undefined} type="tel" value={values.phone} onChange={(event) => setValues({ ...values, phone: event.target.value })} />
+                <Input id="phone" {...ariaInvalid('phone')} type="tel" value={values.phone} onChange={(event) => setValues({ ...values, phone: event.target.value })} />
                 <FieldError>{errors.phone}</FieldError>
               </Field>
             </>
@@ -183,7 +178,7 @@ export function SiteSettingsForm({
                 <div key={index} className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                   <Field {...invalid(`navigation.${index}.label`)}>
                     <FieldLabel htmlFor={`nav-label-${index}`}>{t('linkText')}</FieldLabel>
-                    <Input id={`nav-label-${index}`} aria-invalid={Boolean(errors[`navigation.${index}.label`]) || undefined} required value={link.label} onChange={(event) => setLink(index, 'label', event.target.value)} />
+                    <Input id={`nav-label-${index}`} {...ariaInvalid(`navigation.${index}.label`)} required value={link.label} onChange={(event) => setLink(index, 'label', event.target.value)} />
                     <FieldError>{errors[`navigation.${index}.label`]}</FieldError>
                   </Field>
                   <Field {...invalid(`navigation.${index}.href`)}>
@@ -198,7 +193,7 @@ export function SiteSettingsForm({
                       onInputValueChange={(value, { reason }) => reason !== 'input-clear' && setLink(index, 'href', value)}
                       onValueChange={(value) => typeof value === 'string' && setLink(index, 'href', value)}
                     >
-                      <ComboboxInput id={`nav-href-${index}`} required aria-invalid={Boolean(errors[`navigation.${index}.href`]) || undefined} placeholder="/" className="w-full" />
+                      <ComboboxInput id={`nav-href-${index}`} required {...ariaInvalid(`navigation.${index}.href`)} placeholder="/" className="w-full" />
                       <ComboboxContent>
                         <ComboboxEmpty>{t('noMatchingPages')}</ComboboxEmpty>
                         <ComboboxList>
@@ -247,12 +242,12 @@ export function SiteSettingsForm({
             <>
               <Field {...invalid('seo.title')}>
                 <FieldLabel htmlFor="seo-title">{t('seoTitle')}</FieldLabel>
-                <Input id="seo-title" aria-invalid={Boolean(errors['seo.title']) || undefined} value={values.seo.title} onChange={(event) => setValues({ ...values, seo: { ...values.seo, title: event.target.value } })} />
+                <Input id="seo-title" {...ariaInvalid('seo.title')} value={values.seo.title} onChange={(event) => setValues({ ...values, seo: { ...values.seo, title: event.target.value } })} />
                 <FieldError>{errors['seo.title']}</FieldError>
               </Field>
               <Field {...invalid('seo.description')}>
                 <FieldLabel htmlFor="seo-description">{t('seoDescription')}</FieldLabel>
-                <Textarea id="seo-description" aria-invalid={Boolean(errors['seo.description']) || undefined} value={values.seo.description} onChange={(event) => setValues({ ...values, seo: { ...values.seo, description: event.target.value } })} />
+                <Textarea id="seo-description" {...ariaInvalid('seo.description')} value={values.seo.description} onChange={(event) => setValues({ ...values, seo: { ...values.seo, description: event.target.value } })} />
                 <FieldError>{errors['seo.description']}</FieldError>
               </Field>
             </>

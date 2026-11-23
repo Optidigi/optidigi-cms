@@ -72,6 +72,32 @@ test('platform administrators add a user with a role on a website', async ({ pag
     .toEqual([expect.objectContaining({ tenant: site, role: 'editor' })])
 })
 
+test('platform administrators edit a website and see field errors from Payload', async ({ page }) => {
+  await login(page, admin)
+  await page.goto(`/admin/platform/websites/${site}`)
+  // Payload refuses an address that isn't an HTTPS origin; the form marks the field.
+  await page.locator('#siteOrigin').fill('http://example.com/path')
+  await page.getByRole('button', { name: /^(opslaan|save)$/i }).click()
+  await expect(page.locator('#siteOrigin')).toHaveAttribute('aria-invalid', 'true')
+  await page.locator('#siteOrigin').fill('https://example.org')
+  await page.getByRole('button', { name: /^(opslaan|save)$/i }).click()
+  await expect(page.getByText(/^(opgeslagen|saved)\.$/i)).toBeVisible()
+  await expect(page.locator('#siteOrigin')).not.toHaveAttribute('aria-invalid')
+  expect((await payload.findByID({ collection: 'tenants', id: site, overrideAccess: true, depth: 0 })).siteOrigin).toBe('https://example.org')
+})
+
+test('the profile page changes the signed-in user\'s password', async ({ page }) => {
+  await login(page, admin)
+  await page.goto('/admin/account/profile')
+  admin.password = randomUUID()
+  await page.locator('#password').fill(admin.password)
+  await page.getByRole('button', { name: /^(opslaan|save)$/i }).click()
+  await expect(page.getByText(/^(opgeslagen|saved)\.$/i)).toBeVisible()
+  await expect(page.locator('#password')).toHaveValue('')
+  await page.context().clearCookies()
+  await login(page, admin)
+})
+
 test('a forgotten password is replaced through the emailed link', async ({ page }) => {
   await page.goto('/admin/forgot')
   await page.locator('#email').fill(admin.email)
