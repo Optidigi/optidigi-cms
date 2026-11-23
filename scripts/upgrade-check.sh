@@ -73,7 +73,8 @@ auth="Authorization: JWT $(token)"
 heading="$(curl --fail --silent --show-error "$base/api/pages?where%5Btenant.slug%5D%5Bequals%5D=upgrade&locale=nl&depth=0" |
   node -pe 'JSON.parse(require("fs").readFileSync(0)).docs[0]?.heading')"
 test "$heading" = "Written before the upgrade" || { echo "::error::The page written before the upgrade is gone ($heading)"; exit 1; }
-curl --fail --silent --show-error --output /dev/null "$base$media_url"
+# Payload returns the file URL with the server address in front.
+curl --fail --silent --show-error --output /dev/null "$media_url"
 curl --fail --silent --show-error --output /dev/null -H "$auth" "$base/api/site-settings?where%5Btenant%5D%5Bequals%5D=$tenant"
 curl --fail --silent --show-error --output /dev/null "$base/admin/login"
 echo "Upgrade check passed: content, media and sign-in survive the upgrade."
