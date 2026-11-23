@@ -398,8 +398,8 @@ test('the sign-in screen asks for the email, then the password, and switches lan
   await page.context().clearCookies()
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/admin/login')
-  // No CMS brand is chosen in tests, so the app name stands in for the logo.
-  await expect(page.getByText('Optidigi CMS').locator('visible=true').first()).toBeVisible()
+  // The CMS brand's logo, or the app name when no brand is chosen.
+  await expect(page.locator('main, body').getByRole('img').or(page.getByText('Optidigi CMS')).locator('visible=true').first()).toBeVisible()
   await page.getByRole('button', { name: /cms-taal|cms language/i }).click()
   await page.getByRole('menuitemradio', { name: 'English' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/welcome back/i)
