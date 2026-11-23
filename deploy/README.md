@@ -85,6 +85,6 @@ CI publishes an image only for a `main` commit that passed every check, includin
 
 - The assistant (`/api/assistant/chat`) streams through Cloudflare; keep that route free of Traefik buffering and shared caching.
 - Each website's AI connection is set up under Settings → AI by a platform admin.
-- The pilot website still previews drafts through `/api/site-content` until it moves to Payload's REST API with the preview grant.
+- Websites read published content, and drafts with a preview grant, through Payload's REST API (e.g. optidigi.nl: `/api/site-settings` and `/api/pages`).
 
 Off-host backup setup is deferred to the VPS refactor.

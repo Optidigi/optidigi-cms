@@ -44,10 +44,9 @@ Users, websites, media, the platform global and the AI collections keep **no ver
 ## Custom pieces (the complete list)
 
 1. **AI endpoints** (`src/assistant/`): `/api/assistant/chat` streams with the AI SDK and uses Payload's own MCP server (`/api/mcp`) as its tools, acting as the signed-in user and limited to the chat's website. Read-only tools run by themselves; every other tool waits for the editor's approval, which is signed with a key derived from the Payload secret. `/api/assistant/models` (platform admins) lists a service's models; `/api/assistant/capabilities` reports what each enabled model can do. A saved key is only ever sent to the service and https address it was saved for; changing either drops the key unless a new one is given.
-2. **Preview grant** (`src/site/preview.ts`): a Payload auth strategy that accepts a short-lived, signed, read-only grant for one website, so a website can read drafts through standard REST with `draft=true`. Only GET and HEAD.
+2. **Preview grant** (`src/site/preview.ts`): a Payload auth strategy that accepts a short-lived, signed, read-only grant for one website, so a website can read drafts through standard REST with `draft=true` (sent as `Authorization: Bearer <grant>`). Only GET and HEAD. An invalid grant reads as a signed-out visitor, so websites check the grant's expiry themselves to show an "expired" message.
 3. **Website refresh hook** (`src/site/revalidate.ts`): after a publish or delete, the website's refresh URL is called with `{ collection, slug, locale }`.
-4. **Legacy `/api/site-content`** (`src/site/endpoints.ts`): stays until every website reads Payload's REST API directly.
-5. **CMS brand** (`src/site/platform.ts`): the `platform` global chooses a website whose logos the sign-in screen shows.
+4. **CMS brand** (`src/site/platform.ts`): the `platform` global chooses a website whose logos the sign-in screen shows.
 
 Rules and validators, all Payload hooks or field validation:
 

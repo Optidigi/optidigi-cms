@@ -87,16 +87,6 @@ export async function previewURL(collection: PreviewCollection, value: unknown, 
   return url.href
 }
 
-// Legacy /api/site-content draft check. Kept until every website reads through Payload's REST API.
-export async function authorizePreview(req: PayloadRequest, tenant: number, locale: SiteLocale) {
-  const grant = readGrant(req.headers)
-  if (!grant || grant.tenant !== tenant || grant.locale !== locale) return undefined
-  const user = await req.payload.findByID({ collection: 'users', id: grant.user, depth: 0, disableErrors: true, overrideAccess: true })
-  if (!user) return undefined
-  const actor = { ...user, collection: 'users' as const }
-  return permitted(actor, tenant) ? actor : undefined
-}
-
 // REST reads a website needs for a preview: its content collections and media files.
 const previewPath = /^\/api\/(pages|articles|projects|site-settings|media)(\/|$)/
 
