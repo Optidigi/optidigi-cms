@@ -5,6 +5,8 @@ import { previewGrantStrategy } from '../site/preview'
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: { useAsTitle: 'email' },
+  // Payload 4 keeps version history unless told not to; it would copy password hashes and reset tokens.
+  versions: false,
   auth: {
     cookies: { sameSite: 'Lax', secure: process.env.NODE_ENV === 'production' },
     // Read-only website previews; see src/site/preview.ts.

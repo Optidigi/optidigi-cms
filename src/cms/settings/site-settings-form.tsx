@@ -161,17 +161,17 @@ export function SiteSettingsForm({
               />
               <Field {...invalid('name')}>
                 <FieldLabel htmlFor="name">{t('name')}</FieldLabel>
-                <Input id="name" required value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} />
+                <Input id="name" aria-invalid={Boolean(errors.name) || undefined} required value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} />
                 <FieldError>{errors.name}</FieldError>
               </Field>
               <Field {...invalid('contactEmail')}>
                 <FieldLabel htmlFor="contactEmail">{t('contactEmail')}</FieldLabel>
-                <Input id="contactEmail" type="email" value={values.contactEmail} onChange={(event) => setValues({ ...values, contactEmail: event.target.value })} />
+                <Input id="contactEmail" aria-invalid={Boolean(errors.contactEmail) || undefined} type="email" value={values.contactEmail} onChange={(event) => setValues({ ...values, contactEmail: event.target.value })} />
                 <FieldError>{errors.contactEmail}</FieldError>
               </Field>
               <Field {...invalid('phone')}>
                 <FieldLabel htmlFor="phone">{t('phone')}</FieldLabel>
-                <Input id="phone" type="tel" value={values.phone} onChange={(event) => setValues({ ...values, phone: event.target.value })} />
+                <Input id="phone" aria-invalid={Boolean(errors.phone) || undefined} type="tel" value={values.phone} onChange={(event) => setValues({ ...values, phone: event.target.value })} />
                 <FieldError>{errors.phone}</FieldError>
               </Field>
             </>
@@ -183,7 +183,7 @@ export function SiteSettingsForm({
                 <div key={index} className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                   <Field {...invalid(`navigation.${index}.label`)}>
                     <FieldLabel htmlFor={`nav-label-${index}`}>{t('linkText')}</FieldLabel>
-                    <Input id={`nav-label-${index}`} required value={link.label} onChange={(event) => setLink(index, 'label', event.target.value)} />
+                    <Input id={`nav-label-${index}`} aria-invalid={Boolean(errors[`navigation.${index}.label`]) || undefined} required value={link.label} onChange={(event) => setLink(index, 'label', event.target.value)} />
                     <FieldError>{errors[`navigation.${index}.label`]}</FieldError>
                   </Field>
                   <Field {...invalid(`navigation.${index}.href`)}>
@@ -198,7 +198,7 @@ export function SiteSettingsForm({
                       onInputValueChange={(value, { reason }) => reason !== 'input-clear' && setLink(index, 'href', value)}
                       onValueChange={(value) => typeof value === 'string' && setLink(index, 'href', value)}
                     >
-                      <ComboboxInput id={`nav-href-${index}`} required placeholder="/" className="w-full" />
+                      <ComboboxInput id={`nav-href-${index}`} required aria-invalid={Boolean(errors[`navigation.${index}.href`]) || undefined} placeholder="/" className="w-full" />
                       <ComboboxContent>
                         <ComboboxEmpty>{t('noMatchingPages')}</ComboboxEmpty>
                         <ComboboxList>
@@ -247,12 +247,12 @@ export function SiteSettingsForm({
             <>
               <Field {...invalid('seo.title')}>
                 <FieldLabel htmlFor="seo-title">{t('seoTitle')}</FieldLabel>
-                <Input id="seo-title" value={values.seo.title} onChange={(event) => setValues({ ...values, seo: { ...values.seo, title: event.target.value } })} />
+                <Input id="seo-title" aria-invalid={Boolean(errors['seo.title']) || undefined} value={values.seo.title} onChange={(event) => setValues({ ...values, seo: { ...values.seo, title: event.target.value } })} />
                 <FieldError>{errors['seo.title']}</FieldError>
               </Field>
               <Field {...invalid('seo.description')}>
                 <FieldLabel htmlFor="seo-description">{t('seoDescription')}</FieldLabel>
-                <Textarea id="seo-description" value={values.seo.description} onChange={(event) => setValues({ ...values, seo: { ...values.seo, description: event.target.value } })} />
+                <Textarea id="seo-description" aria-invalid={Boolean(errors['seo.description']) || undefined} value={values.seo.description} onChange={(event) => setValues({ ...values, seo: { ...values.seo, description: event.target.value } })} />
                 <FieldError>{errors['seo.description']}</FieldError>
               </Field>
             </>

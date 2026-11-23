@@ -116,6 +116,21 @@ describe('tenant content', () => {
     await payload.delete({ collection: 'articles', overrideAccess: true, where: { slug: { equals: `shared-${suffix}` } } })
   })
 
+  it('cleans up slugs on the server, also for saves that skip the editor', async () => {
+    const page = await payload.create({
+      collection: 'pages', locale: 'nl', overrideAccess: false, user: actor,
+      data: { tenant: tenantA, slug: ` Über Ons/Team ${suffix} `, title: 'Team' },
+    })
+    expect(page.slug).toBe(`uber-ons-team-${suffix}`)
+    await payload.delete({ collection: 'pages', id: page.id, overrideAccess: true })
+  })
+
+  it('keeps no version history of users, websites, media or platform settings', () => {
+    // Payload 4 keeps history unless told not to; for users it would copy password hashes.
+    for (const slug of ['users', 'tenants', 'media'] as const) expect(payload.collections[slug].config.versions).toBeFalsy()
+    expect(payload.config.globals.find(({ slug }) => slug === 'platform')?.versions).toBeFalsy()
+  })
+
   it('refuses first-user registration outside the bootstrap command', async () => {
     await expect(payload.create({
       collection: 'users', overrideAccess: true,
@@ -301,6 +316,27 @@ describe('tenant content', () => {
       }) as unknown as PayloadRequest)
     expect((await list(actor)).status).toBe(403)
     expect((await list(null)).status).toBe(401)
+    // A saved key only goes to the address it was saved for.
+    const admin = { ...actor, role: 'platform-admin' as const }
+    const router = kept.connections![0]
+    const elsewhere = await models.handler(Object.assign(request('https://cms.optidigi.nl/api/assistant/models'), {
+      user: admin, json: async () => ({ site: tenantA, connection: router.id, provider: router.provider, baseURL: 'https://elsewhere.example/v1' }),
+    }) as unknown as PayloadRequest)
+    expect(elsewhere.status).toBe(409)
+    // Saving another address without a new key drops the stored key; plain http is refused.
+    const rows = (baseURL: string) => kept.connections!.map(({ id, label, provider, baseURL: saved, models }) =>
+      ({ id, label, provider, baseURL: id === router.id ? baseURL : saved, models }))
+    await expect(payload.update({
+      collection: 'assistant-settings', id: settings.id, overrideAccess: true, data: { connections: rows('http://elsewhere.example/v1') },
+    })).rejects.toThrow()
+    await payload.update({
+      collection: 'assistant-settings', id: settings.id, overrideAccess: true, data: { connections: rows('https://elsewhere.example/v1') },
+    })
+    const moved = await payload.findByID({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
+    expect(moved.connections!.map((row) => [row.label, row.hasKey, Boolean(row.apiKey)])).toEqual([
+      ['Router', false, false],
+      ['Claude', true, true],
+    ])
     await payload.delete({ collection: 'assistant-threads', id: thread.id, overrideAccess: true })
     await payload.delete({ collection: 'assistant-settings', id: settings.id, overrideAccess: true })
     await payload.delete({ collection: 'users', id: other.id, overrideAccess: true })

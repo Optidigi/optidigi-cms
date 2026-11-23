@@ -270,8 +270,8 @@ function ConnectionDialog({
   const [typedURL, setTypedURL] = useState(connection && !savedService?.baseURL ? connection.baseURL : '')
   const provider: Provider = service.provider
   const baseURL = (service.baseURL ?? typedURL).trim()
-  // A saved key belongs to the service it was made for; another service needs a new one.
-  const serviceChanged = Boolean(savedService && savedService.id !== service.id)
+  // A saved key belongs to the service and address it was saved for; another one needs a new key.
+  const serviceChanged = Boolean(savedService && (savedService.id !== service.id || baseURL !== connection?.baseURL.trim()))
   const keyRequired = !connection?.hasKey || serviceChanged
   const [apiKey, setApiKey] = useState('')
   const [models, setModels] = useState<string[]>(connection?.models ?? [])
@@ -507,7 +507,7 @@ function ConnectionDialog({
                     id="baseURL"
                     type="url"
                     required
-                    placeholder="http://localhost:11434/v1"
+                    placeholder="https://llm.example.com/v1"
                     value={typedURL}
                     onChange={(event) => setTypedURL(event.target.value)}
                   />

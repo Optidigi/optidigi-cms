@@ -45,6 +45,7 @@ import { DeleteDialog } from './delete-dialog'
 import { LivePreview } from './live-preview'
 import { StatusBadge, formatDate } from './status-badge'
 import { useDocumentLock } from './use-document-lock'
+import { slugify } from '@/site/slug'
 
 export type EditorDocument = {
   id: number
@@ -61,16 +62,6 @@ export type EditorDocument = {
 type Values = Omit<EditorDocument, 'id' | 'status' | 'updatedAt'>
 
 const empty: Values = { title: '', slug: '', heading: '', description: '', body: null, seo: { title: '', description: '' } }
-
-function slugify(value: string) {
-  return value
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 150)
-}
 
 // Form fields by the path Payload uses in validation errors, for labels and focus.
 const fieldInputs: Record<string, { id: string; label: MessageKey }> = {
@@ -387,6 +378,8 @@ export function DocumentEditor({
                     slugTouched.current = true
                     change('slug', event.target.value)
                   }}
+                  // Show the address as the server stores it.
+                  onBlur={() => values.slug !== slugify(values.slug) && change('slug', slugify(values.slug))}
                 />
                 <FieldDescription>{t('slugHint')}</FieldDescription>
                 <FieldError>{errors.slug}</FieldError>
