@@ -12,6 +12,10 @@ import { useAssistant } from './assistant-context'
 import { EffortMenu, ModelMenu } from './model-menu'
 import { DisabledPrompt, SetupPill } from './setup-pill'
 
+// The overview's prompt is the large one: it starts taller and grows with its text up to a point,
+// then scrolls (shadcn's Textarea uses field-sizing-content).
+const homePromptTextarea = 'min-h-28 max-h-64 p-4 text-base md:text-base'
+
 const suggestions: MessageKey[] = ['suggestionNewPage', 'suggestionDrafts', 'suggestionSEO']
 
 // The overview's large prompt: shadcn's Prompt Input (with the Model Selector menus) and Suggestion
@@ -36,7 +40,7 @@ export function HomePrompt({ platformAdmin, children }: { platformAdmin: boolean
       <>
         <SetupPill site={assistant.site} platformAdmin={platformAdmin} className="self-center" />
         {children}
-        {platformAdmin && <DisabledPrompt site={assistant.site} />}
+        {platformAdmin && <DisabledPrompt site={assistant.site} textareaClassName={homePromptTextarea} />}
       </>
     )
   }
@@ -62,7 +66,7 @@ export function HomePrompt({ platformAdmin, children }: { platformAdmin: boolean
             <InputGroupTextarea
               aria-label={t('askAI')}
               placeholder={t('homePromptPlaceholder')}
-              className="min-h-20 p-3 text-base md:text-base"
+              className={homePromptTextarea}
               value={text}
               enterKeyHint="send"
               onChange={(event) => setText(event.target.value)}

@@ -44,11 +44,11 @@ export function SetupPill({ site, platformAdmin, className }: { site: number; pl
 
 // The prompt greyed out, so administrators see where they'll type once a model is connected. Where
 // the model picker will be, a button leads to the AI settings.
-export function DisabledPrompt({ site, className }: { site: number; className?: string }) {
+export function DisabledPrompt({ site, className, textareaClassName }: { site: number; className?: string; textareaClassName?: string }) {
   const { t } = useI18n()
   return (
     <InputGroup className={cn('rounded-xl bg-background', className)}>
-      <InputGroupTextarea aria-label={t('askAI')} placeholder={t('connectModelFirst')} className="min-h-20 p-3 text-base md:text-base" disabled />
+      <InputGroupTextarea aria-label={t('askAI')} placeholder={t('connectModelFirst')} className={cn('min-h-20 p-3 text-base md:text-base', textareaClassName)} disabled />
       <InputGroupAddon align="block-end">
         <Link href={`/admin/${site}/settings/ai`} className={buttonVariants({ variant: 'ghost', size: 'sm', className: 'text-muted-foreground' })}>
           {t('noModelConnect')}
