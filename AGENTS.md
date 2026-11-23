@@ -2,6 +2,8 @@
 
 For any Payload-related work, reference the skill at `node_modules/payload/skills/payload/SKILL.md`.
 
+Read [docs/how-it-works.md](docs/how-it-works.md) before changing behaviour. It lists the ground rules (Payload-native backend, official shadcn components only, generated `src/components/ui` files stay unedited) and every custom piece. A change that alters behaviour, a rule or a custom piece updates that page in the same pull request.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
