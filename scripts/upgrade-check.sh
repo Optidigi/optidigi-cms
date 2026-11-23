@@ -47,7 +47,7 @@ chmod 644 "$work/password"
 
 echo "Starting the previous release ($previous)"
 start "$previous"
-docker exec --env OPS_BOOTSTRAP_EMAIL=operator@example.test \
+docker exec --interactive --env OPS_BOOTSTRAP_EMAIL=operator@example.test \
   --env OPS_BOOTSTRAP_PASSWORD_FILE=/tmp/operator-password "$name" sh -ec \
   "cat > /tmp/operator-password && node node_modules/payload/bin.js bootstrap-operator" < "$work/password"
 auth="Authorization: JWT $(token)"
