@@ -115,10 +115,12 @@ test.describe('AI services', () => {
     await page.goto(`/admin/${site}`)
     await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toBeVisible()
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toBeDisabled()
-    // And on the AI page.
+    // And on the AI page, where the model picker would be, a button leads to the AI settings.
     await page.goto(`/admin/${site}/ai`)
     await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toBeVisible()
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toBeDisabled()
+    await page.getByRole('link', { name: /geen model|no model/i }).click()
+    await page.waitForURL(`**/admin/${site}/settings/ai`)
   })
 
   test('choosing a named service fills in its address and shows its name', async ({ page }) => {
@@ -281,6 +283,28 @@ test('the sidebar puts AI under the overview and settings at the bottom', async 
   expect(order.some((name) => /^platform$/i.test(name))).toBe(false)
 })
 
+test('a website logo from the media library shows in the sidebar', async ({ page }) => {
+  const data = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 10"><rect width="40" height="10" fill="#0a7"/></svg>')
+  const logo = await payload.create({
+    collection: 'media', overrideAccess: true,
+    data: { alt: `Logo ${suffix}`, tenant: site },
+    file: { data, mimetype: 'image/svg+xml', name: `logo-${suffix}.svg`, size: data.length },
+  })
+  try {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await login(page, user)
+    await page.goto(`/admin/${site}/settings/general`)
+    await page.locator('#logo').click()
+    await page.getByRole('dialog').getByRole('img', { name: `Logo ${suffix}` }).click()
+    await page.getByRole('button', { name: /concept opslaan|save draft/i }).first().click()
+    // The header shows the logo, named after the website, instead of the initials.
+    await expect(page.getByRole('link', { name: `E2E ${suffix}` }).getByRole('img', { name: `E2E ${suffix}` }).first()).toBeVisible()
+  } finally {
+    await payload.delete({ collection: 'site-settings', overrideAccess: true, where: { tenant: { equals: site } } })
+    await payload.delete({ collection: 'media', overrideAccess: true, id: logo.id })
+  }
+})
+
 test('the account menu switches the theme and the language in place', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await login(page, user)
@@ -289,8 +313,9 @@ test('the account menu switches the theme and the language in place', async ({ p
   await page.getByRole('button').filter({ hasText: user.email }).last().click()
   await page.getByRole('menuitem', { name: /^(weergave|appearance)$/i }).click()
   // The choices apply at once and the menu stays open.
-  await page.getByRole('menuitemradio', { name: /^(donker|dark)$/i }).click()
+  await page.getByRole('button', { name: /^(donker|dark)$/i }).click()
   await expect(html).toHaveClass(/dark/)
+  await expect(page.getByRole('button', { name: /^(donker|dark)$/i })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('menuitemradio', { name: /^english$/i }).click()
   await expect(html).toHaveAttribute('lang', 'en')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/what would you like to change/i)

@@ -154,6 +154,10 @@ function PanelHeader() {
 
 // The floating "Ask AI…" bar at the bottom of the page. Sending opens the panel (or the drawer on
 // small screens) with the question as a new chat; while the panel is open the bar steps aside.
+// The bottom bars slide up into view each time they appear (tw-animate-css, as shadcn's own
+// overlays use). Reduced motion cuts this short (admin.css).
+const enter = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ease-out'
+
 function AskBar() {
   const assistant = useAssistant()!
   const { t } = useI18n()
@@ -176,7 +180,7 @@ function AskBar() {
         barVisibility(assistant.bottomBar),
       )}
     >
-      <form onSubmit={send} className="pointer-events-auto w-full max-w-xl">
+      <form onSubmit={send} className={cn('pointer-events-auto w-full max-w-xl', enter)}>
         <InputGroup className="h-11 rounded-full bg-background shadow-lg">
           <InputGroupInput
             className="pl-4"
@@ -216,7 +220,7 @@ function SetupBar() {
   const assistant = useAssistant()!
   return (
     <div className={cn('pointer-events-none sticky bottom-0 z-20 justify-center px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]', barVisibility(assistant.bottomBar))}>
-      <SetupPill site={assistant.site} platformAdmin className="pointer-events-auto shadow-lg" />
+      <SetupPill site={assistant.site} platformAdmin className={cn('pointer-events-auto shadow-lg', enter)} />
     </div>
   )
 }

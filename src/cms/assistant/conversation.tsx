@@ -89,23 +89,17 @@ export function Conversation({ className, compact = false, platformAdmin = false
   const awaitingApproval = messages.at(-1)?.parts.some((part) => isToolUIPart(part) && part.state === 'approval-requested') ?? false
 
   if (setup.state === 'missing') {
-    // Like the overview: the set-up pill above the usual empty chat, and the prompt greyed out for
-    // administrators until a model is connected.
+    // No model yet: the set-up pill and what connecting one does, and for administrators the prompt
+    // greyed out with a button where the model picker will be.
     return (
       <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-        <Empty className="flex-1">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <SetupPill site={assistant.site} platformAdmin={platformAdmin} />
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <BotMessageSquareIcon />
-            </EmptyMedia>
-            <EmptyTitle>{t('assistantTitle')}</EmptyTitle>
-            <EmptyDescription>{t('assistantDescription')}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+          <p className="max-w-sm text-sm text-balance text-muted-foreground">{t(platformAdmin ? 'connectModelHint' : 'connectModelHintMember')}</p>
+        </div>
         {platformAdmin && (
           <div className={cn('mx-auto w-full max-w-3xl p-4 pt-0', compact && 'px-3')}>
-            <DisabledPrompt placeholder={t('messagePlaceholder')} />
+            <DisabledPrompt site={assistant.site} />
           </div>
         )}
       </div>

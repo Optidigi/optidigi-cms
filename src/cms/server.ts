@@ -76,7 +76,25 @@ export const getSites = cache(async () => {
     select: { name: true, slug: true, siteOrigin: true, sections: true },
     where: isPlatformAdmin(user) ? undefined : { id: { in: ids } },
   })
-  return docs
+  if (!docs.length) return []
+  // The logos from each website's settings, as last saved, for the sidebar.
+  const { docs: settings } = await payload.find({
+    collection: 'site-settings',
+    depth: 1,
+    draft: true,
+    limit: 500,
+    overrideAccess: false,
+    pagination: false,
+    user,
+    select: { tenant: true, logo: true, logoDark: true, icon: true },
+    populate: { media: { url: true, filename: true } },
+    where: { tenant: { in: docs.map(({ id }) => id) } },
+  })
+  const url = (media: unknown) => (media && typeof media === 'object' && 'url' in media && typeof media.url === 'string' ? media.url : null)
+  const branding = new Map(
+    settings.map((doc) => [relationID(doc.tenant), { logo: url(doc.logo), logoDark: url(doc.logoDark), icon: url(doc.icon) }]),
+  )
+  return docs.map((doc) => ({ ...doc, ...(branding.get(doc.id) ?? { logo: null, logoDark: null, icon: null }) }))
 })
 
 export async function requireSite(siteParam: string) {

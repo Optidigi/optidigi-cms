@@ -16,6 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { api, APIError, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
 import { StatusBadge } from '../content/status-badge'
+import { LogoField } from './logo-field'
 import type { ContentLocale } from '../sections'
 
 export type SettingsPart = 'general' | 'navigation' | 'seo'
@@ -24,6 +25,9 @@ type Values = {
   name: string
   contactEmail: string
   phone: string
+  logo: number | null
+  logoDark: number | null
+  icon: number | null
   navigation: { id?: string | null; label: string; href: string }[]
   seo: { title: string; description: string }
 }
@@ -47,7 +51,7 @@ export function SiteSettingsForm({
   const router = useRouter()
   const pathname = usePathname()
   const [values, setValues] = useState<Values>(
-    document ?? { name: siteName, contactEmail: '', phone: '', navigation: [], seo: { title: '', description: '' } },
+    document ?? { name: siteName, contactEmail: '', phone: '', logo: null, logoDark: null, icon: null, navigation: [], seo: { title: '', description: '' } },
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<'draft' | 'publish'>()
@@ -57,7 +61,10 @@ export function SiteSettingsForm({
 
   // Each screen sends only its own fields, so neighbouring settings and translations stay intact.
   function fields() {
-    if (part === 'general') return { name: values.name, contactEmail: values.contactEmail || null, phone: values.phone }
+    if (part === 'general') {
+      const { name, contactEmail, phone, logo, logoDark, icon } = values
+      return { name, contactEmail: contactEmail || null, phone, logo, logoDark, icon }
+    }
     if (part === 'navigation') return { navigation: values.navigation }
     return { seo: values.seo }
   }
@@ -123,6 +130,35 @@ export function SiteSettingsForm({
           </div>
           {part === 'general' && (
             <>
+              <LogoField
+                site={site}
+                id="logo"
+                label={t('logo')}
+                description={t('logoDescription')}
+                value={values.logo}
+                onChange={(logo) => setValues({ ...values, logo })}
+                error={errors.logo}
+              />
+              <LogoField
+                site={site}
+                id="logoDark"
+                label={t('logoDark')}
+                description={t('logoDarkDescription')}
+                value={values.logoDark}
+                onChange={(logoDark) => setValues({ ...values, logoDark })}
+                surface="dark"
+                error={errors.logoDark}
+              />
+              <LogoField
+                site={site}
+                id="icon"
+                label={t('siteIcon')}
+                description={t('siteIconDescription')}
+                value={values.icon}
+                onChange={(icon) => setValues({ ...values, icon })}
+                shape="square"
+                error={errors.icon}
+              />
               <Field {...invalid('name')}>
                 <FieldLabel htmlFor="name">{t('name')}</FieldLabel>
                 <Input id="name" required value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} />
