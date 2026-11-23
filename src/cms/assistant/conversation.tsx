@@ -72,11 +72,12 @@ import { MediaPicker } from '../editor/media-picker'
 import { ApprovalCard } from './approval-card'
 import { useAssistant } from './assistant-context'
 import { EffortMenu, ModelMenu } from './model-menu'
+import { DisabledPrompt, SetupPill } from './setup-pill'
 import { toolLabel } from './tool-label'
 
 // Chat composition from the shadcn AI Elements docs (Chat, Message, Tool, Confirmation,
 // Prompt Input, Model Selector, Suggestion), with state from the AI SDK's useChat.
-export function Conversation({ className, compact = false }: { className?: string; compact?: boolean }) {
+export function Conversation({ className, compact = false, platformAdmin = false }: { className?: string; compact?: boolean; platformAdmin?: boolean }) {
   const assistant = useAssistant()
   const { t } = useI18n()
   const { messages, sendMessage, regenerate, stop, status, error, addToolApprovalResponse } = useChat({ chat: assistant!.chat })
@@ -88,16 +89,26 @@ export function Conversation({ className, compact = false }: { className?: strin
   const awaitingApproval = messages.at(-1)?.parts.some((part) => isToolUIPart(part) && part.state === 'approval-requested') ?? false
 
   if (setup.state === 'missing') {
+    // Like the overview: the set-up pill above the usual empty chat, and the prompt greyed out for
+    // administrators until a model is connected.
     return (
-      <Empty className={className}>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <BotMessageSquareIcon />
-          </EmptyMedia>
-          <EmptyTitle>{t('notSetUp')}</EmptyTitle>
-          <EmptyDescription>{t('notSetUpDescription')}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+        <Empty className="flex-1">
+          <SetupPill site={assistant.site} platformAdmin={platformAdmin} />
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BotMessageSquareIcon />
+            </EmptyMedia>
+            <EmptyTitle>{t('assistantTitle')}</EmptyTitle>
+            <EmptyDescription>{t('assistantDescription')}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+        {platformAdmin && (
+          <div className={cn('mx-auto w-full max-w-3xl p-4 pt-0', compact && 'px-3')}>
+            <DisabledPrompt placeholder={t('messagePlaceholder')} />
+          </div>
+        )}
+      </div>
     )
   }
 

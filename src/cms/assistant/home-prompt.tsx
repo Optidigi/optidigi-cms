@@ -10,7 +10,7 @@ import type { MessageKey } from '../i18n'
 import { useI18n } from '../client/i18n-provider'
 import { useAssistant } from './assistant-context'
 import { EffortMenu, ModelMenu } from './model-menu'
-import { SetupPill } from './setup-pill'
+import { DisabledPrompt, SetupPill } from './setup-pill'
 
 const suggestions: MessageKey[] = ['suggestionNewPage', 'suggestionDrafts', 'suggestionSEO']
 
@@ -36,16 +36,7 @@ export function HomePrompt({ platformAdmin, children }: { platformAdmin: boolean
       <>
         <SetupPill site={assistant.site} platformAdmin={platformAdmin} className="self-center" />
         {children}
-        {platformAdmin && (
-          <InputGroup data-disabled className="rounded-xl bg-background">
-            <InputGroupTextarea aria-label={t('askAI')} placeholder={t('homePromptPlaceholder')} className="min-h-20 p-3 text-base md:text-base" disabled />
-            <InputGroupAddon align="block-end">
-              <InputGroupButton size="icon-sm" variant="default" className="ml-auto rounded-full" aria-label={t('send')} disabled>
-                <ArrowUpIcon />
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        )}
+        {platformAdmin && <DisabledPrompt placeholder={t('homePromptPlaceholder')} />}
       </>
     )
   }
