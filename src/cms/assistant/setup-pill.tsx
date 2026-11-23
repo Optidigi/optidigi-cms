@@ -1,9 +1,10 @@
 'use client'
 
-import { ChevronRightIcon } from 'lucide-react'
+import { ArrowUpIcon } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group'
 import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
 import { services } from '../settings/ai-services'
@@ -16,7 +17,7 @@ const shown = services.filter(({ group }) => group === 'direct')
 // connect a model, only read that it isn't set up yet.
 export function SetupPill({ site, platformAdmin, className }: { site: number; platformAdmin: boolean; className?: string }) {
   const { t } = useI18n()
-  const pill = 'h-9 gap-2 rounded-full bg-background px-3.5 text-sm font-normal'
+  const pill = 'h-10 gap-2.5 rounded-full bg-background px-4 text-base font-normal'
   if (!platformAdmin) {
     return (
       <Badge variant="outline" className={cn(pill, 'text-muted-foreground', className)}>
@@ -27,16 +28,30 @@ export function SetupPill({ site, platformAdmin, className }: { site: number; pl
   return (
     <Badge variant="outline" className={cn(pill, 'hover:bg-muted', className)} render={<Link href={`/admin/${site}/settings/ai`} />}>
       {t('connectAModel')}
-      <AvatarGroup className="-space-x-1.5">
+      <AvatarGroup className="-space-x-2">
         {shown.map((service) => (
-          <Avatar key={service.id} size="sm" className="size-5">
+          <Avatar key={service.id} size="sm" className="size-6">
             <AvatarFallback className="bg-background text-foreground">
-              <ServiceLogo service={service} className="size-3" />
+              <ServiceLogo service={service} className="size-3.5" />
             </AvatarFallback>
           </Avatar>
         ))}
       </AvatarGroup>
-      <ChevronRightIcon className="text-muted-foreground" />
     </Badge>
+  )
+}
+
+// The prompt greyed out, so administrators see where they'll type once a model is connected.
+export function DisabledPrompt({ placeholder, className }: { placeholder: string; className?: string }) {
+  const { t } = useI18n()
+  return (
+    <InputGroup data-disabled className={cn('rounded-xl bg-background', className)}>
+      <InputGroupTextarea aria-label={t('askAI')} placeholder={placeholder} className="min-h-20 p-3 text-base md:text-base" disabled />
+      <InputGroupAddon align="block-end">
+        <InputGroupButton size="icon-sm" variant="default" className="ml-auto rounded-full" aria-label={t('send')} disabled>
+          <ArrowUpIcon />
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
   )
 }

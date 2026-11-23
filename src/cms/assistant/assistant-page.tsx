@@ -10,7 +10,7 @@ import { ChatHistory } from './chat-history'
 import { Conversation } from './conversation'
 
 // The full-page assistant: history beside the conversation; on mobile the history opens in a sheet.
-export function AssistantPage({ thread }: { thread?: number }) {
+export function AssistantPage({ thread, platformAdmin }: { thread?: number; platformAdmin: boolean }) {
   const assistant = useAssistant()
   const { t } = useI18n()
   const [history, setHistory] = useState(false)
@@ -43,7 +43,7 @@ export function AssistantPage({ thread }: { thread?: number }) {
             </SheetContent>
           </Sheet>
         </div>
-        <Conversation />
+        <Conversation platformAdmin={platformAdmin} />
       </div>
     </div>
   )

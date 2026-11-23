@@ -49,7 +49,9 @@ test('an editor creates, saves and publishes a page that websites can read', asy
 test('the assistant explains when no model is set up', async ({ page }) => {
   await login(page, user)
   await page.goto(`/admin/${site}/ai`)
-  await expect(page.getByText(/niet ingesteld|not set up/i)).toBeVisible()
+  // The AI page shows the same pill above the empty chat, without a prompt.
+  await expect(page.getByText(/ingesteld door je beheerder|set up by your administrator/i)).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toHaveCount(0)
   // Members can't set AI up, so other pages show neither the prompt bar nor a set-up hint.
   await page.goto(`/admin/${site}/pages`)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
@@ -111,6 +113,10 @@ test.describe('AI services', () => {
     await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toHaveCount(0)
     // On the overview: the same pill above the heading and the prompt greyed out.
     await page.goto(`/admin/${site}`)
+    await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toBeDisabled()
+    // And on the AI page.
+    await page.goto(`/admin/${site}/ai`)
     await expect(page.getByRole('link', { name: /koppel een ai-model|connect an ai model/i })).toBeVisible()
     await expect(page.getByRole('textbox', { name: /vraag ai|ask ai/i })).toBeDisabled()
   })
