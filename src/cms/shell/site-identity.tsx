@@ -50,7 +50,7 @@ function SiteLogo({ site }: { site: SiteSummary & { logo: string } }) {
   /* eslint-enable @next/next/no-img-element */
 }
 
-// The sidebar header: the website's logo (or icon and name), linking to its overview (the plain
+// The sidebar header: the website's logo alone (or icon, name and address), linking to its overview (the plain
 // header of the official sidebar blocks). Collapsed, only the square icon shows. Switching websites
 // lives in the account menu at the bottom.
 export function SiteIdentity({ site }: { site?: SiteSummary }) {
@@ -60,9 +60,8 @@ export function SiteIdentity({ site }: { site?: SiteSummary }) {
     site?.logo ? (
       <>
         <SiteAvatar site={site} size="default" className="hidden group-data-[collapsible=icon]:flex" />
-        <div className="grid min-w-0 flex-1 gap-1 text-left group-data-[collapsible=icon]:hidden">
+        <div className="flex min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
           <SiteLogo site={{ ...site, logo: site.logo }} />
-          {host}
         </div>
       </>
     ) : (
@@ -78,7 +77,7 @@ export function SiteIdentity({ site }: { site?: SiteSummary }) {
     <SidebarMenu>
       <SidebarMenuItem>
         {site ? (
-          <SidebarMenuButton size="lg" tooltip={site.name} className={cn(site.logo && 'h-auto min-h-12')} render={<Link href={`/admin/${site.id}`} />}>
+          <SidebarMenuButton size="lg" tooltip={site.name} render={<Link href={`/admin/${site.id}`} />}>
             {content}
           </SidebarMenuButton>
         ) : (

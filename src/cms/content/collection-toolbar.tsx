@@ -6,7 +6,6 @@ import { useEffect, useState, useTransition } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useI18n } from '../client/i18n-provider'
 
 // Filters live in the URL so the server queries Payload with them and links stay shareable.
@@ -62,16 +61,6 @@ export function CollectionToolbar() {
           ))}
         </SelectContent>
       </Select>
-      <ToggleGroup
-        aria-label={t('documentTranslation')}
-        variant="outline"
-        value={[params.get('locale') === 'en' ? 'en' : 'nl']}
-        onValueChange={(value) => value[0] && update({ locale: value[0] === 'nl' ? undefined : value[0] })}
-        className="ms-auto"
-      >
-        <ToggleGroupItem value="nl" aria-label={t('dutch')}>NL</ToggleGroupItem>
-        <ToggleGroupItem value="en" aria-label={t('english')}>EN</ToggleGroupItem>
-      </ToggleGroup>
     </div>
   )
 }
