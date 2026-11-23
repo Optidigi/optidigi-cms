@@ -136,7 +136,9 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
               {recent.length ? (
                 <ItemGroup className="gap-1">
                   {recent.map((entry) => (
-                    <Item key={`${entry.section}-${entry.id}`} size="sm" render={<Link href={`/admin/${site.id}/${entry.section}/${entry.id}`} />}>
+                    // ItemGroup is a list; the item is a link, so a wrapper carries the list item role.
+                    <div key={`${entry.section}-${entry.id}`} role="listitem">
+                    <Item size="sm" render={<Link href={`/admin/${site.id}/${entry.section}/${entry.id}`} />}>
                       <ItemContent className="min-w-0">
                         <ItemTitle className="w-full truncate">{entry.title || t('untitled')}</ItemTitle>
                         <ItemDescription className="truncate">
@@ -145,6 +147,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
                       </ItemContent>
                       <StatusBadge status={entry.status} t={t} />
                     </Item>
+                    </div>
                   ))}
                 </ItemGroup>
               ) : (
