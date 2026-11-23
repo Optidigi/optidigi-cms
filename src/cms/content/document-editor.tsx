@@ -23,9 +23,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -35,7 +32,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/componen
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { api, APIError, query } from '../client/api'
 import { useI18n } from '../client/i18n-provider'
@@ -261,11 +257,6 @@ export function DocumentEditor({
     setSaving(undefined)
   }
 
-  function navigate(href: string) {
-    if (dirty) setLeaveTo(href)
-    else router.push(href)
-  }
-
   // The preview grant lasts 30 minutes; re-render the page for a fresh one while the preview is open.
   useEffect(() => {
     if (!previewOpen && !previewSheet) return
@@ -319,14 +310,6 @@ export function DocumentEditor({
             </DropdownMenuItem>
           </DropdownMenuGroup>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('documentTranslation')}</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={locale} onValueChange={(value) => value !== locale && navigate(editorHref({ locale: value as ContentLocale }))}>
-            <DropdownMenuRadioItem value="nl">{t('dutch')}</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="en">{t('english')}</DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem disabled={lockedByOther} onClick={() => setVersionsOpen(true)}>
@@ -464,24 +447,8 @@ export function DocumentEditor({
           {saved && <CardDescription>{t('updated')}: {formatDate(saved.updatedAt, language)}</CardDescription>}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Field>
-            <FieldLabel>{t('documentTranslation')}</FieldLabel>
-            <ToggleGroup
-              variant="outline"
-              value={[locale]}
-              aria-label={t('documentTranslation')}
-              onValueChange={(value) => {
-                const next = value[0] as ContentLocale | undefined
-                if (next && next !== locale) navigate(editorHref({ locale: next }))
-              }}
-            >
-              <ToggleGroupItem value="nl">{t('dutch')}</ToggleGroupItem>
-              <ToggleGroupItem value="en">{t('english')}</ToggleGroupItem>
-            </ToggleGroup>
-            {autosaveNote && <FieldDescription aria-live="polite">{autosaveNote}</FieldDescription>}
-          </Field>
+          {autosaveNote && <FieldDescription aria-live="polite">{autosaveNote}</FieldDescription>}
           <div className="grid gap-2">{saveButtons(false)}</div>
-          <FieldDescription>{t('publishAllHint')}</FieldDescription>
           {document && (
             <div className="grid gap-2">
               {previewHref && (

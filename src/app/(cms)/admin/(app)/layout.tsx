@@ -3,6 +3,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { getPreferences, getSites, requireUser } from '@/cms/server'
 import { AssistantProvider } from '@/cms/assistant/assistant-context'
 import { AssistantFrame } from '@/cms/assistant/assistant-panel'
+import { PageFade } from '@/cms/shell/page-fade'
 import { AppSidebar } from '@/cms/shell/app-sidebar'
 import { PreferencesProvider } from '@/cms/shell/preferences-context'
 import { isPlatformAdmin } from '@/site/access'
@@ -24,7 +25,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         />
         {/* min-w-0 lets wide content (tables, chat suggestions) scroll inside the page instead of widening it. */}
         <SidebarInset className="min-w-0">
-          <AssistantFrame platformAdmin={isPlatformAdmin(user)}>{children}</AssistantFrame>
+          <AssistantFrame platformAdmin={isPlatformAdmin(user)}>
+            <PageFade>{children}</PageFade>
+          </AssistantFrame>
         </SidebarInset>
       </SidebarProvider>
       </AssistantProvider>

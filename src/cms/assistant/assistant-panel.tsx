@@ -154,9 +154,9 @@ function PanelHeader() {
 
 // The floating "Ask AI…" bar at the bottom of the page. Sending opens the panel (or the drawer on
 // small screens) with the question as a new chat; while the panel is open the bar steps aside.
-// The bottom bars slide up into view each time they appear (tw-animate-css, as shadcn's own
-// overlays use). Reduced motion cuts this short (admin.css).
-const enter = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ease-out'
+// The bottom bars slide up into view each time they appear, after a short pause (tw-animate-css,
+// as shadcn's own overlays use; fill-mode-backwards keeps them hidden during the delay). Reduced motion cuts this short (admin.css).
+const enter = 'animate-in fade-in-0 slide-in-from-bottom-4 delay-300 duration-500 ease-out fill-mode-backwards'
 
 function AskBar() {
   const assistant = useAssistant()!

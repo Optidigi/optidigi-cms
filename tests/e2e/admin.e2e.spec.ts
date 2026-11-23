@@ -30,8 +30,11 @@ test.afterAll(async () => {
 test('an editor creates, saves and publishes a page that websites can read', async ({ page, request }) => {
   await login(page, user)
   await page.goto(`/admin/${site}/pages`)
+  // Content languages get their own way of working later; the list and editor show no switch.
+  await expect(page.getByRole('group', { name: /tekst in|text in/i })).toHaveCount(0)
   await page.getByRole('link', { name: /^(nieuw|new)$/i }).click()
   await page.locator('#title').fill('Over ons')
+  await expect(page.getByRole('group', { name: /tekst in|text in/i })).toHaveCount(0)
   await expect(page.locator('#slug')).toHaveValue('over-ons')
   await page.getByRole('button', { name: /concept opslaan|save draft/i }).first().click()
   await page.waitForURL(/\/pages\/\d+/)

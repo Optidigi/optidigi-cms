@@ -4,6 +4,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* The page fade (src/cms/shell/page-fade.tsx): opacity only, so sticky parts stay in place. */
+@theme {
+    --animate-page-in: page-in 200ms ease-out;
+    @keyframes page-in {
+        from {
+            opacity: 0;
+        }
+    }
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
