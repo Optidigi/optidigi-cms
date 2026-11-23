@@ -212,8 +212,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('nl' | 'en') | ('nl' | 'en')[];
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    platform: Platform;
+  };
+  globalsSelect: {
+    platform: PlatformSelect<false> | PlatformSelect<true>;
+  };
   locale: 'nl' | 'en';
   widgets: {
     welcome: WelcomeWidget;
@@ -1044,6 +1048,36 @@ export interface PayloadLlmInstructionsSelect<T extends boolean = true> {
   updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "platform".
+ */
+export interface Platform {
+  id: number;
+  brandWebsite?: (number | null) | Tenant;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "platform_select".
+ */
+export interface PlatformSelect<T extends boolean = true> {
+  brandWebsite?: T;
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

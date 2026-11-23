@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import { useI18n } from '../client/i18n-provider'
+import { BrandLogo } from './brand-logo'
 
 export type SiteSummary = {
   id: number
@@ -35,21 +36,6 @@ export function SiteAvatar({ site, size, className }: { site?: SiteSummary; size
   )
 }
 
-// The website's logo. Without a dark-mode logo, dark mode shows the logo on a light background.
-function SiteLogo({ site }: { site: SiteSummary & { logo: string } }) {
-  const image = 'h-6 w-auto max-w-full object-contain object-left'
-  /* eslint-disable @next/next/no-img-element -- Payload serves the original upload; SVGs stay as images. */
-  return site.logoDark ? (
-    <>
-      <img src={site.logo} alt={site.name} className={cn(image, 'dark:hidden')} />
-      <img src={site.logoDark} alt={site.name} className={cn(image, 'hidden dark:block')} />
-    </>
-  ) : (
-    <img src={site.logo} alt={site.name} className={cn(image, 'dark:rounded-md dark:bg-white dark:px-1.5 dark:py-1 dark:box-content dark:h-5')} />
-  )
-  /* eslint-enable @next/next/no-img-element */
-}
-
 // The sidebar header: the website's logo alone (or icon, name and address), linking to its overview (the plain
 // header of the official sidebar blocks). Collapsed, only the square icon shows. Switching websites
 // lives in the account menu at the bottom.
@@ -61,7 +47,7 @@ export function SiteIdentity({ site }: { site?: SiteSummary }) {
       <>
         <SiteAvatar site={site} size="default" className="hidden group-data-[collapsible=icon]:flex" />
         <div className="flex min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-          <SiteLogo site={{ ...site, logo: site.logo }} />
+          <BrandLogo name={site.name} logo={site.logo} logoDark={site.logoDark} className="h-6" />
         </div>
       </>
     ) : (

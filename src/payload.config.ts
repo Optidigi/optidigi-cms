@@ -24,6 +24,7 @@ import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import path from 'node:path'
 import { buildConfig, type CollectionConfig } from 'payload'
 import { fileURLToPath } from 'node:url'
+import { Platform } from './site/platform'
 import { AssistantFiles, AssistantSettings, AssistantThreads } from './assistant/collections'
 import { assistantEndpoints } from './assistant/endpoint'
 import { keepAssistantWritesOnSite, limitToAssistantSite } from './assistant/scope'
@@ -73,6 +74,7 @@ export default buildConfig({
     AssistantThreads,
     AssistantFiles,
   ].map(withCollectionLabels),
+  globals: [Platform],
   csrf: origin ? [origin] : [],
   // The rich-text features the admin editor supports. Payload validates stored content against them.
   editor: lexicalEditor({

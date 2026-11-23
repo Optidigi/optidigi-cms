@@ -7,6 +7,7 @@ import * as migration_20261121_012940_website_preview from './20261121_012940_we
 import * as migration_20261121_130205_ai_connections from './20261121_130205_ai_connections';
 import * as migration_20261121_130850_website_sections from './20261121_130850_website_sections';
 import * as migration_20261123_111454_website_logos from './20261123_111454_website_logos';
+import * as migration_20261123_131318_cms_brand from './20261123_131318_cms_brand';
 
 export const migrations = [
   {
@@ -52,6 +53,11 @@ export const migrations = [
   {
     up: migration_20261123_111454_website_logos.up,
     down: migration_20261123_111454_website_logos.down,
-    name: '20261123_111454_website_logos'
+    name: '20261123_111454_website_logos',
+  },
+  {
+    up: migration_20261123_131318_cms_brand.up,
+    down: migration_20261123_131318_cms_brand.down,
+    name: '20261123_131318_cms_brand'
   },
 ];

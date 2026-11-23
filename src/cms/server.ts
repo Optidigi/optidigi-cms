@@ -104,3 +104,28 @@ export async function requireSite(siteParam: string) {
   if (!site) notFound()
   return { ...session, site }
 }
+
+export type Brand = { name: string; logo: string; logoDark: string | null }
+
+// The CMS's own brand for the sign-in screen: the logos of the website chosen under Platform →
+// Websites, as published. Read on the server before anyone signs in, so it bypasses access control
+// and returns only public image addresses.
+export const getBrand = cache(async (): Promise<Brand | null> => {
+  const { payload } = await getSession()
+  const platform = await payload.findGlobal({ slug: 'platform', depth: 0, overrideAccess: true })
+  const tenant = relationID(platform.brandWebsite)
+  if (tenant === undefined) return null
+  const { docs: [settings] } = await payload.find({
+    collection: 'site-settings',
+    depth: 1,
+    limit: 1,
+    overrideAccess: true,
+    select: { name: true, logo: true, logoDark: true },
+    populate: { media: { url: true, filename: true } },
+    where: { and: [{ tenant: { equals: tenant } }, { _status: { equals: 'published' } }] },
+  })
+  const url = (media: unknown) => (media && typeof media === 'object' && 'url' in media && typeof media.url === 'string' ? media.url : null)
+  const logo = url(settings?.logo)
+  if (!settings || !logo) return null
+  return { name: settings.name, logo, logoDark: url(settings.logoDark) }
+})

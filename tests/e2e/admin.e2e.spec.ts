@@ -126,6 +126,41 @@ test.describe('AI services', () => {
     await page.waitForURL(`**/admin/${site}/settings/ai`)
   })
 
+  test('the sign-in screen shows the logo of the website chosen as CMS brand', async ({ page, browser }) => {
+    const before = await payload.findGlobal({ slug: 'platform', depth: 0, overrideAccess: true })
+    const data = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 10"><rect width="40" height="10"/></svg>')
+    const logo = await payload.create({
+      collection: 'media', overrideAccess: true,
+      data: { alt: `Brand ${suffix}`, tenant: site },
+      file: { data, mimetype: 'image/svg+xml', name: `brand-${suffix}.svg`, size: data.length },
+    })
+    await payload.create({
+      collection: 'site-settings', overrideAccess: true,
+      data: { tenant: site, name: `Brand ${suffix}`, logo: logo.id, _status: 'published' },
+    })
+    const signIn = await (await browser.newContext()).newPage()
+    try {
+      await payload.updateGlobal({ slug: 'platform', overrideAccess: true, data: { brandWebsite: null } })
+      // Without a brand: the app name.
+      await signIn.goto('/admin/login')
+      await expect(signIn.getByText('Optidigi CMS').locator('visible=true').first()).toBeVisible()
+      await expect(signIn.getByRole('img', { name: `Brand ${suffix}` })).toHaveCount(0)
+      // A platform administrator picks the website under Platform → Websites.
+      await login(page, admin)
+      await page.goto('/admin/platform/websites')
+      await page.getByRole('combobox', { name: /merk van het cms|cms brand/i }).click()
+      await page.getByRole('option', { name: `E2E ${suffix}` }).click()
+      await expect(page.getByText(/opgeslagen|saved/i).first()).toBeVisible()
+      await signIn.reload()
+      await expect(signIn.getByRole('img', { name: `Brand ${suffix}` }).locator('visible=true').first()).toBeVisible()
+    } finally {
+      await signIn.context().close()
+      await payload.updateGlobal({ slug: 'platform', overrideAccess: true, data: { brandWebsite: before.brandWebsite ?? null } })
+      await payload.delete({ collection: 'site-settings', overrideAccess: true, where: { tenant: { equals: site } } })
+      await payload.delete({ collection: 'media', overrideAccess: true, id: logo.id })
+    }
+  })
+
   test('choosing a named service fills in its address and shows its name', async ({ page }) => {
     await login(page, admin)
     await page.goto(`/admin/${site}/settings/ai`)
@@ -363,7 +398,8 @@ test('the sign-in screen asks for the email, then the password, and switches lan
   await page.context().clearCookies()
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/admin/login')
-  await expect(page.getByRole('img', { name: 'Optidigi CMS' })).toBeVisible()
+  // No CMS brand is chosen in tests, so the app name stands in for the logo.
+  await expect(page.getByText('Optidigi CMS').locator('visible=true').first()).toBeVisible()
   await page.getByRole('button', { name: /cms-taal|cms language/i }).click()
   await page.getByRole('menuitemradio', { name: 'English' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/welcome back/i)
