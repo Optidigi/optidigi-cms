@@ -87,7 +87,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ site:
     <>
       <SiteHeader crumbs={[{ label: site.name }, { label: t('overview') }]} />
       <PageBody className="@container">
-        <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 py-4 md:py-8">
+        <section className="mx-auto flex w-full max-w-3xl flex-col gap-4 py-4 md:py-8">
           <HomePrompt platformAdmin={isPlatformAdmin(user)}>
             <div className="flex flex-col items-center gap-1 text-center">
               <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{t('homeTitle')}</h1>
