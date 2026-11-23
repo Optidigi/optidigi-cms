@@ -8,7 +8,6 @@ import config from '@/payload.config'
 import { connectionWithKey, modelEndpoints, pickModel } from '@/assistant/connections'
 import { assistantSiteHeader } from '@/assistant/scope'
 import { relationID } from '@/site/access'
-import { siteEndpoints } from '@/site/endpoints'
 import { previewGrantStrategy, previewURL } from '@/site/preview'
 
 const suffix = randomUUID().slice(0, 8)
@@ -251,6 +250,13 @@ describe('tenant content', () => {
     const { docs } = await payload.find({ collection: 'pages', depth: 0, draft: true, locale: 'nl', overrideAccess: false, user })
     expect(docs.map(({ tenant }) => relationID(tenant))).toEqual([tenantA])
     expect(docs[0].heading).toBe('Draft only')
+    // What a website reads in a preview: its home page draft by tenant slug; another website's is out of reach.
+    const homeDraft = (tenant: string) => payload.find({
+      collection: 'pages', depth: 0, draft: true, locale: 'nl', fallbackLocale: false, limit: 1, overrideAccess: false, user,
+      where: { 'tenant.slug': { equals: `test-${tenant}-${suffix}` }, slug: { equals: 'home' } },
+    })
+    expect((await homeDraft('a')).docs[0]?.heading).toBe('Draft only')
+    expect((await homeDraft('b')).docs).toHaveLength(0)
     const forged = grant.slice(0, -2) + (grant.endsWith('AA') ? 'BB' : 'AA')
     expect((await previewGrantStrategy.authenticate({
       headers: new Headers({ authorization: `Bearer ${forged}` }), payload, req: { method: 'GET', url: 'https://cms.optidigi.nl/api/pages' } as PayloadRequest,
@@ -362,23 +368,5 @@ describe('tenant content', () => {
     })
     expect(doc.id).toBe(newer.id)
     await payload.delete({ collection: 'payload-preferences', overrideAccess: true, where: { id: { in: [older.id, newer.id] } } })
-  })
-
-  it('serves published content and only returns drafts under a tenant-bound grant', async () => {
-    const endpoint = siteEndpoints.find(({ path }) => path === '/site-content')!
-    const makeURL = (tenant: string) =>
-      `https://cms.optidigi.nl/api/site-content?tenant=test-${tenant}-${suffix}&locale=nl`
-    const published = await endpoint.handler(request(makeURL('a')))
-    expect(await published.json()).toMatchObject({ homepage: { heading: 'Published' } })
-
-    const preview = await previewURL('pages', home, 'nl', request('https://cms.optidigi.nl/api'))
-    expect(preview).toBeTruthy()
-    const grant = new URL(preview!).searchParams.get('grant')!
-    const headers = new Headers({ authorization: `Bearer ${grant}` })
-    const draft = await endpoint.handler(request(makeURL('a') + '&draft=true', headers))
-    expect(await draft.json()).toMatchObject({ homepage: { heading: 'Draft only' } })
-    expect(draft.headers.get('cache-control')).toBe('no-store')
-    expect((await endpoint.handler(request(makeURL('a') + '&draft=true'))).status).toBe(401)
-    expect((await endpoint.handler(request(makeURL('b') + '&draft=true', headers))).status).toBe(401)
   })
 })
