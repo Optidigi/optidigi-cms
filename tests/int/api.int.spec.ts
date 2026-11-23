@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getPayload, type Payload, type PayloadRequest } from 'payload'
 import config from '@/payload.config'
-import { modelEndpoints, pickModel } from '@/assistant/connections'
+import { connectionWithKey, modelEndpoints, pickModel } from '@/assistant/connections'
 import { assistantSiteHeader } from '@/assistant/scope'
 import { relationID } from '@/site/access'
 import { siteEndpoints } from '@/site/endpoints'
@@ -290,6 +290,10 @@ describe('tenant content', () => {
       { label: 'Router', hasKey: true, models: ['model-b'] },
     ])
     expect(visible.connections!.some((row) => 'apiKey' in row)).toBe(false)
+    // Their chat still reaches the connection's own address, which only platform administrators read.
+    expect(visible.connections![1]).not.toHaveProperty('baseURL')
+    expect(await connectionWithKey(request('https://cms.optidigi.nl/api/assistant/chat'), visible, visible.connections![1].id!))
+      .toMatchObject({ provider: 'openai-compatible', baseURL: 'https://openrouter.ai/api/v1', apiKey: 'other-key' })
     // Only platform administrators change them.
     await expect(payload.update({
       collection: 'assistant-settings', id: settings.id, overrideAccess: false, user: actor, data: { defaultModel: 'x' },

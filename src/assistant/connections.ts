@@ -51,9 +51,10 @@ export async function connectionWithKey(req: PayloadRequest, settings: Assistant
   const stored = await req.payload.findByID({
     collection: 'assistant-settings', id: settings.id, depth: 0, overrideAccess: true, select: { connections: true },
   })
-  const apiKey = stored.connections?.find((candidate) => candidate.id === id)?.apiKey
-  if (!apiKey) throw new APIError('This AI connection has no API key.', 409, undefined, true)
-  return { ...connection, apiKey: req.payload.decrypt(apiKey), storedKey: apiKey }
+  // The address too: only platform administrators can read it, but every member's chat needs it.
+  const row = stored.connections?.find((candidate) => candidate.id === id)
+  if (!row?.apiKey) throw new APIError('This AI connection has no API key.', 409, undefined, true)
+  return { ...connection, provider: row.provider, baseURL: row.baseURL, apiKey: req.payload.decrypt(row.apiKey), storedKey: row.apiKey }
 }
 
 type Keyed = Connection & { apiKey: string }
