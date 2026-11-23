@@ -56,12 +56,35 @@ docker compose ps
 curl --fail --silent --show-error https://cms.optidigi.nl/api/health
 ```
 
-The app runs `payload migrate` from the release image before starting Next.js. A failed migration prevents the server from starting. Check `docker compose logs app postgres` if readiness fails. Roll back by setting `CMS_IMAGE` to the previous digest and recreating the app only when the migrated schema remains compatible. The admin replacement release is **not** schema-compatible with older images: its migrations drop the old assistant tables. Before that cutover, take a `pg_dump` and copy the uploads volume. Rolling back then means restoring both and starting the previous digest with its old compose file, which mounts the `assistant_key` secret.
+The app runs `payload migrate` from the release image before starting Next.js. A failed migration prevents the server from starting; check `docker compose logs app postgres` if readiness fails. Set the `SMTP_*` variables in `.env` to send password-reset email; without them, reset links appear in the app logs.
 
-Verify the following after a release:
-- The assistant (`/api/assistant/chat`) streams through Cloudflare, and signed-out visitors cannot use it. Keep that route free of Traefik buffering and shared caching.
-- Each website's assistant connection is configured under Settings → Assistant, by a platform admin.
-- Anonymous `GET /api/pages?where[tenant.slug][equals]=…` returns published documents only.
-- The pilot website still previews drafts. It keeps using `/api/site-content` until it moves to Payload's REST API with the preview grant (see `tasks/admin-replacement-plan.md`, phase 5).
+## Release an update
 
-Set the `SMTP_*` variables in `.env` to send password-reset email; without them, reset links appear in the app logs. Off-host backup setup is deferred to the VPS refactor.
+CI publishes an image only for a `main` commit that passed every check, including the upgrade from the previous image (see [Testing and CI](../docs/how-it-works.md#testing-and-ci)).
+
+1. Find the digest in the `main` run's log (`latest: digest: sha256:…`), or pull `latest` and inspect it as above.
+2. On `prod`, in `/srv/prod/infra/stacks/optidigi-cms`, note the current `CMS_IMAGE` line in `.env`; it is the rollback digest.
+3. If the release adds a migration (a new file in `src/migrations`), back up the database first:
+   ```sh
+   umask 077
+   docker compose exec -T postgres pg_dump -U optidigi_cms -Fc optidigi_cms > ~/optidigi-cms-$(date +%Y%m%d-%H%M).dump
+   ```
+4. Set `CMS_IMAGE=ghcr.io/optidigi/optidigi-cms@sha256:<digest>` in `.env` and run `docker compose up -d app`. Wait until `docker compose ps` shows it healthy.
+5. Check:
+   - `/api/health` and `/admin/login` answer 200;
+   - signed out, `POST /api/assistant/models` answers 401 and `/api/globals/platform` 403;
+   - anonymous `GET /api/pages?where[tenant.slug][equals]=…` returns published documents only;
+   - `docker compose logs app` shows no errors.
+
+## Roll back
+
+- **No migration in the release:** set `CMS_IMAGE` back to the previous digest and run `docker compose up -d app`.
+- **The release ran a migration:** the database now has the newer schema, and the previous image may not work with it. Stop the app, restore the backup from step 3 (`docker compose exec -T postgres pg_restore -U optidigi_cms --clean --if-exists -d optidigi_cms < <file>.dump`), then start the previous digest. Content saved after the release is lost, so roll forward with a fix when the problem is small.
+
+## Websites
+
+- The assistant (`/api/assistant/chat`) streams through Cloudflare; keep that route free of Traefik buffering and shared caching.
+- Each website's AI connection is set up under Settings → AI by a platform admin.
+- The pilot website still previews drafts through `/api/site-content` until it moves to Payload's REST API with the preview grant.
+
+Off-host backup setup is deferred to the VPS refactor.

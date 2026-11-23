@@ -1,7 +1,7 @@
 {
   "name": "optidigi-cms",
   "version": "1.0.0",
-  "description": "A blank template to get started with Payload",
+  "description": "Optidigi CMS: one Payload CMS for several independently deployed websites",
   "license": "MIT",
   "type": "module",
   "scripts": {
